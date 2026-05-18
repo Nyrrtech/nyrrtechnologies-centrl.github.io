@@ -191,14 +191,27 @@
       justify-content: center;
       margin: 0 auto 20px;
     }
-    /* cta */
-    .cta {
+    /* CTA section – full width fix */
+    .cta-wrapper {
       background: linear-gradient(145deg, #111317, #0a0c10);
+      border-top: 1px solid rgba(245,176,66,0.2);
+      border-bottom: 1px solid rgba(245,176,66,0.2);
+      margin: 40px 0;
+    }
+    .cta {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 56px 24px;
       text-align: center;
-      border-radius: 48px;
-      padding: 56px 32px;
-      margin: 0px 0;
-      border: 1px solid rgba(245,176,66,0.3);
+      border-radius: 0;
+    }
+    .cta h2 {
+      font-size: 1.8rem;
+      margin-bottom: 16px;
+    }
+    .cta p {
+      margin-bottom: 28px;
+      color: #b0b8c5;
     }
     .footer {
       text-align: center;
@@ -226,7 +239,6 @@
 <header class="header">
   <div class="container header-inner">
     <div class="logo-area">
-      <!-- Logo image – replace "logo.png" with your actual image file -->
       <img src="logo.png" alt="News Sentiment Radar logo" class="logo-img" onerror="this.style.display='none'">
       <div class="logo-text">News <span>Sentiment Radar</span></div>
     </div>
@@ -271,10 +283,13 @@
     </div>
   </div>
 
-  <div class="container cta">
-    <h2 style="font-size: 1.8rem; margin-bottom: 16px;">Ready to supercharge your newsroom?</h2>
-    <p style="margin-bottom: 28px;">Join 500+ content creators who never miss a sentiment shift.</p>
-    <a href="#" class="btn">Install Extension – It's free</a>
+  <!-- FIXED CTA SECTION – full width, content centered -->
+  <div class="cta-wrapper">
+    <div class="cta">
+      <h2>Ready to supercharge your newsroom?</h2>
+      <p>Join 500+ content creators who never miss a sentiment shift.</p>
+      <a href="#" class="btn">Install Extension – It's free</a>
+    </div>
   </div>
 </main>
 

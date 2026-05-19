@@ -1,5 +1,5 @@
 /**
- * auth.js — Fixed version with robust session management
+ * auth.js — Final working version with robust session handling
  */
 const PLANS = {
   free: {
@@ -45,7 +45,6 @@ const STORAGE_USERS = 'nyrr_users';
 const STORAGE_SESSION = 'nyrr_session';
 const STORAGE_CRAWL_COUNT = 'nyrr_crawl_count';
 
-// ----- User storage -----
 function getUsers() {
   try {
     return JSON.parse(localStorage.getItem(STORAGE_USERS) || '[]');
@@ -59,7 +58,6 @@ function saveUsers(users) {
   localStorage.setItem(STORAGE_USERS, JSON.stringify(users));
 }
 
-// ----- Session -----
 function getCurrentUser() {
   try {
     const raw = localStorage.getItem(STORAGE_SESSION);
@@ -74,7 +72,6 @@ function getCurrentUser() {
     const users = getUsers();
     const user = users.find(u => u.id === session.userId);
     if (!user) {
-      // orphaned session
       localStorage.removeItem(STORAGE_SESSION);
       return null;
     }
@@ -96,12 +93,11 @@ function createSession(userId) {
 
 function logout() {
   localStorage.removeItem(STORAGE_SESSION);
-  // Update any header on current page
+  // Force header update on current page if possible
   if (typeof updateHeaderAuth === 'function') updateHeaderAuth();
   window.location.href = 'index.html';
 }
 
-// ----- Registration & Login -----
 function register(name, email, password) {
   if (!name || !email || !password) return { ok: false, error: 'All fields are required.' };
   if (password.length < 8) return { ok: false, error: 'Password must be at least 8 characters.' };
@@ -132,7 +128,6 @@ function login(email, password) {
   return { ok: true, user };
 }
 
-// ----- Plan helpers -----
 function getCurrentPlan() {
   const user = getCurrentUser();
   if (!user) return PLANS.free;
@@ -145,7 +140,6 @@ function canUseExport()  { return getCurrentPlan().export; }
 function canUseAllSources() { return getCurrentPlan().allSources; }
 function getAllowedSources() { return getCurrentPlan().sources; }
 
-// ----- Crawl count -----
 function getCrawlCount() {
   try {
     const user = getCurrentUser();
@@ -177,7 +171,6 @@ function canCrawl() {
   return { ok: true, remaining: plan.crawlLimit - count };
 }
 
-// ----- Upgrade (demo) -----
 function upgradePlan(targetPlan) {
   const user = getCurrentUser();
   if (!user) return null;
@@ -190,7 +183,7 @@ function upgradePlan(targetPlan) {
   return users[idx];
 }
 
-// ----- Header UI (used on all pages) -----
+// Global header update function (used by all pages)
 function updateHeaderAuth() {
   const el = document.getElementById('headerAuth');
   if (!el) return;
@@ -209,7 +202,7 @@ function updateHeaderAuth() {
   }
 }
 
-// ----- Modal logic (shared) -----
+// Modal logic (used by all pages)
 function openModal(tab = 'login') {
   const backdrop = document.getElementById('authModal');
   if (!backdrop) return;
@@ -270,7 +263,6 @@ function doLogin() {
   }
   closeModal();
   updateHeaderAuth();
-  // Redirect to dashboard
   window.location.href = 'dashboard.html';
 }
 
@@ -296,7 +288,7 @@ function escapeHtml(s) {
   return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-// ----- Global click to close modal -----
+// Global click to close modal
 document.addEventListener('click', e => {
   if (e.target.id === 'authModal') closeModal();
 });
@@ -307,7 +299,6 @@ document.addEventListener('keydown', e => {
 // Auto-initialize header on every page
 document.addEventListener('DOMContentLoaded', updateHeaderAuth);
 
-// ----- Upsell banner helper (for dashboard) -----
 function renderUpsellBanner(containerId, feature) {
   const messages = {
     crawl:   { title: 'Monthly crawl limit reached', sub: 'Upgrade to Pro for unlimited crawls.' },

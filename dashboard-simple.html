@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Dashboard</title>
+    <script src="auth.js"></script>
+</head>
+<body>
+    <div id="authGate" style="display:none;">Not logged in</div>
+    <div id="dashboardContent" style="display:none;">
+        <h1>Dashboard</h1>
+        <div id="userInfo"></div>
+        <div id="planInfo"></div>
+        <button onclick="logout()">Logout</button>
+        <a href="index.html">Home</a>
+    </div>
+    <script>
+        function updateUI() {
+            const user = getCurrentUser();
+            const gate = document.getElementById('authGate');
+            const content = document.getElementById('dashboardContent');
+            if (user) {
+                gate.style.display = 'none';
+                content.style.display = 'block';
+                document.getElementById('userInfo').innerText = `User: ${user.name} (${user.email})`;
+                const plan = getCurrentPlan();
+                document.getElementById('planInfo').innerText = `Plan: ${plan.label} – Briefs: ${plan.briefs}, Drafts: ${plan.drafts}`;
+            } else {
+                gate.style.display = 'block';
+                content.style.display = 'none';
+            }
+        }
+        document.addEventListener('DOMContentLoaded', updateUI);
+    </script>
+</body>
+</html>

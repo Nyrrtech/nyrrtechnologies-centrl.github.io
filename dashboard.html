@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-/* ========== CSS (complete, same as before) ========== */
+/* ========== CSS (unchanged, exactly as before) ========== */
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#0A0A0A;--surface:#111317;--surface2:#1A1A1E;--surface3:#232328;--border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);--text:#F0F0F0;--text-sec:#9A9A9A;--text-hint:#5A5A5A;--accent:#f5b042;--gold-glow:rgba(245,176,66,0.15);--radius:10px;--radius-lg:16px;--font:'Inter',system-ui,sans-serif}
 body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.5}
@@ -191,7 +191,6 @@ textarea.settings-input{resize:vertical;min-height:72px}
     </div>
     <div class="pane" id="pane-keywords"><div id="kwContent" class="empty"><div class="empty-icon">🔑</div>Run a crawl first to see keyword intelligence.</div></div>
     <div class="pane" id="pane-briefs">
-      <!-- Manual brief input -->
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:16px" id="briefInputCard">
         <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-hint);margin-bottom:10px">✍️ Generate a brief manually</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
@@ -217,7 +216,6 @@ textarea.settings-input{resize:vertical;min-height:72px}
     </div>
 
     <div class="pane" id="pane-draft">
-      <!-- Manual draft input -->
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:16px" id="draftInputCard">
         <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-hint);margin-bottom:10px">✍️ Write a draft manually</div>
         <textarea id="draftPromptInput" class="settings-input" rows="3" placeholder="Describe the article you want to write — topic, angle, key points, target audience, word count…" style="width:100%;resize:vertical;font-family:inherit;line-height:1.5"></textarea>
@@ -315,7 +313,7 @@ textarea.settings-input{resize:vertical;min-height:72px}
 
 <script src="auth.js"></script>
 <script>
-// ========== FULL DASHBOARD IMPLEMENTATION ==========
+// ========== FULL DASHBOARD IMPLEMENTATION WITH FIXES ==========
 const RSS2JSON_URL = 'https://api.rss2json.com/v1/api.json';
 const FETCH_TIMEOUT = 15000;
 
@@ -402,6 +400,25 @@ let settings = { aiProvider:'anthropic', anthropicKey:'', mistralKey:'', rss2jso
 // Helper functions
 function esc(s) { return String(s || '').replace(/[&<>]/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[m])); }
 function timeAgo(iso) { if(!iso) return ''; const s=(Date.now()-new Date(iso))/1000; if(s<3600) return Math.floor(s/60)+'m'; if(s<86400) return Math.floor(s/3600)+'h'; return Math.floor(s/86400)+'d'; }
+
+// ----- SAFE JSON PARSER (fixes AI malformed JSON) -----
+function safeJsonParse(str, fallback = {}) {
+  if (!str) return fallback;
+  try {
+    // Remove markdown code blocks
+    let cleaned = str.replace(/```json\s*|```\s*$/g, '').trim();
+    // Extract first { ... } or [ ... ] block
+    const match = cleaned.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+    if (match) cleaned = match[0];
+    // Fix common AI mistakes: trailing commas, unquoted keys
+    cleaned = cleaned.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']');
+    cleaned = cleaned.replace(/(['"])?([a-zA-Z0-9_]+)(['"])?\s*:/g, '"$2":');
+    return JSON.parse(cleaned);
+  } catch (e) {
+    console.warn('JSON parse failed, using fallback:', e, str);
+    return fallback;
+  }
+}
 
 // Update header inside dashboard
 function updateSiteHeader() {
@@ -588,8 +605,12 @@ async function callAI({ prompt, maxTokens=600, apiKey, provider }) {
 }
 async function analyzeArticle(article, apiKey, provider) {
   const prompt = `Analyze headline: "${article.title}". Return ONLY JSON: {"emotion":"fear|anger|joy|sadness|surprise|neutral","sentiment":"positive|negative|neutral","intonation":"informative|alarming|hopeful","confidence":0.0,"keywords":["w1","w2"],"explanation":"short"}`;
-  const raw = await callAI({ prompt, maxTokens:220, apiKey, provider });
-  try { return JSON.parse(raw); } catch(e) { return { emotion:'neutral', sentiment:'neutral', intonation:'informative', confidence:0.5, keywords:[], explanation:'' }; }
+  try {
+    const raw = await callAI({ prompt, maxTokens: 220, apiKey, provider });
+    return safeJsonParse(raw, { emotion: 'neutral', sentiment: 'neutral', intonation: 'informative', confidence: 0.5, keywords: [], explanation: '' });
+  } catch (e) {
+    return { emotion: 'neutral', sentiment: 'neutral', intonation: 'informative', confidence: 0.5, keywords: [], explanation: '' };
+  }
 }
 
 // Rendering functions
@@ -728,11 +749,10 @@ Respond ONLY with valid JSON, no markdown:
 
   try {
     const raw = await callAI({ prompt, maxTokens:2000, apiKey, provider:settings.aiProvider });
-    const data = JSON.parse(raw.replace(/```json|```/g,'').trim());
+    const data = safeJsonParse(raw, { clusters: [], gaps: [], questions: [], avoid: [] });
     renderAiKeywordSection(data, topPhrases, questions);
   } catch(e) {
-    document.getElementById('kwAiSection').innerHTML =
-      `<div class="error-msg">AI keyword enrichment failed: ${esc(e.message)}</div>`;
+    document.getElementById('kwAiSection').innerHTML = `<div class="error-msg">AI keyword enrichment failed: ${esc(e.message)}</div>`;
   }
 }
 
@@ -823,7 +843,9 @@ async function generateBrief(story) {
   const prompt = `Story: "${story.title}". Return ONLY JSON brief: {"headline":"","primaryKeyword":"","secondaryKeywords":[],"angle":"","outline":["s1","s2","s3","s4"],"audience":"","wordCount":1200,"keyPoints":[],"callToAction":""}`;
   try {
     const raw = await callAI({ prompt, maxTokens:700, apiKey, provider:settings.aiProvider });
-    const brief = JSON.parse(raw); currentBrief = brief; renderBrief(brief);
+    const brief = safeJsonParse(raw, {});
+    if (!brief.headline) throw new Error('Invalid brief structure');
+    currentBrief = brief; renderBrief(brief);
   } catch(e) { if (briefsDiv) briefsDiv.innerHTML = `<div class="error-msg">Brief error: ${esc(e.message)}</div>`; }
 }
 async function generateBriefFromTopic(topic) {
@@ -834,33 +856,48 @@ async function generateBriefFromTopic(topic) {
   const prompt = `Content brief for topic "${topic}". Return ONLY JSON: {"headline":"","primaryKeyword":"${topic}","secondaryKeywords":[],"angle":"","outline":["s1","s2","s3","s4"],"audience":"professionals","wordCount":1000,"keyPoints":[],"callToAction":""}`;
   try {
     const raw = await callAI({ prompt, maxTokens:600, apiKey, provider:settings.aiProvider });
-    const brief = JSON.parse(raw); currentBrief = brief; renderBrief(brief);
+    const brief = safeJsonParse(raw, {});
+    if (!brief.headline) throw new Error('Invalid brief');
+    currentBrief = brief; renderBrief(brief);
   } catch(e) { if (briefsDiv) briefsDiv.innerHTML = `<div class="error-msg">Brief error: ${esc(e.message)}</div>`; }
 }
 
 async function generateBriefFromTopicWithTone(topic, tone) {
-  const apiKey = settings.aiProvider==='anthropic' ? settings.anthropicKey : settings.mistralKey;
-  if (!apiKey) { document.getElementById('briefsContent').innerHTML = '<div class="error-msg">Add an API key in Settings first.</div>'; return; }
+  const apiKey = settings.aiProvider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
+  if (!apiKey) {
+    document.getElementById('briefsContent').innerHTML = '<div class="error-msg">Add an API key in Settings first.</div>';
+    return;
+  }
   const briefsDiv = document.getElementById('briefsContent');
   if (briefsDiv) briefsDiv.innerHTML = `<div class="empty"><span class="spinner"></span> Generating brief for "${esc(topic)}"…</div>`;
 
-  /* Use crawled stories as context if available */
-  const ctxStories = stories.filter(s => `${s.title} ${s.description}`.toLowerCase().includes(topic.toLowerCase())).slice(0,4);
-  const context = ctxStories.length
-    ? '\nRelated stories from today\'s crawl:\n' + ctxStories.map(s=>`- ${s.title} (${s.source})`).join('\n')
-    : '';
-
+  const ctxStories = stories.filter(s => `${s.title} ${s.description}`.toLowerCase().includes(topic.toLowerCase())).slice(0, 4);
+  const context = ctxStories.length ? '\nRelated stories from today\'s crawl:\n' + ctxStories.map(s => `- ${s.title} (${s.source})`).join('\n') : '';
   const toneNote = tone ? ` The article should have a ${tone} tone and format.` : '';
+
   const prompt = `You are an expert content strategist. Create a detailed article brief for the topic: "${topic}".${toneNote}${context}
 
 Return ONLY valid JSON, no markdown:
-{"headline":"","primaryKeyword":"${topic}","secondaryKeywords":[],"angle":"","outline":["s1","s2","s3","s4","s5"],"audience":"","wordCount":1200,"keyPoints":[],"callToAction":"","tone":"${tone||'neutral'}"}`;
+{
+  "headline": "",
+  "primaryKeyword": "${topic}",
+  "secondaryKeywords": [],
+  "angle": "",
+  "outline": ["s1", "s2", "s3", "s4", "s5"],
+  "audience": "",
+  "wordCount": 1200,
+  "keyPoints": [],
+  "callToAction": "",
+  "tone": "${tone || 'neutral'}"
+}`;
 
   try {
-    const raw   = await callAI({ prompt, maxTokens:700, apiKey, provider:settings.aiProvider });
-    const brief = JSON.parse(raw.replace(/```json|```/g,'').trim());
-    currentBrief = brief; renderBrief(brief);
-  } catch(e) {
+    const raw = await callAI({ prompt, maxTokens: 700, apiKey, provider: settings.aiProvider });
+    const brief = safeJsonParse(raw, {});
+    if (!brief.headline) throw new Error('Invalid brief structure');
+    currentBrief = brief;
+    renderBrief(brief);
+  } catch (e) {
     if (briefsDiv) briefsDiv.innerHTML = `<div class="error-msg">Brief error: ${esc(e.message)}</div>`;
   }
 }

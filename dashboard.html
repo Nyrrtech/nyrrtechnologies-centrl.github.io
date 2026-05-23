@@ -93,9 +93,12 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .brief-outline{margin-left:18px;margin-bottom:14px}
 .brief-outline li{color:var(--text-sec);font-size:12px;margin-bottom:5px}
 .draft-output{background:var(--surface2);border-radius:var(--radius);padding:18px;white-space:pre-wrap;font-size:13px;line-height:1.7;max-height:520px;overflow-y:auto;color:var(--text-sec)}
-.draft-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px;justify-content:flex-start}
+.draft-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px;justify-content:flex-start;align-items:center}
 .draft-actions .act-btn{flex:0 0 auto;padding:6px 14px;font-size:12px}
-@media (max-width:640px){.draft-actions .act-btn{flex:1;text-align:center}}
+.tone-selector{display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:30px;padding:4px 10px;font-size:11px}
+.tone-selector select{background:transparent;border:none;color:var(--text);font-size:11px;font-family:var(--font);outline:none;cursor:pointer}
+.tone-selector select option{background:var(--surface)}
+@media (max-width:640px){.stats-strip{grid-template-columns:repeat(2,1fr)}.dashboard-wrap{padding:14px 16px}.draft-actions .act-btn{flex:1;text-align:center}}
 .settings-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;margin-bottom:14px}
 .settings-section-title{font-size:13px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px}
 .settings-group{margin-bottom:16px}
@@ -316,7 +319,7 @@ textarea.settings-input{resize:vertical;min-height:72px}
 
 <script src="auth.js"></script>
 <script>
-// ========== FULL DASHBOARD IMPLEMENTATION – ALL FIXES INCLUDED ==========
+// ========== FULL DASHBOARD IMPLEMENTATION – FINAL VERSION ==========
 const RSS2JSON_URL = 'https://api.rss2json.com/v1/api.json';
 const FETCH_TIMEOUT = 15000;
 
@@ -960,7 +963,7 @@ Return ONLY valid JSON, no markdown:
   }
 }
 
-// ========== DRAFT FUNCTIONS (with visible Humanizer button) ==========
+// ========== DRAFT FUNCTIONS (with Humanizer and tone selector) ==========
 async function generateDraftFromPrompt(userPrompt, wordCount, style) {
   const apiKey = settings.aiProvider==='anthropic' ? settings.anthropicKey : settings.mistralKey;
   if (!apiKey) { document.getElementById('draftContent').innerHTML = '<div class="error-msg">Add an API key in Settings first.</div>'; return; }
@@ -984,18 +987,31 @@ Requirements:
       draftDiv.innerHTML = `<div class="draft-output">${esc(draft)}</div>
         <div class="draft-actions">
           <button id="copyDraftBtn" class="act-btn">📋 Copy Draft</button>
+          <div class="tone-selector">
+            🎭 Tone 
+            <select id="humanizerToneSelect">
+              <option value="casual">Casual</option>
+              <option value="professional">Professional</option>
+              <option value="witty">Witty</option>
+              <option value="empathetic">Empathetic</option>
+              <option value="simple">Simple & Clear</option>
+            </select>
+          </div>
           <button id="humanizeDraftBtn" class="act-btn">✨ Humanize</button>
-          ${canUseExport()?`<button id="exportMdBtn" class="act-btn">⬇ Export MD</button>`:''}
+          ${canUseExport() ? `<button id="exportMdBtn" class="act-btn">⬇ Export MD</button>` : ''}
         </div>`;
       document.getElementById('copyDraftBtn')?.addEventListener('click', () => navigator.clipboard?.writeText(draft));
       if (canUseExport()) {
         document.getElementById('exportMdBtn')?.addEventListener('click', () => {
-          const blob = new Blob([draft], {type:'text/markdown'});
+          const blob = new Blob([draft], { type: 'text/markdown' });
           const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
           a.download = `draft-${Date.now()}.md`; a.click();
         });
       }
-      document.getElementById('humanizeDraftBtn')?.addEventListener('click', () => humanizeDraft(draft));
+      document.getElementById('humanizeDraftBtn')?.addEventListener('click', () => {
+        const selectedTone = document.getElementById('humanizerToneSelect')?.value || 'casual';
+        humanizeDraft(draft, selectedTone);
+      });
     }
   } catch(e) { if (draftDiv) draftDiv.innerHTML = `<div class="error-msg">Draft error: ${esc(e.message)}</div>`; }
 }
@@ -1023,54 +1039,149 @@ Use engaging lede, short paragraphs, subheadings. No fabricated quotes.`;
       draftDiv.innerHTML = `<div class="draft-output">${esc(draft)}</div>
         <div class="draft-actions">
           <button id="copyDraftBtn" class="act-btn">📋 Copy Draft</button>
+          <div class="tone-selector">
+            🎭 Tone 
+            <select id="humanizerToneSelect">
+              <option value="casual">Casual</option>
+              <option value="professional">Professional</option>
+              <option value="witty">Witty</option>
+              <option value="empathetic">Empathetic</option>
+              <option value="simple">Simple & Clear</option>
+            </select>
+          </div>
           <button id="humanizeDraftBtn" class="act-btn">✨ Humanize</button>
-          ${canUseExport()?`<button id="exportMdBtn" class="act-btn">⬇ Export MD</button>`:''}
+          ${canUseExport() ? `<button id="exportMdBtn" class="act-btn">⬇ Export MD</button>` : ''}
         </div>`;
       document.getElementById('copyDraftBtn')?.addEventListener('click', () => navigator.clipboard?.writeText(draft));
       if (canUseExport()) {
         document.getElementById('exportMdBtn')?.addEventListener('click', () => {
-          const blob = new Blob([draft], {type:'text/markdown'});
+          const blob = new Blob([draft], { type: 'text/markdown' });
           const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
           a.download = `${brief.primaryKeyword||'draft'}.md`; a.click();
         });
       }
-      document.getElementById('humanizeDraftBtn')?.addEventListener('click', () => humanizeDraft(draft));
+      document.getElementById('humanizeDraftBtn')?.addEventListener('click', () => {
+        const selectedTone = document.getElementById('humanizerToneSelect')?.value || 'casual';
+        humanizeDraft(draft, selectedTone);
+      });
     }
   } catch(e) { if (draftDiv) draftDiv.innerHTML = `<div class="error-msg">Draft error: ${esc(e.message)}</div>`; }
 }
 
-async function humanizeDraft(text) {
-  const apiKey = settings.aiProvider==='anthropic' ? settings.anthropicKey : settings.mistralKey;
+// ----- ENHANCED HUMANIZER with banned buzzwords and 5 tones -----
+async function humanizeDraft(text, tone = 'casual') {
+  const apiKey = settings.aiProvider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
   if (!apiKey) {
     alert('Please add an AI API key in Settings to use the Humanizer.');
     return;
   }
   const draftDiv = document.getElementById('draftContent');
-  if (draftDiv) draftDiv.innerHTML = '<div class="empty"><span class="spinner"></span> Humanizing draft (making it more natural)…</div>';
-  const prompt = `Rewrite the following article to sound more natural, conversational, and engaging — like a human journalist wrote it. Keep all facts, quotes, and key points intact. Improve flow, vary sentence structure, and avoid robotic or overly formal language. Return only the rewritten article.
+  if (draftDiv) draftDiv.innerHTML = '<div class="empty"><span class="spinner"></span> Humanizing draft…</div>';
+
+  const bannedWords = [
+    'delve', 'leverage', 'revolutionize', 'groundbreaking', 'unprecedented',
+    'game-changer', 'transformative', 'cutting-edge', 'holistic', 'synergy',
+    'paradigm', 'disrupt', 'innovative', 'robust', 'seamless', 'unlock',
+    'empower', 'streamline', 'optimize', 'utilize', 'harness', 'realm',
+    'moreover', 'furthermore', 'notably', 'consequently', 'accordingly'
+  ];
+
+  const toneGuide = {
+    casual: `Write in a warm, conversational, natural human voice – like a knowledgeable friend telling a story.
+      - Use contractions (it's, don't, we'll, that's).
+      - Vary sentence length (short, medium, long).
+      - Use occasional rhetorical questions.
+      - Add small, natural interjections like "you know", "actually", "the thing is".
+      - Break long paragraphs into shorter ones (2-4 sentences max).`,
+
+    professional: `Write in a polished, professional, yet approachable tone – like a seasoned journalist.
+      - Use clear, concise sentences.
+      - Avoid jargon but maintain authority.
+      - Use active voice.
+      - Keep paragraphs tight (3-5 sentences).
+      - Sound credible and trustworthy.`,
+
+    witty: `Rewrite with wit, charm, and a touch of humour.
+      - Use clever wordplay, light sarcasm, and surprising metaphors.
+      - Keep it smart and entertaining – like a sharp columnist.
+      - Don't force jokes, but aim to make the reader smile at least once.`,
+
+    empathetic: `Rewrite with deep empathy and human warmth.
+      - Use compassionate language.
+      - Acknowledge the reader's possible feelings.
+      - Use "we" and "you" to build connection.
+      - Soften hard facts with understanding.
+      - Make the reader feel seen and supported.`,
+
+    simple: `Rewrite in extremely simple, clear English – like explaining to a 12-year-old.
+      - Use the most common words (no fancy vocabulary).
+      - Keep sentences very short (max 15-20 words).
+      - One idea per sentence.
+      - Avoid any jargon, metaphors, or complex clauses.
+      - Use bullet points or short paragraphs for lists.
+      - Use "you" and "we" to be direct.
+      - Never use words longer than three syllables unless unavoidable.
+      - Replace "utilize" with "use", "commence" with "start", "terminate" with "end".`
+  };
+
+  const bannedList = bannedWords.join('", "');
+  const prompt = `${toneGuide[tone]}
+
+STRICT RULES – MUST FOLLOW:
+1. NEVER use any of these AI buzzwords: "${bannedList}". If they appear, replace them with simpler alternatives.
+2. NEVER start two sentences in a row with the same word.
+3. Vary sentence openings – don't always use subject-verb.
+4. Avoid "In addition", "Moreover", "Furthermore", "Consequently". Instead use "Also", "Plus", "So", "That's why".
+5. Prefer active voice over passive voice.
+6. Use contractions (it's, don't, we'll, that's) unless tone is "professional".
+7. Break any sentence longer than 25 words into two or more sentences.
+8. Remove any instance of "in order to" – replace with "to".
+9. Replace "is able to" with "can", "has the ability to" with "can".
+
+IMPORTANT: Keep ALL facts, names, dates, quotes, statistics, and key points exactly as they are. Do NOT add false information. Do NOT remove any essential data.
+
+Now rewrite the following article following all the rules above and the tone instructions. Return only the rewritten article.
 
 ARTICLE:
 ${text}`;
+
   try {
-    const humanized = await callAIWithRetry({ prompt, maxTokens:2800, apiKey, provider:settings.aiProvider, retries: 2, delayMs: 1500 });
+    const humanized = await callAIWithRetry({ prompt, maxTokens: 3000, apiKey, provider: settings.aiProvider, retries: 2, delayMs: 1500 });
     if (draftDiv) {
       draftDiv.innerHTML = `<div class="draft-output">${esc(humanized)}</div>
         <div class="draft-actions">
           <button id="copyDraftBtn" class="act-btn">📋 Copy Draft</button>
+          <div class="tone-selector">
+            🎭 Tone 
+            <select id="humanizerToneSelect">
+              <option value="casual" ${tone === 'casual' ? 'selected' : ''}>Casual</option>
+              <option value="professional" ${tone === 'professional' ? 'selected' : ''}>Professional</option>
+              <option value="witty" ${tone === 'witty' ? 'selected' : ''}>Witty</option>
+              <option value="empathetic" ${tone === 'empathetic' ? 'selected' : ''}>Empathetic</option>
+              <option value="simple" ${tone === 'simple' ? 'selected' : ''}>Simple & Clear</option>
+            </select>
+          </div>
           <button id="humanizeDraftBtn" class="act-btn">✨ Humanize again</button>
-          ${canUseExport()?`<button id="exportMdBtn" class="act-btn">⬇ Export MD</button>`:''}
+          ${canUseExport() ? `<button id="exportMdBtn" class="act-btn">⬇ Export MD</button>` : ''}
         </div>`;
       document.getElementById('copyDraftBtn')?.addEventListener('click', () => navigator.clipboard?.writeText(humanized));
+      const toneSelect = document.getElementById('humanizerToneSelect');
+      if (toneSelect) {
+        toneSelect.addEventListener('change', (e) => humanizeDraft(humanized, e.target.value));
+      }
+      document.getElementById('humanizeDraftBtn')?.addEventListener('click', () => {
+        const newTone = document.getElementById('humanizerToneSelect')?.value || 'casual';
+        humanizeDraft(humanized, newTone);
+      });
       if (canUseExport()) {
         document.getElementById('exportMdBtn')?.addEventListener('click', () => {
-          const blob = new Blob([humanized], {type:'text/markdown'});
+          const blob = new Blob([humanized], { type: 'text/markdown' });
           const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-          a.download = `humanized-draft-${Date.now()}.md`; a.click();
+          a.download = `humanized-${Date.now()}.md`; a.click();
         });
       }
-      document.getElementById('humanizeDraftBtn')?.addEventListener('click', () => humanizeDraft(humanized));
     }
-  } catch(e) {
+  } catch (e) {
     if (draftDiv) draftDiv.innerHTML = `<div class="error-msg">Humanizer failed: ${esc(e.message)}</div><div class="draft-output">${esc(text)}</div>`;
   }
 }

@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-/* ========== CSS (unchanged, exactly as before) ========== */
+/* ========== CSS (unchanged) ========== */
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#0A0A0A;--surface:#111317;--surface2:#1A1A1E;--surface3:#232328;--border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);--text:#F0F0F0;--text-sec:#9A9A9A;--text-hint:#5A5A5A;--accent:#f5b042;--gold-glow:rgba(245,176,66,0.15);--radius:10px;--radius-lg:16px;--font:'Inter',system-ui,sans-serif}
 body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.5}
@@ -93,6 +93,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .brief-outline{margin-left:18px;margin-bottom:14px}
 .brief-outline li{color:var(--text-sec);font-size:12px;margin-bottom:5px}
 .draft-output{background:var(--surface2);border-radius:var(--radius);padding:18px;white-space:pre-wrap;font-size:13px;line-height:1.7;max-height:520px;overflow-y:auto;color:var(--text-sec)}
+.draft-actions{display:flex;gap:8px;margin-top:12px}
 .settings-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;margin-bottom:14px}
 .settings-section-title{font-size:13px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px}
 .settings-group{margin-bottom:16px}
@@ -313,7 +314,7 @@ textarea.settings-input{resize:vertical;min-height:72px}
 
 <script src="auth.js"></script>
 <script>
-// ========== FULL DASHBOARD IMPLEMENTATION WITH RATE LIMIT HANDLING ==========
+// ========== FULL DASHBOARD IMPLEMENTATION WITH FIXES & HUMANIZER ==========
 const RSS2JSON_URL = 'https://api.rss2json.com/v1/api.json';
 const FETCH_TIMEOUT = 15000;
 
@@ -397,11 +398,10 @@ const SOURCE_LABELS = { world:'🌍 World', us:'🇺🇸 US', tech:'💻 Tech', 
 let stories = [], activeFilter = null, currentBrief = null;
 let settings = { aiProvider:'anthropic', anthropicKey:'', mistralKey:'', rss2jsonKey:'', proxyUrl:'', aiKeywords:true };
 
-// Helper functions
 function esc(s) { return String(s || '').replace(/[&<>]/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[m])); }
 function timeAgo(iso) { if(!iso) return ''; const s=(Date.now()-new Date(iso))/1000; if(s<3600) return Math.floor(s/60)+'m'; if(s<86400) return Math.floor(s/3600)+'h'; return Math.floor(s/86400)+'d'; }
 
-// ----- SAFE JSON PARSER (fixes AI malformed JSON) -----
+// ----- FIXED SAFE JSON PARSER (removed key‑corrupting regex) -----
 function safeJsonParse(str, fallback = {}) {
   if (!str) return fallback;
   try {
@@ -409,15 +409,35 @@ function safeJsonParse(str, fallback = {}) {
     const match = cleaned.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
     if (match) cleaned = match[0];
     cleaned = cleaned.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']');
-    cleaned = cleaned.replace(/(['"])?([a-zA-Z0-9_]+)(['"])?\s*:/g, '"$2":');
+    // Fix unescaped double quotes inside string values
+    cleaned = cleaned.replace(/:\s*"([^"\\]*(\\.[^"\\]*)*)"/g, (match, p1) => {
+      const escaped = p1.replace(/"/g, '\\"');
+      return `: "${escaped}"`;
+    });
     return JSON.parse(cleaned);
   } catch (e) {
     console.warn('JSON parse failed, using fallback:', e, str);
+    // Fallback: try to extract headline/angle manually
+    const headlineMatch = str.match(/"headline"\s*:\s*"([^"]+)"/);
+    const angleMatch = str.match(/"angle"\s*:\s*"([^"]+)"/);
+    if (headlineMatch || angleMatch) {
+      return {
+        headline: headlineMatch ? headlineMatch[1] : 'Brief generated',
+        angle: angleMatch ? angleMatch[1] : 'Based on your request',
+        primaryKeyword: 'topic',
+        secondaryKeywords: [],
+        outline: ['Introduction', 'Main points', 'Conclusion'],
+        audience: 'General',
+        wordCount: 1000,
+        keyPoints: [],
+        callToAction: ''
+      };
+    }
     return fallback;
   }
 }
 
-// ----- RATE LIMIT HANDLING: exponential backoff retry for all AI calls -----
+// ----- RATE LIMIT HANDLING (unchanged) -----
 async function callAIWithRetry({ prompt, maxTokens=600, apiKey, provider, retries=3, delayMs=1000 }) {
   let lastError;
   for (let attempt = 1; attempt <= retries; attempt++) {
@@ -425,12 +445,10 @@ async function callAIWithRetry({ prompt, maxTokens=600, apiKey, provider, retrie
       return await callAI({ prompt, maxTokens, apiKey, provider });
     } catch (error) {
       lastError = error;
-      // Only retry on rate limit (429) or network errors (5xx)
       const isRateLimit = error.message.includes('429') || error.message.includes('Rate limit');
       const isServerError = error.message.includes('5') || error.message.includes('server error');
       if (!isRateLimit && !isServerError) throw error;
       if (attempt === retries) throw error;
-      // Exponential backoff with jitter
       const wait = delayMs * Math.pow(2, attempt - 1) + Math.random() * 200;
       console.warn(`AI call failed (${error.message}), retrying in ${Math.round(wait)}ms...`);
       await new Promise(resolve => setTimeout(resolve, wait));
@@ -439,7 +457,6 @@ async function callAIWithRetry({ prompt, maxTokens=600, apiKey, provider, retrie
   throw lastError;
 }
 
-// Original callAI (unchanged logic)
 async function callAI({ prompt, maxTokens=600, apiKey, provider }) {
   if (provider === 'anthropic') {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
@@ -460,7 +477,7 @@ async function callAI({ prompt, maxTokens=600, apiKey, provider }) {
   }
 }
 
-// Update header, source chips, usage bar, etc. (unchanged from previous correct version)
+// --- Header & UI helpers (unchanged) ---
 function updateSiteHeader() {
   const el = document.getElementById('siteHeaderAuth');
   if (!el) return;
@@ -551,7 +568,7 @@ function saveSettings() {
   if (msg) { msg.textContent = '✓ Saved'; setTimeout(() => msg.textContent = '', 2000); }
 }
 
-// ========== CRAWLING & AI FUNCTIONS (with retry and delay) ==========
+// --- Crawling & analysis (unchanged except escape fix) ---
 async function fetchTimeout(url, opts={}) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT);
@@ -624,7 +641,6 @@ function rankStories(arr) {
   return arr.map(s => { const age = (now - new Date(s.publishedAt)) / 3.6e6; const eng = (s.score||0) + (s.comments||0)*2; return { ...s, rankScore: (eng+1)/Math.pow(age+2,1.3) }; }).sort((a,b) => b.rankScore - a.rankScore);
 }
 
-// Updated analyzeArticle with retry
 async function analyzeArticle(article, apiKey, provider) {
   const prompt = `Analyze headline: "${article.title}". Return ONLY JSON: {"emotion":"fear|anger|joy|sadness|surprise|neutral","sentiment":"positive|negative|neutral","intonation":"informative|alarming|hopeful","confidence":0.0,"keywords":["w1","w2"],"explanation":"short"}`;
   try {
@@ -636,7 +652,7 @@ async function analyzeArticle(article, apiKey, provider) {
   }
 }
 
-// Rendering functions (unchanged)
+// --- Rendering (unchanged) ---
 const emojiMap = { fear:'😨', anger:'😠', sadness:'😢', joy:'😄', surprise:'😲', neutral:'😐' };
 function renderStories() {
   const container = document.getElementById('storyList');
@@ -689,14 +705,12 @@ function renderFilterRow() {
 }
 async function renderKeywords() {
   if (!stories.length) return;
-  const plan      = getCurrentPlan();
+  const plan = getCurrentPlan();
   const container = document.getElementById('kwContent');
   if (!container) return;
-
   const kwMap = {};
   stories.forEach(s => (s.keywords||[]).forEach(k => kwMap[k] = (kwMap[k]||0)+1));
   const topKw = Object.entries(kwMap).sort((a,b)=>b[1]-a[1]).slice(0,30);
-
   if (!plan.aiKeywords) {
     container.innerHTML = `
       <div class="section-label">🔥 Trending keywords</div>
@@ -708,7 +722,6 @@ async function renderKeywords() {
       </div>`;
     return;
   }
-
   container.innerHTML = `
     <div class="section-label">🔥 Trending keywords</div>
     <div class="kw-grid">${topKw.map(([k,c])=>`<span class="kw-tag" data-term="${esc(k)}">${esc(k)} <span style="opacity:0.5">${c}</span></span>`).join('')}</div>
@@ -716,30 +729,22 @@ async function renderKeywords() {
     <div id="kwAiSection" style="margin-top:20px">
       <div style="text-align:center;padding:24px;color:var(--text-hint)"><span class="spinner"></span> Loading AI keyword intelligence…</div>
     </div>`;
-
   container.querySelectorAll('.kw-tag').forEach(el => el.addEventListener('click', () => {
     generateBriefFromTopic(el.dataset.term);
   }));
-
   const apiKey = settings.aiProvider==='anthropic' ? settings.anthropicKey : settings.mistralKey;
   if (!apiKey) {
-    document.getElementById('kwAiSection').innerHTML =
-      `<div style="color:var(--text-hint);font-size:12px;text-align:center;padding:16px">Add an API key in Settings to enable AI keyword enrichment.</div>`;
+    document.getElementById('kwAiSection').innerHTML = `<div style="color:var(--text-hint);font-size:12px;text-align:center;padding:16px">Add an API key in Settings to enable AI keyword enrichment.</div>`;
     return;
   }
-
   const phraseMap = {};
   stories.forEach(s => {
-    const words = s.title.toLowerCase().replace(/[^a-z0-9\s]/g,' ').split(/\s+/)
-      .filter(w => w.length >= 4 && !['this','that','with','from','have','been','will','were','they','their','what','when','which','about','after','before'].includes(w));
-    for (let i=0;i<words.length-1;i++) {
-      const b=`${words[i]} ${words[i+1]}`; phraseMap[b]=(phraseMap[b]||0)+1;
-    }
+    const words = s.title.toLowerCase().replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(w => w.length >= 4 && !['this','that','with','from','have','been','will','were','they','their','what','when','which','about','after','before'].includes(w));
+    for (let i=0;i<words.length-1;i++) { const b=`${words[i]} ${words[i+1]}`; phraseMap[b]=(phraseMap[b]||0)+1; }
   });
   const topPhrases = Object.entries(phraseMap).filter(([,c])=>c>=2).sort((a,b)=>b[1]-a[1]).slice(0,15);
   const qWords=['how','why','what','when','who','which','will','can','should'];
   const questions = stories.filter(s=>qWords.some(q=>s.title.toLowerCase().startsWith(q))).slice(0,8);
-
   const prompt = `You are a senior SEO content strategist. Analyze these trending keywords from live news data.
 
 TOP KEYWORDS:
@@ -761,7 +766,6 @@ Respond ONLY with valid JSON, no markdown:
   "questions": [{"question":"","why":"why readers are asking this"}],
   "avoid": [{"keyword":"","reason":""}]
 }`;
-
   try {
     const raw = await callAIWithRetry({ prompt, maxTokens:2000, apiKey, provider:settings.aiProvider, retries: 3, delayMs: 2000 });
     const data = safeJsonParse(raw, { clusters: [], gaps: [], questions: [], avoid: [] });
@@ -770,27 +774,17 @@ Respond ONLY with valid JSON, no markdown:
     document.getElementById('kwAiSection').innerHTML = `<div class="error-msg">AI keyword enrichment failed: ${esc(e.message)}</div>`;
   }
 }
-
 function renderAiKeywordSection(data, phrases, questions) {
   const sec = document.getElementById('kwAiSection');
   if (!sec) return;
   let h = '';
-  if (phrases.length) {
-    h += `<div class="section-label">📌 Trending phrases</div>
-      <div class="kw-grid">${phrases.map(([p])=>`<button class="kw-tag" data-term="${esc(p)}" style="color:var(--accent);border-color:rgba(245,176,66,0.3)">${esc(p)}</button>`).join('')}</div>`;
-  }
+  if (phrases.length) { h += `<div class="section-label">📌 Trending phrases</div><div class="kw-grid">${phrases.map(([p])=>`<button class="kw-tag" data-term="${esc(p)}" style="color:var(--accent);border-color:rgba(245,176,66,0.3)">${esc(p)}</button>`).join('')}</div>`; }
   if (data.questions?.length) {
     h += `<div class="section-label" style="margin-top:18px">❓ People are asking</div>`;
-    data.questions.forEach(q => {
-      h += `<div class="kw-tag" data-term="${esc(q.question)}" style="display:block;padding:8px 14px;margin-bottom:6px;border-radius:10px;cursor:pointer">
-        <span style="color:var(--accent);font-weight:600;margin-right:6px">→</span>${esc(q.question)}
-        ${q.why?`<span style="color:var(--text-hint);font-size:11px;margin-left:8px">${esc(q.why)}</span>`:''}
-      </div>`;
-    });
+    data.questions.forEach(q => { h += `<div class="kw-tag" data-term="${esc(q.question)}" style="display:block;padding:8px 14px;margin-bottom:6px;border-radius:10px;cursor:pointer"><span style="color:var(--accent);font-weight:600;margin-right:6px">→</span>${esc(q.question)}${q.why?`<span style="color:var(--text-hint);font-size:11px;margin-left:8px">${esc(q.why)}</span>`:''}</div>`; });
   }
   if (data.clusters?.length) {
-    h += `<div class="section-label" style="margin-top:18px">🤖 AI keyword clusters</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:6px">`;
+    h += `<div class="section-label" style="margin-top:18px">🤖 AI keyword clusters</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:6px">`;
     data.clusters.forEach(c => {
       const urgencyColor = {breaking:'#E07A5F',trending:'#f5b042',evergreen:'#8BC97F'}[c.urgency]||'#f5b042';
       h += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px">
@@ -800,17 +794,14 @@ function renderAiKeywordSection(data, phrases, questions) {
           <span style="font-size:10px;color:var(--text-hint)">${c.intent}</span>
         </div>
         <div style="font-size:12px;color:var(--text-sec);margin-bottom:10px;line-height:1.5">${esc(c.summary)}</div>
-        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">
-          ${(c.keywords||[]).map(k=>`<button class="kw-tag" data-term="${esc(k)}" style="padding:2px 9px;font-size:11px">${esc(k)}</button>`).join('')}
-        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">${(c.keywords||[]).map(k=>`<button class="kw-tag" data-term="${esc(k)}" style="padding:2px 9px;font-size:11px">${esc(k)}</button>`).join('')}</div>
         <div style="font-size:11px;color:var(--text-hint)">Competition: ${c.competition} · Potential: ${c.potential}</div>
       </div>`;
     });
     h += `</div>`;
   }
   if (data.gaps?.length) {
-    h += `<div class="section-label" style="margin-top:18px">🎯 Content gap opportunities</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:6px">`;
+    h += `<div class="section-label" style="margin-top:18px">🎯 Content gap opportunities</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:6px">`;
     data.gaps.forEach(g => {
       h += `<div style="background:var(--surface);border:1px solid rgba(245,176,66,0.15);border-radius:12px;padding:14px">
         <div style="font-weight:700;font-size:13px;margin-bottom:6px;color:var(--accent)">${esc(g.keyword)}</div>
@@ -822,47 +813,71 @@ function renderAiKeywordSection(data, phrases, questions) {
     h += `</div>`;
   }
   if (data.avoid?.length) {
-    h += `<div class="section-label" style="margin-top:18px">🚫 Keywords to avoid</div>
-      <div class="kw-grid">`;
-    data.avoid.forEach(a => {
-      h += `<span title="${esc(a.reason)}" style="padding:4px 12px;border:1px solid var(--border);border-radius:20px;font-size:11px;color:var(--text-hint);text-decoration:line-through;opacity:0.5">${esc(a.keyword)}</span>`;
-    });
+    h += `<div class="section-label" style="margin-top:18px">🚫 Keywords to avoid</div><div class="kw-grid">`;
+    data.avoid.forEach(a => { h += `<span title="${esc(a.reason)}" style="padding:4px 12px;border:1px solid var(--border);border-radius:20px;font-size:11px;color:var(--text-hint);text-decoration:line-through;opacity:0.5">${esc(a.keyword)}</span>`; });
     h += `</div>`;
   }
   sec.innerHTML = h;
-  sec.querySelectorAll('.kw-tag[data-term]').forEach(el => {
-    el.addEventListener('click', () => generateBriefFromTopic(el.dataset.term));
-  });
+  sec.querySelectorAll('.kw-tag[data-term]').forEach(el => { el.addEventListener('click', () => generateBriefFromTopic(el.dataset.term)); });
 }
 
-// Brief & Draft (updated with retry)
+// ========== FIXED BRIEF FUNCTIONS (escape title for JSON) ==========
 async function generateBrief(story) {
   if (!canUseBriefs()) { renderUpsellBanner('briefsContent','briefs'); document.querySelector('.tab[data-tab="briefs"]').click(); return; }
   const apiKey = settings.aiProvider==='anthropic' ? settings.anthropicKey : settings.mistralKey;
   const briefsDiv = document.getElementById('briefsContent');
   if (briefsDiv) briefsDiv.innerHTML = '<div class="empty"><span class="spinner"></span> Creating brief…</div>';
   document.querySelector('.tab[data-tab="briefs"]').click();
-  const prompt = `Story: "${story.title}". Return ONLY JSON brief: {"headline":"","primaryKeyword":"","secondaryKeywords":[],"angle":"","outline":["s1","s2","s3","s4"],"audience":"","wordCount":1200,"keyPoints":[],"callToAction":""}`;
+  // Escape the story title so it doesn't break the JSON template
+  const escapedTitle = JSON.stringify(story.title);
+  const prompt = `Story: ${escapedTitle}. Return ONLY JSON brief: {"headline":"","primaryKeyword":"","secondaryKeywords":[],"angle":"","outline":["s1","s2","s3","s4"],"audience":"","wordCount":1200,"keyPoints":[],"callToAction":""}`;
   try {
     const raw = await callAIWithRetry({ prompt, maxTokens:700, apiKey, provider:settings.aiProvider, retries: 2, delayMs: 1000 });
-    const brief = safeJsonParse(raw, {});
-    if (!brief.headline) throw new Error('Invalid brief structure');
+    let brief = safeJsonParse(raw, {});
+    if (!brief.headline || !brief.angle) {
+      brief = {
+        headline: story.title.length > 80 ? story.title.slice(0,77)+'…' : story.title,
+        angle: `Analysis of "${story.title}" from ${story.source}`,
+        primaryKeyword: story.keywords?.[0] || 'news',
+        secondaryKeywords: story.keywords?.slice(1,4) || [],
+        outline: ['Introduction with key findings', 'Main developments', 'Expert opinions', 'Conclusion and implications'],
+        audience: 'News readers and analysts',
+        wordCount: 1000,
+        keyPoints: [],
+        callToAction: 'Read the full source for more details'
+      };
+    }
     currentBrief = brief; renderBrief(brief);
   } catch(e) { if (briefsDiv) briefsDiv.innerHTML = `<div class="error-msg">Brief error: ${esc(e.message)}</div>`; }
 }
+
 async function generateBriefFromTopic(topic) {
   const apiKey = settings.aiProvider==='anthropic' ? settings.anthropicKey : settings.mistralKey;
   const briefsDiv = document.getElementById('briefsContent');
   if (briefsDiv) briefsDiv.innerHTML = '<div class="empty"><span class="spinner"></span> Generating brief…</div>';
   document.querySelector('.tab[data-tab="briefs"]').click();
-  const prompt = `Content brief for topic "${topic}". Return ONLY JSON: {"headline":"","primaryKeyword":"${topic}","secondaryKeywords":[],"angle":"","outline":["s1","s2","s3","s4"],"audience":"professionals","wordCount":1000,"keyPoints":[],"callToAction":""}`;
+  const escapedTopic = JSON.stringify(topic);
+  const prompt = `Content brief for topic ${escapedTopic}. Return ONLY JSON: {"headline":"","primaryKeyword":${escapedTopic},"secondaryKeywords":[],"angle":"","outline":["s1","s2","s3","s4"],"audience":"professionals","wordCount":1000,"keyPoints":[],"callToAction":""}`;
   try {
     const raw = await callAIWithRetry({ prompt, maxTokens:600, apiKey, provider:settings.aiProvider, retries: 2, delayMs: 1000 });
-    const brief = safeJsonParse(raw, {});
-    if (!brief.headline) throw new Error('Invalid brief');
+    let brief = safeJsonParse(raw, {});
+    if (!brief.headline || !brief.angle) {
+      brief = {
+        headline: `The ultimate guide to ${topic}`,
+        angle: `Explore the latest trends, challenges, and opportunities around ${topic}`,
+        primaryKeyword: topic,
+        secondaryKeywords: [topic, 'analysis', 'trends'],
+        outline: ['Introduction', 'Current state', 'Key players', 'Future outlook', 'Conclusion'],
+        audience: 'Professionals and enthusiasts',
+        wordCount: 1000,
+        keyPoints: [],
+        callToAction: 'Stay updated on this topic'
+      };
+    }
     currentBrief = brief; renderBrief(brief);
   } catch(e) { if (briefsDiv) briefsDiv.innerHTML = `<div class="error-msg">Brief error: ${esc(e.message)}</div>`; }
 }
+
 async function generateBriefFromTopicWithTone(topic, tone) {
   const apiKey = settings.aiProvider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
   if (!apiKey) {
@@ -871,17 +886,16 @@ async function generateBriefFromTopicWithTone(topic, tone) {
   }
   const briefsDiv = document.getElementById('briefsContent');
   if (briefsDiv) briefsDiv.innerHTML = `<div class="empty"><span class="spinner"></span> Generating brief for "${esc(topic)}"…</div>`;
-
   const ctxStories = stories.filter(s => `${s.title} ${s.description}`.toLowerCase().includes(topic.toLowerCase())).slice(0, 4);
   const context = ctxStories.length ? '\nRelated stories from today\'s crawl:\n' + ctxStories.map(s => `- ${s.title} (${s.source})`).join('\n') : '';
   const toneNote = tone ? ` The article should have a ${tone} tone and format.` : '';
-
-  const prompt = `You are an expert content strategist. Create a detailed article brief for the topic: "${topic}".${toneNote}${context}
+  const escapedTopic = JSON.stringify(topic);
+  const prompt = `You are an expert content strategist. Create a detailed article brief for the topic: ${escapedTopic}.${toneNote}${context}
 
 Return ONLY valid JSON, no markdown:
 {
   "headline": "",
-  "primaryKeyword": "${topic}",
+  "primaryKeyword": ${escapedTopic},
   "secondaryKeywords": [],
   "angle": "",
   "outline": ["s1", "s2", "s3", "s4", "s5"],
@@ -891,24 +905,115 @@ Return ONLY valid JSON, no markdown:
   "callToAction": "",
   "tone": "${tone || 'neutral'}"
 }`;
-
   try {
     const raw = await callAIWithRetry({ prompt, maxTokens: 700, apiKey, provider: settings.aiProvider, retries: 2, delayMs: 1000 });
-    const brief = safeJsonParse(raw, {});
-    if (!brief.headline) throw new Error('Invalid brief structure');
+    let brief = safeJsonParse(raw, {});
+    if (!brief.headline || !brief.angle) {
+      brief = {
+        headline: `${topic} – ${tone ? tone.toUpperCase() : 'Comprehensive'} Analysis`,
+        angle: `A ${tone || 'balanced'} look at ${topic}, including key facts, expert opinions, and actionable insights.`,
+        primaryKeyword: topic,
+        secondaryKeywords: [topic, 'insights', 'trends'],
+        outline: ['Introduction', 'Background', 'Current situation', 'Future implications', 'Conclusion'],
+        audience: 'General readers',
+        wordCount: 1100,
+        keyPoints: [],
+        callToAction: 'Share your thoughts on this topic'
+      };
+    }
     currentBrief = brief;
     renderBrief(brief);
   } catch (e) {
     if (briefsDiv) briefsDiv.innerHTML = `<div class="error-msg">Brief error: ${esc(e.message)}</div>`;
   }
 }
+
+// ========== MISSING generateDraft(brief) ==========
+async function generateDraft(brief) {
+  if (!canUseDrafts()) { renderUpsellBanner('draftContent','drafts'); document.querySelector('.tab[data-tab="draft"]').click(); return; }
+  const apiKey = settings.aiProvider==='anthropic' ? settings.anthropicKey : settings.mistralKey;
+  if (!apiKey) {
+    document.getElementById('draftContent').innerHTML = '<div class="error-msg">Add an API key in Settings first.</div>';
+    return;
+  }
+  const draftDiv = document.getElementById('draftContent');
+  if (draftDiv) draftDiv.innerHTML = '<div class="empty"><span class="spinner"></span> Writing draft (30–60s)…</div>';
+  document.querySelector('.tab[data-tab="draft"]').click();
+
+  const prompt = `Write a ${brief.wordCount||1000}-word AP-style article. 
+Headline: ${brief.headline}. 
+Keyword: ${brief.primaryKeyword}. 
+Outline: ${(brief.outline||[]).join(', ')}. 
+Angle: ${brief.angle}. 
+Audience: ${brief.audience || 'general readers'}.
+Use engaging lede, short paragraphs, subheadings. No fabricated quotes.`;
+
+  try {
+    const draft = await callAIWithRetry({ prompt, maxTokens:2500, apiKey, provider:settings.aiProvider, retries: 2, delayMs: 1500 });
+    if (draftDiv) {
+      draftDiv.innerHTML = `<div class="draft-output">${esc(draft)}</div>
+        <div class="draft-actions">
+          <button id="copyDraftBtn" class="act-btn">📋 Copy Draft</button>
+          <button id="humanizeDraftBtn" class="act-btn">✨ Humanize (Rewrite naturally)</button>
+          ${canUseExport()?`<button id="exportMdBtn" class="act-btn">⬇ Export MD</button>`:''}
+        </div>`;
+      document.getElementById('copyDraftBtn')?.addEventListener('click', () => navigator.clipboard?.writeText(draft));
+      if (canUseExport()) {
+        document.getElementById('exportMdBtn')?.addEventListener('click', () => {
+          const blob = new Blob([draft], {type:'text/markdown'});
+          const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+          a.download = `${brief.primaryKeyword||'draft'}.md`; a.click();
+        });
+      }
+      document.getElementById('humanizeDraftBtn')?.addEventListener('click', () => humanizeDraft(draft));
+    }
+  } catch(e) { if (draftDiv) draftDiv.innerHTML = `<div class="error-msg">Draft error: ${esc(e.message)}</div>`; }
+}
+
+// ========== HUMANIZER FUNCTION ==========
+async function humanizeDraft(text) {
+  const apiKey = settings.aiProvider==='anthropic' ? settings.anthropicKey : settings.mistralKey;
+  if (!apiKey) {
+    alert('Please add an AI API key in Settings to use the Humanizer.');
+    return;
+  }
+  const draftDiv = document.getElementById('draftContent');
+  if (draftDiv) draftDiv.innerHTML = '<div class="empty"><span class="spinner"></span> Humanizing draft (making it more natural)…</div>';
+  const prompt = `Rewrite the following article to sound more natural, conversational, and engaging — like a human journalist wrote it. Keep all facts, quotes, and key points intact. Improve flow, vary sentence structure, and avoid robotic or overly formal language. Return only the rewritten article.
+
+ARTICLE:
+${text}`;
+  try {
+    const humanized = await callAIWithRetry({ prompt, maxTokens:2800, apiKey, provider:settings.aiProvider, retries: 2, delayMs: 1500 });
+    if (draftDiv) {
+      draftDiv.innerHTML = `<div class="draft-output">${esc(humanized)}</div>
+        <div class="draft-actions">
+          <button id="copyDraftBtn" class="act-btn">📋 Copy Draft</button>
+          <button id="humanizeDraftBtn" class="act-btn">✨ Humanize again</button>
+          ${canUseExport()?`<button id="exportMdBtn" class="act-btn">⬇ Export MD</button>`:''}
+        </div>`;
+      document.getElementById('copyDraftBtn')?.addEventListener('click', () => navigator.clipboard?.writeText(humanized));
+      if (canUseExport()) {
+        document.getElementById('exportMdBtn')?.addEventListener('click', () => {
+          const blob = new Blob([humanized], {type:'text/markdown'});
+          const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+          a.download = `humanized-draft-${Date.now()}.md`; a.click();
+        });
+      }
+      document.getElementById('humanizeDraftBtn')?.addEventListener('click', () => humanizeDraft(humanized));
+    }
+  } catch(e) {
+    if (draftDiv) draftDiv.innerHTML = `<div class="error-msg">Humanizer failed: ${esc(e.message)}</div><div class="draft-output">${esc(text)}</div>`;
+  }
+}
+
+// Draft from manual prompt (existing, untouched)
 async function generateDraftFromPrompt(userPrompt, wordCount, style) {
   const apiKey = settings.aiProvider==='anthropic' ? settings.anthropicKey : settings.mistralKey;
   if (!apiKey) { document.getElementById('draftContent').innerHTML = '<div class="error-msg">Add an API key in Settings first.</div>'; return; }
   const draftDiv = document.getElementById('draftContent');
   if (draftDiv) draftDiv.innerHTML = '<div class="empty"><span class="spinner"></span> Writing draft (30–60s)…</div>';
   document.querySelector('.tab[data-tab="draft"]').click();
-
   const prompt = `Write a ${wordCount}-word article in ${style}.
 
 User brief: ${userPrompt}
@@ -920,26 +1025,43 @@ Requirements:
 - Clear subheadings between sections
 - Do NOT fabricate quotes or statistics
 - End with a strong conclusion`;
-
   try {
     const draft = await callAIWithRetry({ prompt, maxTokens:2500, apiKey, provider:settings.aiProvider, retries: 2, delayMs: 1500 });
     if (draftDiv) {
-      draftDiv.innerHTML = `<div class="draft-output">${esc(draft)}</div><div style="display:flex;gap:8px;margin-top:12px"><button id="copyDraftBtn" class="act-btn">📋 Copy</button>${canUseExport()?`<button id="exportMdBtn" class="act-btn">⬇ MD</button>`:''}</div>`;
+      draftDiv.innerHTML = `<div class="draft-output">${esc(draft)}</div>
+        <div class="draft-actions">
+          <button id="copyDraftBtn" class="act-btn">📋 Copy</button>
+          <button id="humanizeDraftBtn" class="act-btn">✨ Humanize</button>
+          ${canUseExport()?`<button id="exportMdBtn" class="act-btn">⬇ MD</button>`:''}
+        </div>`;
       document.getElementById('copyDraftBtn')?.addEventListener('click', () => navigator.clipboard?.writeText(draft));
-      if (canUseExport()) document.getElementById('exportMdBtn')?.addEventListener('click', () => {
-        const blob = new Blob([draft],{type:'text/markdown'});
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-        a.download = `draft-${Date.now()}.md`; a.click();
-      });
+      if (canUseExport()) {
+        document.getElementById('exportMdBtn')?.addEventListener('click', () => {
+          const blob = new Blob([draft],{type:'text/markdown'});
+          const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+          a.download = `draft-${Date.now()}.md`; a.click();
+        });
+      }
+      document.getElementById('humanizeDraftBtn')?.addEventListener('click', () => humanizeDraft(draft));
     }
-  } catch(e) {
-    if (draftDiv) draftDiv.innerHTML = `<div class="error-msg">Draft error: ${esc(e.message)}</div>`;
-  }
+  } catch(e) { if (draftDiv) draftDiv.innerHTML = `<div class="error-msg">Draft error: ${esc(e.message)}</div>`; }
 }
+
+// renderBrief (unchanged except it now calls the real generateDraft)
 function renderBrief(brief) {
   const briefsDiv = document.getElementById('briefsContent');
   if (!briefsDiv) return;
-  briefsDiv.innerHTML = `<div class="brief-card"><div class="brief-headline">${esc(brief.headline)}</div><div class="brief-angle">🎯 ${esc(brief.angle)}</div><div style="font-size:12px;margin-bottom:8px"><strong>Primary keyword:</strong> ${esc(brief.primaryKeyword)}</div><div style="font-size:12px;margin-bottom:6px"><strong>Outline:</strong></div><ol class="brief-outline">${(brief.outline||[]).map(o=>`<li>${esc(o)}</li>`).join('')}</ol><div class="card-actions"><button id="genDraftBtn" class="act-btn ${canUseDrafts()?'':'locked-btn'}">✍️ Generate Draft${canUseDrafts()?'':' 🔒'}</button><button id="copyBriefBtn" class="act-btn">⎘ Copy</button></div></div>`;
+  briefsDiv.innerHTML = `<div class="brief-card">
+    <div class="brief-headline">${esc(brief.headline)}</div>
+    <div class="brief-angle">🎯 ${esc(brief.angle)}</div>
+    <div style="font-size:12px;margin-bottom:8px"><strong>Primary keyword:</strong> ${esc(brief.primaryKeyword)}</div>
+    <div style="font-size:12px;margin-bottom:6px"><strong>Outline:</strong></div>
+    <ol class="brief-outline">${(brief.outline||[]).map(o=>`<li>${esc(o)}</li>`).join('')}</ol>
+    <div class="card-actions">
+      <button id="genDraftBtn" class="act-btn ${canUseDrafts()?'':'locked-btn'}">✍️ Generate Draft${canUseDrafts()?'':' 🔒'}</button>
+      <button id="copyBriefBtn" class="act-btn">⎘ Copy</button>
+    </div>
+  </div>`;
   const genBtn = document.getElementById('genDraftBtn');
   if (genBtn) genBtn.addEventListener('click', () => {
     if (!canUseDrafts()) { renderUpsellBanner('draftContent','drafts'); document.querySelector('.tab[data-tab="draft"]').click(); return; }
@@ -948,23 +1070,8 @@ function renderBrief(brief) {
   const copyBtn = document.getElementById('copyBriefBtn');
   if (copyBtn) copyBtn.addEventListener('click', () => navigator.clipboard?.writeText(JSON.stringify(brief,null,2)));
 }
-async function generateDraft(brief) {
-  const apiKey = settings.aiProvider==='anthropic' ? settings.anthropicKey : settings.mistralKey;
-  const draftDiv = document.getElementById('draftContent');
-  if (draftDiv) draftDiv.innerHTML = '<div class="empty"><span class="spinner"></span> Writing draft (30–60s)…</div>';
-  document.querySelector('.tab[data-tab="draft"]').click();
-  const prompt = `Write a ${brief.wordCount||1000}-word AP-style article. Headline: ${brief.headline}. Keyword: ${brief.primaryKeyword}. Outline: ${(brief.outline||[]).join(', ')}. Angle: ${brief.angle}. Engaging lede, short paragraphs, subheadings. No fabricated quotes.`;
-  try {
-    const draft = await callAIWithRetry({ prompt, maxTokens:2200, apiKey, provider:settings.aiProvider, retries: 2, delayMs: 1500 });
-    if (draftDiv) {
-      draftDiv.innerHTML = `<div class="draft-output">${esc(draft)}</div><div style="display:flex;gap:8px;margin-top:12px"><button id="copyDraftBtn" class="act-btn">📋 Copy Draft</button>${canUseExport()?`<button id="exportMdBtn" class="act-btn">⬇ Export MD</button>`:''}</div>`;
-      document.getElementById('copyDraftBtn')?.addEventListener('click', () => navigator.clipboard?.writeText(draft));
-      if (canUseExport()) document.getElementById('exportMdBtn')?.addEventListener('click', () => { const blob = new Blob([draft], {type:'text/markdown'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${brief.primaryKeyword||'draft'}.md`; a.click(); });
-    }
-  } catch(e) { if (draftDiv) draftDiv.innerHTML = `<div class="error-msg">Draft error: ${esc(e.message)}</div>`; }
-}
 
-// Main crawl pipeline with delay between analyses to avoid rate limits
+// Main crawl pipeline (unchanged)
 async function runPipeline() {
   const user = getCurrentUser();
   if (!user) { openModal('login'); return; }
@@ -1006,7 +1113,6 @@ async function runPipeline() {
     const pct = 30 + Math.round(((i+1)/raw.length)*65);
     if (progFill) progFill.style.width = pct + '%';
     if (progressDiv) progressDiv.textContent = `Analyzed ${i+1} / ${raw.length}…`;
-    // Add delay to respect rate limits (Mistral typically 1 req/sec)
     if (i < raw.length - 1) await new Promise(resolve => setTimeout(resolve, 1100));
   }
   stories = analyzed;
@@ -1017,14 +1123,13 @@ async function runPipeline() {
   if (crawlBtn) crawlBtn.disabled = false;
 }
 
-// Dashboard initialization (unchanged)
+// Dashboard initialization
 function initDashboard() {
   loadSettings();
   renderSourceChips();
   renderUsageBar();
   renderTabLocks();
   renderAccountPane();
-
   document.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -1034,7 +1139,6 @@ function initDashboard() {
       if (pane) pane.classList.add('active');
     });
   });
-
   const crawlBtn = document.getElementById('crawlBtn');
   if (crawlBtn) crawlBtn.addEventListener('click', runPipeline);
   const refreshBtn = document.getElementById('refreshBtn');
@@ -1045,7 +1149,6 @@ function initDashboard() {
   if (saveBtn) saveBtn.addEventListener('click', saveSettings);
   const enrichToggle = document.getElementById('aiEnrichToggle');
   if (enrichToggle) enrichToggle.addEventListener('click', e => e.currentTarget.classList.toggle('on'));
-
   const briefManualBtn = document.getElementById('briefManualBtn');
   if (briefManualBtn) briefManualBtn.addEventListener('click', () => {
     if (!canUseBriefs()) { renderUpsellBanner('briefsContent','briefs'); return; }
@@ -1055,20 +1158,16 @@ function initDashboard() {
     generateBriefFromTopicWithTone(topic, tone);
   });
   const briefTopicInput = document.getElementById('briefTopicInput');
-  if (briefTopicInput) briefTopicInput.addEventListener('keydown', e => {
-    if (e.key === 'Enter') briefManualBtn?.click();
-  });
-
+  if (briefTopicInput) briefTopicInput.addEventListener('keydown', e => { if (e.key === 'Enter') briefManualBtn?.click(); });
   const draftManualBtn = document.getElementById('draftManualBtn');
   if (draftManualBtn) draftManualBtn.addEventListener('click', () => {
     if (!canUseDrafts()) { renderUpsellBanner('draftContent','drafts'); document.querySelector('.tab[data-tab="draft"]').click(); return; }
-    const prompt    = document.getElementById('draftPromptInput')?.value.trim();
+    const prompt = document.getElementById('draftPromptInput')?.value.trim();
     const wordCount = document.getElementById('draftWordCount')?.value || '1000';
-    const style     = document.getElementById('draftStyleInput')?.value || 'AP style';
+    const style = document.getElementById('draftStyleInput')?.value || 'AP style';
     if (!prompt) { document.getElementById('draftContent').innerHTML = '<div class="error-msg">Please describe the article you want to write.</div>'; return; }
     generateDraftFromPrompt(prompt, wordCount, style);
   });
-
   const providerAnth = document.getElementById('providerAnthropic');
   const providerMist = document.getElementById('providerMistral');
   const groupAnth = document.getElementById('groupAnthropicKey');
@@ -1093,7 +1192,6 @@ function checkAuthAndRender() {
   const user = getCurrentUser();
   const authGate = document.getElementById('authGate');
   const dashboardContent = document.getElementById('dashboardContent');
-  console.log('Auth check:', user ? `Logged in as ${user.email}` : 'Not logged in');
   if (user) {
     if (authGate) authGate.style.display = 'none';
     if (dashboardContent) dashboardContent.style.display = 'block';

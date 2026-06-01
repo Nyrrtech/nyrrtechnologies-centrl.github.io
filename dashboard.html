@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-/* ========== CSS (complete) ========== */
+/* ========== CSS (same as before – keep all your existing CSS) ========== */
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#0A0A0A;--surface:#111317;--surface2:#1A1A1E;--surface3:#232328;--border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);--text:#F0F0F0;--text-sec:#9A9A9A;--text-hint:#5A5A5A;--accent:#f5b042;--gold-glow:rgba(245,176,66,0.15);--radius:10px;--radius-lg:16px;--font:'Inter',system-ui,sans-serif}
 body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.5}
@@ -155,7 +155,7 @@ textarea.settings-input{resize:vertical;min-height:72px}
 </header>
 
 <div class="dashboard-wrap" id="dashboardWrap">
-  <div id="authGate" class="auth-gate" style="display:none">
+  <div id="authGate" class="auth-gate" style="display:flex">
     <div class="auth-gate-icon">🔐</div>
     <h2>Sign in to access your dashboard</h2>
     <p>Create a free account or use master: saad@kreators.pro / kreators</p>
@@ -166,6 +166,7 @@ textarea.settings-input{resize:vertical;min-height:72px}
   </div>
 
   <div id="dashboardContent" style="display:none">
+    <div id="dashboardError" class="error-msg" style="display:none; margin-bottom:16px"></div>
     <div class="usage-bar" id="usageBar" style="display:none">
       <span class="usage-label">Monthly crawls</span>
       <div class="usage-track"><div class="usage-fill" id="usageFill"></div></div>
@@ -200,59 +201,30 @@ textarea.settings-input{resize:vertical;min-height:72px}
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:16px" id="briefInputCard">
         <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-hint);margin-bottom:10px">✍️ Generate a brief manually</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
-          <div style="flex:1;min-width:200px">
-            <input id="briefTopicInput" class="settings-input" type="text" placeholder="Enter a topic, keyword, or headline…" style="width:100%">
-          </div>
-          <div style="min-width:120px">
-            <select id="briefToneInput" class="settings-input" style="width:100%">
-              <option value="">Any tone</option>
-              <option value="investigative">Investigative</option>
-              <option value="explainer">Explainer</option>
-              <option value="opinion">Opinion / Editorial</option>
-              <option value="news report">Breaking news</option>
-              <option value="feature">Long-form feature</option>
-              <option value="how-to">How-to / Guide</option>
-            </select>
-          </div>
+          <div style="flex:1;min-width:200px"><input id="briefTopicInput" class="settings-input" type="text" placeholder="Enter a topic, keyword, or headline…" style="width:100%"></div>
+          <div style="min-width:120px"><select id="briefToneInput" class="settings-input" style="width:100%"><option value="">Any tone</option><option value="investigative">Investigative</option><option value="explainer">Explainer</option><option value="opinion">Opinion / Editorial</option><option value="news report">Breaking news</option><option value="feature">Long-form feature</option><option value="how-to">How-to / Guide</option></select></div>
           <button id="briefManualBtn" class="run-btn" style="margin-left:0;padding:7px 16px">📝 Generate Brief</button>
         </div>
         <div style="font-size:11px;color:var(--text-hint);margin-top:8px">Or click <strong>Brief</strong> on any story card in the News tab.</div>
       </div>
       <div id="briefsContent" class="empty"><div class="empty-icon">📝</div>Enter a topic above or click Brief on any story card.</div>
     </div>
-
     <div class="pane" id="pane-draft">
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:16px" id="draftInputCard">
         <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-hint);margin-bottom:10px">✍️ Write a draft manually</div>
         <textarea id="draftPromptInput" class="settings-input" rows="3" placeholder="Describe the article you want to write — topic, angle, key points, target audience, word count…" style="width:100%;resize:vertical;font-family:inherit;line-height:1.5"></textarea>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px">
-          <select id="draftWordCount" class="settings-input" style="width:140px">
-            <option value="600">~600 words</option>
-            <option value="800">~800 words</option>
-            <option value="1000" selected>~1000 words</option>
-            <option value="1200">~1200 words</option>
-            <option value="1500">~1500 words</option>
-            <option value="2000">~2000 words</option>
-          </select>
-          <select id="draftStyleInput" class="settings-input" style="width:150px">
-            <option value="AP style">AP news style</option>
-            <option value="conversational blog">Blog post</option>
-            <option value="academic">Academic</option>
-            <option value="opinion editorial">Op-ed</option>
-            <option value="feature magazine">Magazine feature</option>
-          </select>
+          <select id="draftWordCount" class="settings-input" style="width:140px"><option value="600">~600 words</option><option value="800">~800 words</option><option value="1000" selected>~1000 words</option><option value="1200">~1200 words</option><option value="1500">~1500 words</option><option value="2000">~2000 words</option></select>
+          <select id="draftStyleInput" class="settings-input" style="width:150px"><option value="AP style">AP news style</option><option value="conversational blog">Blog post</option><option value="academic">Academic</option><option value="opinion editorial">Op-ed</option><option value="feature magazine">Magazine feature</option></select>
           <button id="draftManualBtn" class="run-btn" style="margin-left:0;padding:7px 16px">✍️ Generate Draft</button>
         </div>
         <div style="font-size:11px;color:var(--text-hint);margin-top:8px">Or generate a brief first in the Briefs tab, then click <strong>Generate Draft</strong> there.</div>
       </div>
       <div id="draftContent" class="empty"><div class="empty-icon">✍️</div>Describe your article above or generate a brief first in the Briefs tab.</div>
     </div>
-    <!-- HUMANIZER PANE -->
     <div class="pane" id="pane-humanizer">
       <div class="settings-card" style="border-color:rgba(245,176,66,0.2)">
-        <div class="settings-section-title">✨ Advanced AI Humanizer
-          <span style="font-size:10px;background:rgba(245,176,66,0.12);color:var(--accent);padding:2px 8px;border-radius:20px;margin-left:6px;border:1px solid rgba(245,176,66,0.25)">Anti-Detection</span>
-        </div>
+        <div class="settings-section-title">✨ Advanced AI Humanizer <span style="font-size:10px;background:rgba(245,176,66,0.12);color:var(--accent);padding:2px 8px;border-radius:20px;margin-left:6px;border:1px solid rgba(245,176,66,0.25)">Anti-Detection</span></div>
         <p style="font-size:12px;color:var(--text-sec);margin-bottom:18px;line-height:1.6">Rewrite AI-generated content to pass detection tools (GPTZero, Originality, Turnitin) while preserving all facts and SEO signals. Uses multi-pass rewriting to maximise burstiness and perplexity variation.</p>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
           <div><div class="settings-label">Writing Persona</div><select id="hzPersona" class="settings-input"><option value="journalist">📰 Investigative Journalist</option><option value="blogger">✍️ Personal Blogger</option><option value="expert">🎓 Industry Expert</option><option value="storyteller">📖 Storyteller / Narrator</option><option value="analyst">📊 Business Analyst</option></select></div>
@@ -270,7 +242,6 @@ textarea.settings-input{resize:vertical;min-height:72px}
       </div>
       <div id="hzOutput" style="display:none"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px"><div class="settings-section-title" style="margin:0">✅ Humanized Output</div><div style="display:flex;gap:8px;flex-wrap:wrap" id="hzScoreBadges"></div></div><div id="hzOutputText" class="draft-output" style="max-height:600px"></div><div class="draft-actions" style="margin-top:12px"><button id="hzCopyBtn" class="act-btn">📋 Copy</button><button id="hzRehumanizeBtn" class="act-btn">🔄 Re-humanize</button><button id="hzExportBtn" class="act-btn">⬇ Export MD</button></div></div>
     </div>
-
     <div class="pane" id="pane-settings">
       <div class="settings-card"><div class="settings-section-title">⚡ AI Provider</div><div class="provider-row"><button class="provider-btn active" id="providerAnthropic">✦ Anthropic (Claude)</button><button class="provider-btn" id="providerMistral">◈ Mistral</button></div><div class="settings-group" id="groupAnthropicKey"><div class="settings-label">Anthropic API Key</div><input class="settings-input" type="password" id="anthropicKey" placeholder="sk-ant-…" disabled value="Using server-side key"></div><div class="settings-group" id="groupMistralKey" style="display:none"><div class="settings-label">Mistral API Key</div><input class="settings-input" type="password" id="mistralKey" placeholder="Your Mistral key" disabled value="Using server-side key"></div></div>
       <div class="settings-card"><div class="settings-section-title">📡 RSS Proxy</div><div class="settings-group"><div class="settings-label">RSS2JSON Key</div><input class="settings-input" type="password" id="rss2jsonKey" placeholder="free at rss2json.com"></div><div class="settings-group"><div class="settings-label">Custom Proxy URL</div><input class="settings-input" type="text" id="proxyUrl" placeholder="https://your-worker.workers.dev"></div></div>
@@ -311,84 +282,19 @@ textarea.settings-input{resize:vertical;min-height:72px}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="auth-supabase.js"></script>
 <script>
-// ========== FULL DASHBOARD IMPLEMENTATION – SUPABASE INTEGRATION ==========
+// ========== FULL DASHBOARD WITH ERROR HANDLING ==========
 const RSS2JSON_URL = 'https://api.rss2json.com/v1/api.json';
 const FETCH_TIMEOUT = 15000;
 
 const ALL_SOURCES = {
-  world: [
-    {name:'BBC World',       url:'https://feeds.bbci.co.uk/news/world/rss.xml'},
-    {name:'Reuters',         url:'https://feeds.reuters.com/reuters/topNews'},
-    {name:'Al Jazeera',      url:'https://www.aljazeera.com/xml/rss/all.xml'},
-    {name:'Guardian World',  url:'https://www.theguardian.com/world/rss'},
-    {name:'NPR News',        url:'https://feeds.npr.org/1001/rss.xml'},
-    {name:'Deutsche Welle',  url:'https://rss.dw.com/rdf/rss-en-all'},
-    {name:'France 24',       url:'https://www.france24.com/en/rss'},
-    {name:'Sky News',        url:'https://feeds.skynews.com/feeds/rss/home.xml'},
-    {name:'The Independent', url:'https://www.independent.co.uk/news/rss'},
-    {name:'AP News',         url:'https://rsshub.app/apnews/topics/apf-topnews'},
-  ],
-  us: [
-    {name:'CNN',             url:'http://rss.cnn.com/rss/edition.rss'},
-    {name:'NBC News',        url:'https://feeds.nbcnews.com/nbcnews/public/news'},
-    {name:'ABC News',        url:'https://abcnews.go.com/abcnews/topstories'},
-    {name:'Axios',           url:'https://api.axios.com/feed/'},
-    {name:'CBS News',        url:'https://www.cbsnews.com/latest/rss/main'},
-    {name:'USA Today',       url:'http://rssfeeds.usatoday.com/usatoday-NewsTopStories'},
-    {name:'Politico',        url:'https://rss.politico.com/politics-news.xml'},
-    {name:'The Hill',        url:'https://thehill.com/feed/'},
-  ],
-  tech: [
-    {name:'TechCrunch',      url:'https://techcrunch.com/feed/'},
-    {name:'The Verge',       url:'https://www.theverge.com/rss/index.xml'},
-    {name:'Wired',           url:'https://www.wired.com/feed/rss'},
-    {name:'Ars Technica',    url:'https://feeds.arstechnica.com/arstechnica/index'},
-    {name:'Engadget',        url:'https://www.engadget.com/rss.xml'},
-    {name:'MIT Tech Review', url:'https://www.technologyreview.com/feed/'},
-    {name:'VentureBeat',     url:'https://feeds.feedburner.com/venturebeat/SZYF'},
-    {name:'9to5Mac',         url:'https://9to5mac.com/feed/'},
-    {name:'Android Authority',url:'https://www.androidauthority.com/feed/'},
-  ],
-  science: [
-    {name:'Science Daily',      url:'https://www.sciencedaily.com/rss/top.xml'},
-    {name:'Nature News',        url:'https://www.nature.com/nature.rss'},
-    {name:'Phys.org',           url:'https://phys.org/rss-feed/'},
-    {name:'New Scientist',      url:'https://www.newscientist.com/feed/home'},
-    {name:'Live Science',       url:'https://www.livescience.com/feeds/all'},
-    {name:'Medical News Today', url:'https://www.medicalnewstoday.com/rss'},
-    {name:'Space.com',          url:'https://www.space.com/feeds/all'},
-    {name:'Scientific American',url:'https://rss.sciam.com/ScientificAmerican-Global'},
-  ],
-  business: [
-    {name:'CNBC',            url:'https://www.cnbc.com/id/100003114/device/rss/rss.html'},
-    {name:'Bloomberg',       url:'https://feeds.bloomberg.com/markets/news.rss'},
-    {name:'Business Insider',url:'https://feeds.businessinsider.com/custom/all'},
-    {name:'Financial Times', url:'https://www.ft.com/rss/home'},
-    {name:'Forbes',          url:'https://www.forbes.com/real-time/feed2/'},
-    {name:'MarketWatch',     url:'https://feeds.marketwatch.com/marketwatch/topstories/'},
-    {name:'Inc. Magazine',   url:'https://www.inc.com/rss/'},
-    {name:'Fast Company',    url:'https://www.fastcompany.com/latest/rss?restricted=true'},
-  ],
-  reddit: [
-    {name:'r/worldnews',    url:'https://www.reddit.com/r/worldnews/hot.json?limit=10'},
-    {name:'r/news',         url:'https://www.reddit.com/r/news/hot.json?limit=8'},
-    {name:'r/technology',   url:'https://www.reddit.com/r/technology/hot.json?limit=8'},
-    {name:'r/science',      url:'https://www.reddit.com/r/science/hot.json?limit=8'},
-    {name:'r/business',     url:'https://www.reddit.com/r/business/hot.json?limit=6'},
-    {name:'r/politics',     url:'https://www.reddit.com/r/politics/hot.json?limit=6'},
-    {name:'r/Futurology',   url:'https://www.reddit.com/r/Futurology/hot.json?limit=6'},
-    {name:'r/Economics',    url:'https://www.reddit.com/r/Economics/hot.json?limit=6'},
-    {name:'r/geopolitics',  url:'https://www.reddit.com/r/geopolitics/hot.json?limit=6'},
-  ],
+  world: [{name:'BBC World',url:'https://feeds.bbci.co.uk/news/world/rss.xml'},{name:'Reuters',url:'https://feeds.reuters.com/reuters/topNews'},{name:'Al Jazeera',url:'https://www.aljazeera.com/xml/rss/all.xml'},{name:'Guardian World',url:'https://www.theguardian.com/world/rss'},{name:'NPR News',url:'https://feeds.npr.org/1001/rss.xml'},{name:'Deutsche Welle',url:'https://rss.dw.com/rdf/rss-en-all'},{name:'France 24',url:'https://www.france24.com/en/rss'},{name:'Sky News',url:'https://feeds.skynews.com/feeds/rss/home.xml'},{name:'The Independent',url:'https://www.independent.co.uk/news/rss'},{name:'AP News',url:'https://rsshub.app/apnews/topics/apf-topnews'}],
+  us: [{name:'CNN',url:'http://rss.cnn.com/rss/edition.rss'},{name:'NBC News',url:'https://feeds.nbcnews.com/nbcnews/public/news'},{name:'ABC News',url:'https://abcnews.go.com/abcnews/topstories'},{name:'Axios',url:'https://api.axios.com/feed/'},{name:'CBS News',url:'https://www.cbsnews.com/latest/rss/main'},{name:'USA Today',url:'http://rssfeeds.usatoday.com/usatoday-NewsTopStories'},{name:'Politico',url:'https://rss.politico.com/politics-news.xml'},{name:'The Hill',url:'https://thehill.com/feed/'}],
+  tech: [{name:'TechCrunch',url:'https://techcrunch.com/feed/'},{name:'The Verge',url:'https://www.theverge.com/rss/index.xml'},{name:'Wired',url:'https://www.wired.com/feed/rss'},{name:'Ars Technica',url:'https://feeds.arstechnica.com/arstechnica/index'},{name:'Engadget',url:'https://www.engadget.com/rss.xml'},{name:'MIT Tech Review',url:'https://www.technologyreview.com/feed/'},{name:'VentureBeat',url:'https://feeds.feedburner.com/venturebeat/SZYF'},{name:'9to5Mac',url:'https://9to5mac.com/feed/'},{name:'Android Authority',url:'https://www.androidauthority.com/feed/'}],
+  science: [{name:'Science Daily',url:'https://www.sciencedaily.com/rss/top.xml'},{name:'Nature News',url:'https://www.nature.com/nature.rss'},{name:'Phys.org',url:'https://phys.org/rss-feed/'},{name:'New Scientist',url:'https://www.newscientist.com/feed/home'},{name:'Live Science',url:'https://www.livescience.com/feeds/all'},{name:'Medical News Today',url:'https://www.medicalnewstoday.com/rss'},{name:'Space.com',url:'https://www.space.com/feeds/all'},{name:'Scientific American',url:'https://rss.sciam.com/ScientificAmerican-Global'}],
+  business: [{name:'CNBC',url:'https://www.cnbc.com/id/100003114/device/rss/rss.html'},{name:'Bloomberg',url:'https://feeds.bloomberg.com/markets/news.rss'},{name:'Business Insider',url:'https://feeds.businessinsider.com/custom/all'},{name:'Financial Times',url:'https://www.ft.com/rss/home'},{name:'Forbes',url:'https://www.forbes.com/real-time/feed2/'},{name:'MarketWatch',url:'https://feeds.marketwatch.com/marketwatch/topstories/'},{name:'Inc. Magazine',url:'https://www.inc.com/rss/'},{name:'Fast Company',url:'https://www.fastcompany.com/latest/rss?restricted=true'}],
+  reddit: [{name:'r/worldnews',url:'https://www.reddit.com/r/worldnews/hot.json?limit=10'},{name:'r/news',url:'https://www.reddit.com/r/news/hot.json?limit=8'},{name:'r/technology',url:'https://www.reddit.com/r/technology/hot.json?limit=8'},{name:'r/science',url:'https://www.reddit.com/r/science/hot.json?limit=8'},{name:'r/business',url:'https://www.reddit.com/r/business/hot.json?limit=6'},{name:'r/politics',url:'https://www.reddit.com/r/politics/hot.json?limit=6'},{name:'r/Futurology',url:'https://www.reddit.com/r/Futurology/hot.json?limit=6'},{name:'r/Economics',url:'https://www.reddit.com/r/Economics/hot.json?limit=6'},{name:'r/geopolitics',url:'https://www.reddit.com/r/geopolitics/hot.json?limit=6'}],
   hackernews: 'hn',
-  climate: [
-    {name:'Guardian Env',      url:'https://www.theguardian.com/environment/rss'},
-    {name:'Inside Climate',    url:'https://insideclimatenews.org/feed/'},
-    {name:'Carbon Brief',      url:'https://www.carbonbrief.org/feed'},
-    {name:'Climate Home News', url:'https://www.climatechangenews.com/feed/'},
-    {name:'Treehugger',        url:'https://www.treehugger.com/feeds/latest/'},
-    {name:'EcoWatch',          url:'https://www.ecowatch.com/feeds/latest/news'},
-  ],
+  climate: [{name:'Guardian Env',url:'https://www.theguardian.com/environment/rss'},{name:'Inside Climate',url:'https://insideclimatenews.org/feed/'},{name:'Carbon Brief',url:'https://www.carbonbrief.org/feed'},{name:'Climate Home News',url:'https://www.climatechangenews.com/feed/'},{name:'Treehugger',url:'https://www.treehugger.com/feeds/latest/'},{name:'EcoWatch',url:'https://www.ecowatch.com/feeds/latest/news'}],
 };
 const SOURCE_LABELS = { world:'🌍 World', us:'🇺🇸 US', tech:'💻 Tech', science:'🔬 Science', business:'📈 Business', reddit:'👾 Reddit', hackernews:'🔶 HN', climate:'🌱 Climate' };
 
@@ -397,372 +303,39 @@ let settings = { aiProvider:'anthropic', rss2jsonKey:'', proxyUrl:'', aiKeywords
 
 function esc(s) { return String(s || '').replace(/[&<>]/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[m])); }
 function timeAgo(iso) { if(!iso) return ''; const s=(Date.now()-new Date(iso))/1000; if(s<3600) return Math.floor(s/60)+'m'; if(s<86400) return Math.floor(s/3600)+'h'; return Math.floor(s/86400)+'d'; }
-function safeJsonParse(str, fallback = {}) {
-  if (!str) return fallback;
-  try {
-    let cleaned = str.replace(/```json\s*|```\s*$/g, '').trim();
-    const match = cleaned.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
-    if (match) cleaned = match[0];
-    cleaned = cleaned.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']');
-    return JSON.parse(cleaned);
-  } catch(e) { return fallback; }
-}
-async function fetchTimeout(url, opts={}) {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT);
-  try { return await fetch(url, { ...opts, signal: ctrl.signal }); } finally { clearTimeout(t); }
-}
-async function fetchReddit() {
-  let out = [];
-  for (let src of ALL_SOURCES.reddit) {
-    try {
-      const r = await fetchTimeout(src.url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-      const d = await r.json();
-      (d.data?.children || []).slice(0,5).forEach(c => {
-        const p = c.data;
-        if (!p.stickied && p.score > 50) out.push({ source: src.name, platform:'reddit', title:p.title, url:p.url, score:p.score, comments:p.num_comments, description:(p.selftext||'').slice(0,200), publishedAt:new Date(p.created_utc*1000).toISOString() });
-      });
-    } catch(e) {}
-  }
-  return out;
-}
-async function fetchHN() {
-  try {
-    const ids = (await (await fetch('https://hacker-news.firebaseio.com/v0/topstories.json')).json()).slice(0,20);
-    let items = [];
-    for (let id of ids) {
-      try {
-        const it = await (await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`)).json();
-        if (it?.title) items.push({ source:'Hacker News', platform:'hackernews', title:it.title, url:it.url||`https://news.ycombinator.com/item?id=${it.id}`, score:it.score||0, comments:it.descendants||0, publishedAt:new Date(it.time*1000).toISOString() });
-      } catch(e) {}
-    }
-    return items;
-  } catch(e) { return []; }
-}
-async function fetchRSSGroup(group) {
-  let out = [];
-  const key = settings.rss2jsonKey || '';
-  const proxy = settings.proxyUrl || '';
-  for (let src of group) {
-    try {
-      let items = null;
-      if (proxy) {
-        try {
-          const r = await fetchTimeout(`${proxy}?url=${encodeURIComponent(src.url)}&count=6`);
-          if (r.ok) { const d = await r.json(); if (d.items?.length) items = d.items; }
-        } catch(e) {}
-      }
-      if (!items) {
-        const params = new URLSearchParams({ rss_url: src.url, count: 6 });
-        if (key) params.set('api_key', key);
-        const r = await fetchTimeout(`${RSS2JSON_URL}?${params}`);
-        if (r.ok) { const d = await r.json(); if (d.status === 'ok') items = d.items; }
-      }
-      if (items) {
-        items.forEach(item => out.push({ source: src.name, platform:'rss', title:(item.title||'').replace(/<[^>]+>/g,''), url:item.link, description:(item.description||'').replace(/<[^>]+>/g,'').slice(0,200), publishedAt:item.pubDate?new Date(item.pubDate).toISOString():new Date().toISOString(), score:0, comments:0 }));
-      }
-    } catch(e) {}
-  }
-  return out;
-}
-async function crawlAllSources(selected) {
-  let all = [];
-  for (let src of selected) {
-    if (src === 'reddit') all.push(...await fetchReddit());
-    else if (src === 'hackernews') all.push(...await fetchHN());
-    else if (ALL_SOURCES[src] && Array.isArray(ALL_SOURCES[src])) all.push(...await fetchRSSGroup(ALL_SOURCES[src]));
-  }
-  const map = new Map(); all.forEach(s => map.set(s.url, s)); return Array.from(map.values());
-}
-function rankStories(arr) {
-  const now = Date.now();
-  return arr.map(s => { const age = (now - new Date(s.publishedAt)) / 3.6e6; const eng = (s.score||0) + (s.comments||0)*2; return { ...s, rankScore: (eng+1)/Math.pow(age+2,1.3) }; }).sort((a,b) => b.rankScore - a.rankScore);
-}
-async function analyzeArticle(article) {
-  const prompt = `Analyze headline: "${article.title}". Return ONLY JSON: {"emotion":"fear|anger|joy|sadness|surprise|neutral","sentiment":"positive|negative|neutral","intonation":"informative|alarming|hopeful","confidence":0.0,"keywords":["w1","w2"],"explanation":"short"}`;
-  try {
-    const raw = await callAIWithRetry({ prompt, maxTokens: 220, provider: settings.aiProvider, retries: 3, delayMs: 1000 });
-    return safeJsonParse(raw, { emotion: 'neutral', sentiment: 'neutral', intonation: 'informative', confidence: 0.5, keywords: [], explanation: '' });
-  } catch (e) { return { emotion: 'neutral', sentiment: 'neutral', intonation: 'informative', confidence: 0.5, keywords: [], explanation: '' }; }
-}
+function safeJsonParse(str, fallback = {}) { if (!str) return fallback; try { let cleaned = str.replace(/```json\s*|```\s*$/g, '').trim(); const match = cleaned.match(/(\{[\s\S]*\}|\[[\s\S]*\])/); if (match) cleaned = match[0]; return JSON.parse(cleaned); } catch(e) { return fallback; } }
+
+async function fetchTimeout(url, opts={}) { const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT); try { return await fetch(url, { ...opts, signal: ctrl.signal }); } finally { clearTimeout(t); } }
+async function fetchReddit() { let out=[]; for(let src of ALL_SOURCES.reddit){ try{ const r=await fetchTimeout(src.url,{headers:{'User-Agent':'Mozilla/5.0'}}); const d=await r.json(); (d.data?.children||[]).slice(0,5).forEach(c=>{ const p=c.data; if(!p.stickied && p.score>50) out.push({source:src.name,platform:'reddit',title:p.title,url:p.url,score:p.score,comments:p.num_comments,description:(p.selftext||'').slice(0,200),publishedAt:new Date(p.created_utc*1000).toISOString()}); }); }catch(e){} } return out; }
+async function fetchHN() { try{ const ids=(await (await fetch('https://hacker-news.firebaseio.com/v0/topstories.json')).json()).slice(0,20); let items=[]; for(let id of ids){ try{ const it=await (await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`)).json(); if(it?.title) items.push({source:'Hacker News',platform:'hackernews',title:it.title,url:it.url||`https://news.ycombinator.com/item?id=${it.id}`,score:it.score||0,comments:it.descendants||0,publishedAt:new Date(it.time*1000).toISOString()}); }catch(e){} } return items; }catch(e){ return []; } }
+async function fetchRSSGroup(group) { let out=[]; const key=settings.rss2jsonKey||''; const proxy=settings.proxyUrl||''; for(let src of group){ try{ let items=null; if(proxy){ try{ const r=await fetchTimeout(`${proxy}?url=${encodeURIComponent(src.url)}&count=6`); if(r.ok){ const d=await r.json(); if(d.items?.length) items=d.items; } }catch(e){} } if(!items){ const params=new URLSearchParams({rss_url:src.url,count:6}); if(key) params.set('api_key',key); const r=await fetchTimeout(`${RSS2JSON_URL}?${params}`); if(r.ok){ const d=await r.json(); if(d.status==='ok') items=d.items; } } if(items){ items.forEach(item=>out.push({source:src.name,platform:'rss',title:(item.title||'').replace(/<[^>]+>/g,''),url:item.link,description:(item.description||'').replace(/<[^>]+>/g,'').slice(0,200),publishedAt:item.pubDate?new Date(item.pubDate).toISOString():new Date().toISOString(),score:0,comments:0})); } }catch(e){} } return out; }
+async function crawlAllSources(selected) { let all=[]; for(let src of selected){ if(src==='reddit') all.push(...await fetchReddit()); else if(src==='hackernews') all.push(...await fetchHN()); else if(ALL_SOURCES[src] && Array.isArray(ALL_SOURCES[src])) all.push(...await fetchRSSGroup(ALL_SOURCES[src])); } const map=new Map(); all.forEach(s=>map.set(s.url,s)); return Array.from(map.values()); }
+function rankStories(arr){ const now=Date.now(); return arr.map(s=>{ const age=(now-new Date(s.publishedAt))/3.6e6; const eng=(s.score||0)+(s.comments||0)*2; return {...s,rankScore:(eng+1)/Math.pow(age+2,1.3)}; }).sort((a,b)=>b.rankScore-a.rankScore); }
+async function analyzeArticle(article){ const prompt=`Analyze headline: "${article.title}". Return ONLY JSON: {"emotion":"fear|anger|joy|sadness|surprise|neutral","sentiment":"positive|negative|neutral","intonation":"informative|alarming|hopeful","confidence":0.0,"keywords":["w1","w2"],"explanation":"short"}`; try{ const raw=await callAIWithRetry({prompt,maxTokens:220,provider:settings.aiProvider,retries:3,delayMs:1000}); return safeJsonParse(raw,{emotion:'neutral',sentiment:'neutral',intonation:'informative',confidence:0.5,keywords:[],explanation:''}); }catch(e){ return {emotion:'neutral',sentiment:'neutral',intonation:'informative',confidence:0.5,keywords:[],explanation:''}; } }
+
 const emojiMap = { fear:'😨', anger:'😠', sadness:'😢', joy:'😄', surprise:'😲', neutral:'😐' };
-function renderStories() {
-  const container = document.getElementById('storyList');
-  if (!container) return;
-  const planPromise = getCurrentPlan();
-  planPromise.then(plan => {
-    const hasBriefs = plan.briefs;
-    const filtered = activeFilter ? stories.filter(s => s.emotion === activeFilter) : stories;
-    if (!filtered.length) { container.innerHTML = '<div class="empty"><div class="empty-icon">📭</div>No stories match this filter.</div>'; return; }
-    container.innerHTML = filtered.map(s => {
-      const emoji = emojiMap[s.emotion] || '😐';
-      const sentCls = s.sentiment==='positive' ? 'badge-pos' : (s.sentiment==='negative' ? 'badge-neg' : 'badge-neutral');
-      return `<div class="story-card"><div class="card-top"><div class="emotion-dot">${emoji}</div><div class="card-body"><div class="card-meta"><span class="badge">${esc(s.source)}</span><span class="badge ${sentCls}">${s.sentiment||'neutral'}</span><span class="ts">${timeAgo(s.publishedAt)}</span></div><div class="card-title"><a href="${esc(s.url)}" target="_blank">${esc(s.title)}</a></div>${s.explanation ? `<div class="card-explain">${esc(s.explanation)}</div>` : ''}<div class="card-kw">${(s.keywords||[]).slice(0,3).map(k=>`<span class="kw">${esc(k)}</span>`).join('')}</div><div class="conf-row"><span style="font-size:10px;color:var(--text-hint)">${Math.round((s.confidence||0.5)*100)}%</span><div class="conf-track"><div class="conf-fill" style="width:${Math.round((s.confidence||0.5)*100)}%"></div></div></div></div></div><div class="card-actions"><button class="act-btn brief-btn ${hasBriefs?'':'locked-btn'}" data-url="${esc(s.url)}">📝 Brief${hasBriefs?'':' 🔒'}</button><button class="act-btn open-btn" data-url="${esc(s.url)}">↗ Open</button></div></div>`;
-    }).join('');
-    document.querySelectorAll('.brief-btn').forEach(btn => btn.addEventListener('click', () => { if (!hasBriefs) { renderUpsellBanner('briefsContent','briefs'); document.querySelector('.tab[data-tab="briefs"]').click(); return; } const story = stories.find(s => s.url === btn.dataset.url); if (story) generateBrief(story); }));
-    document.querySelectorAll('.open-btn').forEach(btn => btn.addEventListener('click', () => window.open(btn.dataset.url,'_blank')));
-  });
-}
-function renderStats() {
-  const strip = document.getElementById('statsStrip');
-  if (!strip) return;
-  if (!stories.length) { strip.style.display = 'none'; return; }
-  const pos = stories.filter(s => s.sentiment === 'positive').length;
-  const neg = stories.filter(s => s.sentiment === 'negative').length;
-  strip.style.display = 'grid';
-  strip.innerHTML = `<div class="stat-box"><div class="stat-value">${stories.length}</div><div class="stat-label">Total</div></div><div class="stat-box"><div class="stat-value" style="color:#8BC97F">${pos}</div><div class="stat-label">Positive</div></div><div class="stat-box"><div class="stat-value" style="color:#E07A5F">${neg}</div><div class="stat-label">Negative</div></div><div class="stat-box"><div class="stat-value">✦</div><div class="stat-label">AI analyzed</div></div>`;
-}
-function renderFilterRow() {
-  const row = document.getElementById('filterRow');
-  if (!row) return;
-  if (!stories.length) { row.style.display = 'none'; return; }
-  const emotions = [...new Set(stories.map(s => s.emotion))];
-  row.innerHTML = `<button class="filter-chip active" data-em="">All</button>` + emotions.map(em => `<button class="filter-chip" data-em="${em}">${em}</button>`).join('');
-  row.style.display = 'flex';
-  row.querySelectorAll('.filter-chip').forEach(chip => chip.addEventListener('click', () => { activeFilter = chip.dataset.em || null; document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active')); chip.classList.add('active'); renderStories(); }));
-}
-async function renderKeywords() {
-  if (!stories.length) return;
-  const plan = await getCurrentPlan();
-  const container = document.getElementById('kwContent');
-  if (!container) return;
-  const kwMap = {};
-  stories.forEach(s => (s.keywords||[]).forEach(k => kwMap[k] = (kwMap[k]||0)+1));
-  const topKw = Object.entries(kwMap).sort((a,b)=>b[1]-a[1]).slice(0,30);
-  if (!plan.aiKeywords) {
-    container.innerHTML = `<div class="section-label">🔥 Trending keywords</div><div class="kw-grid">${topKw.map(([k,c])=>`<span class="kw-tag">${esc(k)} <span style="opacity:0.5">${c}</span></span>`).join('')}</div><div style="background:#2A1E0A;border:1px solid rgba(245,176,66,0.25);border-radius:12px;padding:18px;margin-top:20px;text-align:center;"><div style="font-size:1.1rem;margin-bottom:8px;">⚡ Upgrade to Pro for full keyword intelligence</div><div style="font-size:12px;color:var(--text-sec);margin-bottom:14px;">AI keyword clusters · content gap analysis · question keywords · topic briefs</div><a href="pricing.html"><button style="background:var(--accent);color:#0a0c10;border:none;border-radius:30px;padding:8px 22px;font-weight:700;cursor:pointer;font-size:13px;">View Pro Plan →</button></a></div>`;
-    return;
-  }
-  container.innerHTML = `<div class="section-label">🔥 Trending keywords</div><div class="kw-grid">${topKw.map(([k,c])=>`<span class="kw-tag" data-term="${esc(k)}">${esc(k)} <span style="opacity:0.5">${c}</span></span>`).join('')}</div><div class="section-label" style="margin-top:16px">🧠 Click any keyword to generate a topic brief</div><div id="kwAiSection" style="margin-top:20px"><div style="text-align:center;padding:24px;color:var(--text-hint)"><span class="spinner"></span> Loading AI keyword intelligence…</div></div>`;
-  container.querySelectorAll('.kw-tag').forEach(el => el.addEventListener('click', () => generateBriefFromTopic(el.dataset.term)));
-  const phraseMap = {};
-  stories.forEach(s => { const words = s.title.toLowerCase().replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(w => w.length >= 4 && !['this','that','with','from','have','been','will','were','they','their','what','when','which','about','after','before'].includes(w)); for (let i=0;i<words.length-1;i++) { const b=`${words[i]} ${words[i+1]}`; phraseMap[b]=(phraseMap[b]||0)+1; } });
-  const topPhrases = Object.entries(phraseMap).filter(([,c])=>c>=2).sort((a,b)=>b[1]-a[1]).slice(0,15);
-  const qWords=['how','why','what','when','who','which','will','can','should'];
-  const questions = stories.filter(s=>qWords.some(q=>s.title.toLowerCase().startsWith(q))).slice(0,8);
-  const prompt = `You are a senior SEO content strategist. Analyze these trending keywords from live news data.\n\nTOP KEYWORDS:\n${topKw.slice(0,20).map(([k,c])=>`- "${k}" (frequency: ${c})`).join('\n')}\n\nTRENDING PHRASES:\n${topPhrases.slice(0,12).map(([p,c])=>`- "${p}" (${c} articles)`).join('\n')}\n\nQUESTION KEYWORDS:\n${questions.map(s=>`- "${s.title}"`).join('\n')}\n\nTOP HEADLINES FOR CONTEXT:\n${stories.slice(0,8).map(s=>`- [${s.source}] ${s.title}`).join('\n')}\n\nRespond ONLY with valid JSON, no markdown: {"clusters":[{"theme":"","intent":"informational|news|opinion|commercial","urgency":"breaking|trending|evergreen","keywords":["kw1","kw2","kw3"],"competition":"low|medium|high","potential":"low|medium|high","summary":"one sentence"}],"gaps":[{"keyword":"","reason":"why this is an opportunity","angle":"suggested article angle"}],"questions":[{"question":"","why":"why readers are asking this"}],"avoid":[{"keyword":"","reason":""}]}`;
-  try {
-    const raw = await callAIWithRetry({ prompt, maxTokens:2000, provider:settings.aiProvider, retries:3, delayMs:2000 });
-    const data = safeJsonParse(raw, { clusters: [], gaps: [], questions: [], avoid: [] });
-    const sec = document.getElementById('kwAiSection');
-    if (!sec) return;
-    let h = '';
-    if (topPhrases.length) h += `<div class="section-label">📌 Trending phrases</div><div class="kw-grid">${topPhrases.map(([p])=>`<button class="kw-tag" data-term="${esc(p)}" style="color:var(--accent);border-color:rgba(245,176,66,0.3)">${esc(p)}</button>`).join('')}</div>`;
-    if (data.questions?.length) { h += `<div class="section-label" style="margin-top:18px">❓ People are asking</div>`; data.questions.forEach(q => { h += `<div class="kw-tag" data-term="${esc(q.question)}" style="display:block;padding:8px 14px;margin-bottom:6px;border-radius:10px;cursor:pointer"><span style="color:var(--accent);font-weight:600;margin-right:6px">→</span>${esc(q.question)}${q.why?`<span style="color:var(--text-hint);font-size:11px;margin-left:8px">${esc(q.why)}</span>`:''}</div>`; }); }
-    if (data.clusters?.length) { h += `<div class="section-label" style="margin-top:18px">🤖 AI keyword clusters</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:6px">`; data.clusters.forEach(c => { const urgencyColor = {breaking:'#E07A5F',trending:'#f5b042',evergreen:'#8BC97F'}[c.urgency]||'#f5b042'; h += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-weight:700;font-size:13px;flex:1">${esc(c.theme)}</span><span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(0,0,0,0.3);color:${urgencyColor};border:1px solid ${urgencyColor}33">${c.urgency}</span><span style="font-size:10px;color:var(--text-hint)">${c.intent}</span></div><div style="font-size:12px;color:var(--text-sec);margin-bottom:10px;line-height:1.5">${esc(c.summary)}</div><div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">${(c.keywords||[]).map(k=>`<button class="kw-tag" data-term="${esc(k)}" style="padding:2px 9px;font-size:11px">${esc(k)}</button>`).join('')}</div><div style="font-size:11px;color:var(--text-hint)">Competition: ${c.competition} · Potential: ${c.potential}</div></div>`; }); h += `</div>`; }
-    if (data.gaps?.length) { h += `<div class="section-label" style="margin-top:18px">🎯 Content gap opportunities</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:6px">`; data.gaps.forEach(g => { h += `<div style="background:var(--surface);border:1px solid rgba(245,176,66,0.15);border-radius:12px;padding:14px"><div style="font-weight:700;font-size:13px;margin-bottom:6px;color:var(--accent)">${esc(g.keyword)}</div><div style="font-size:12px;color:var(--text-sec);margin-bottom:8px;line-height:1.5">${esc(g.reason)}</div><div style="font-size:11px;color:var(--text-hint);font-style:italic;margin-bottom:10px">${esc(g.angle)}</div><button class="kw-tag" data-term="${esc(g.keyword)}" style="font-size:11px;padding:4px 12px;color:var(--accent);border-color:rgba(245,176,66,0.3)">📝 Generate brief →</button></div>`; }); h += `</div>`; }
-    if (data.avoid?.length) { h += `<div class="section-label" style="margin-top:18px">🚫 Keywords to avoid</div><div class="kw-grid">`; data.avoid.forEach(a => { h += `<span title="${esc(a.reason)}" style="padding:4px 12px;border:1px solid var(--border);border-radius:20px;font-size:11px;color:var(--text-hint);text-decoration:line-through;opacity:0.5">${esc(a.keyword)}</span>`; }); h += `</div>`; }
-    sec.innerHTML = h;
-    sec.querySelectorAll('.kw-tag[data-term]').forEach(el => { el.addEventListener('click', () => generateBriefFromTopic(el.dataset.term)); });
-  } catch(e) { document.getElementById('kwAiSection').innerHTML = `<div class="error-msg">AI keyword enrichment failed: ${esc(e.message)}</div>`; }
-}
-async function generateBriefFromTopic(topic) {
-  const apiKey = ''; // not used, using edge function
-  const briefsDiv = document.getElementById('briefsContent');
-  if (briefsDiv) briefsDiv.innerHTML = '<div class="empty"><span class="spinner"></span> Generating brief…</div>';
-  document.querySelector('.tab[data-tab="briefs"]').click();
-  const escapedTopic = JSON.stringify(topic);
-  const prompt = `Content brief for topic ${escapedTopic}. Return ONLY JSON: {"headline":"","primaryKeyword":${escapedTopic},"secondaryKeywords":[],"angle":"","outline":["s1","s2","s3","s4"],"audience":"professionals","wordCount":1000,"keyPoints":[],"callToAction":""}`;
-  try {
-    const raw = await callAIWithRetry({ prompt, maxTokens:600, provider:settings.aiProvider, retries:2, delayMs:1000 });
-    let brief = safeJsonParse(raw, {});
-    if (!brief.headline || !brief.angle) throw new Error('Invalid JSON');
-    currentBrief = brief; renderBrief(brief);
-  } catch(e) {
-    const fallbackBrief = { headline: `${topic} – Complete Analysis`, angle: `Deep dive into ${topic}, covering key facts, recent developments, and future outlook.`, primaryKeyword: topic, secondaryKeywords: [topic, 'trends', 'insights'], outline: ['Introduction', 'Key facts and background', 'Current situation', 'Expert opinions', 'Conclusion'], audience: 'General readers and professionals', wordCount: 1000, keyPoints: [], callToAction: 'Explore more on this topic' };
-    currentBrief = fallbackBrief; renderBrief(fallbackBrief);
-  }
-}
-async function generateBrief(story) {
-  if (!(await getCurrentPlan()).briefs) { renderUpsellBanner('briefsContent','briefs'); document.querySelector('.tab[data-tab="briefs"]').click(); return; }
-  const briefsDiv = document.getElementById('briefsContent');
-  if (briefsDiv) briefsDiv.innerHTML = '<div class="empty"><span class="spinner"></span> Creating brief…</div>';
-  document.querySelector('.tab[data-tab="briefs"]').click();
-  const prompt = `Story: ${JSON.stringify(story.title)}. Return ONLY JSON brief: {"headline":"","primaryKeyword":"","secondaryKeywords":[],"angle":"","outline":["s1","s2","s3","s4"],"audience":"","wordCount":1200,"keyPoints":[],"callToAction":""}`;
-  try {
-    const raw = await callAIWithRetry({ prompt, maxTokens:700, provider:settings.aiProvider, retries:2, delayMs:1000 });
-    let brief = safeJsonParse(raw, {});
-    if (!brief.headline || !brief.angle) throw new Error('Invalid');
-    currentBrief = brief; renderBrief(brief);
-  } catch(e) { if (briefsDiv) briefsDiv.innerHTML = `<div class="error-msg">Brief error: ${esc(e.message)}</div>`; }
-}
-function renderBrief(brief) {
-  const briefsDiv = document.getElementById('briefsContent');
-  if (!briefsDiv) return;
-  briefsDiv.innerHTML = `<div class="brief-card"><div class="brief-headline">${esc(brief.headline)}</div><div class="brief-angle">🎯 ${esc(brief.angle)}</div><div style="font-size:12px;margin-bottom:8px"><strong>Primary keyword:</strong> ${esc(brief.primaryKeyword)}</div><div style="font-size:12px;margin-bottom:6px"><strong>Outline:</strong></div><ol class="brief-outline">${(brief.outline||[]).map(o=>`<li>${esc(o)}</li>`).join('')}</ol><div class="card-actions"><button id="genDraftBtn" class="act-btn">✍️ Generate Draft</button><button id="copyBriefBtn" class="act-btn">⎘ Copy</button></div></div>`;
-  document.getElementById('genDraftBtn')?.addEventListener('click', () => generateDraft(brief));
-  document.getElementById('copyBriefBtn')?.addEventListener('click', () => navigator.clipboard?.writeText(JSON.stringify(brief,null,2)));
-}
-async function generateDraft(brief) {
-  if (!(await getCurrentPlan()).drafts) { renderUpsellBanner('draftContent','drafts'); document.querySelector('.tab[data-tab="draft"]').click(); return; }
-  const draftDiv = document.getElementById('draftContent');
-  if (draftDiv) draftDiv.innerHTML = '<div class="empty"><span class="spinner"></span> Writing draft…</div>';
-  document.querySelector('.tab[data-tab="draft"]').click();
-  const prompt = `Write a ${brief.wordCount||1000}-word AP-style article. Headline: ${brief.headline}. Keyword: ${brief.primaryKeyword}. Outline: ${(brief.outline||[]).join(', ')}. Angle: ${brief.angle}. Audience: ${brief.audience || 'general readers'}. Use engaging lede, short paragraphs, subheadings. No fabricated quotes.`;
-  try {
-    const draft = await callAIWithRetry({ prompt, maxTokens:2500, provider:settings.aiProvider, retries:2, delayMs:1500 });
-    if (draftDiv) {
-      draftDiv.innerHTML = `<div class="draft-output">${esc(draft)}</div><div class="draft-actions"><button id="copyDraftBtn" class="act-btn">📋 Copy Draft</button><div class="tone-selector">🎭 Tone <select id="humanizerToneSelect"><option value="casual">Casual</option><option value="professional">Professional</option><option value="witty">Witty</option><option value="empathetic">Empathetic</option><option value="simple">Simple & Clear</option></select></div><button id="humanizeDraftBtn" class="act-btn">✨ Humanize</button><button id="exportMdBtn" class="act-btn">⬇ Export MD</button></div>`;
-      document.getElementById('copyDraftBtn')?.addEventListener('click', () => navigator.clipboard?.writeText(draft));
-      document.getElementById('exportMdBtn')?.addEventListener('click', () => { const blob = new Blob([draft], {type:'text/markdown'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `draft-${Date.now()}.md`; a.click(); });
-      document.getElementById('humanizeDraftBtn')?.addEventListener('click', () => humanizeDraft(draft, document.getElementById('humanizerToneSelect')?.value));
-    }
-  } catch(e) { if (draftDiv) draftDiv.innerHTML = `<div class="error-msg">Draft error: ${esc(e.message)}</div>`; }
-}
-async function runPipeline() {
-  const user = await getCurrentUser();
-  if (!user) { openModal('login'); return; }
-  const crawlCheck = await canCrawl();
-  if (!crawlCheck.ok) { renderUpsellBanner('storyList', 'crawl'); return; }
-  const selected = [...document.querySelectorAll('.source-chip.active:not(.locked)')].map(c => c.dataset.src);
-  if (!selected.length) { document.getElementById('storyList').innerHTML = '<div class="error-msg">Select at least one source category.</div>'; return; }
-  const crawlBtn = document.getElementById('crawlBtn');
-  const progressDiv = document.getElementById('progressMsg');
-  const progFill = document.getElementById('progFill');
-  if (crawlBtn) crawlBtn.disabled = true;
-  if (progressDiv) progressDiv.innerHTML = '<span class="spinner"></span> Crawling sources…';
-  if (progFill) progFill.style.width = '5%';
-  await incrementCrawlCount();
-  await renderUsageBar();
-  let raw = await crawlAllSources(selected);
-  raw = rankStories(raw).slice(0,35);
-  if (progressDiv) progressDiv.innerHTML = `<span class="spinner"></span> Analyzing ${raw.length} stories...`;
-  if (progFill) progFill.style.width = '30%';
-  const analyzed = [];
-  for (let i = 0; i < raw.length; i++) {
-    try { const a = await analyzeArticle(raw[i]); analyzed.push({ ...raw[i], ...a, analyzed: true }); } catch(e) { analyzed.push({ ...raw[i], emotion:'neutral', sentiment:'neutral', intonation:'informative', confidence:0.5, keywords:[], explanation:'' }); }
-    const pct = 30 + Math.round(((i+1)/raw.length)*65);
-    if (progFill) progFill.style.width = pct + '%';
-    if (progressDiv) progressDiv.textContent = `Analyzed ${i+1} / ${raw.length}…`;
-    if (i < raw.length - 1) await new Promise(resolve => setTimeout(resolve, 1100));
-  }
-  stories = analyzed;
-  renderStories(); renderStats(); renderFilterRow(); await renderKeywords();
-  if (progFill) progFill.style.width = '100%';
-  if (progressDiv) progressDiv.textContent = '✅ Done';
-  setTimeout(() => { if (progressDiv) progressDiv.textContent = ''; if (progFill) progFill.style.width = '0%'; }, 2500);
-  if (crawlBtn) crawlBtn.disabled = false;
-}
-async function renderUsageBar() {
-  const plan = await getCurrentPlan();
-  const bar = document.getElementById('usageBar');
-  if (!bar) return;
-  if (plan.crawlLimit === Infinity) { bar.style.display = 'none'; return; }
-  bar.style.display = 'flex';
-  const count = await getCrawlCount();
-  const pct = Math.min((count / plan.crawlLimit) * 100, 100);
-  const fill = document.getElementById('usageFill');
-  const countEl = document.getElementById('usageCount');
-  if (fill) fill.style.width = pct + '%';
-  if (countEl) countEl.textContent = `${count} / ${plan.crawlLimit}`;
-  if (fill) fill.style.background = pct >= 90 ? '#E07A5F' : '#f5b042';
-}
-async function renderSourceChips() {
-  const plan = await getCurrentPlan();
-  const allowed = plan.sources;
-  const row = document.getElementById('sourceChipsRow');
-  if (!row) return;
-  row.innerHTML = Object.keys(SOURCE_LABELS).map(src => { const isAllowed = allowed.includes(src); return `<button class="source-chip${isAllowed ? ' active' : ''}${!isAllowed ? ' locked' : ''}" data-src="${src}" ${!isAllowed ? 'disabled' : ''}>${SOURCE_LABELS[src]}${!isAllowed ? ' 🔒' : ''}</button>`; }).join('');
-  row.querySelectorAll('.source-chip:not(.locked)').forEach(chip => chip.addEventListener('click', () => chip.classList.toggle('active')));
-  row.querySelectorAll('.source-chip.locked').forEach(chip => chip.addEventListener('click', () => window.location.href = 'pricing.html'));
-}
-async function renderAccountPane() {
-  const user = await getCurrentUser();
-  const plan = await getCurrentPlan();
-  if (!user) return;
-  const accountCard = document.getElementById('accountCard');
-  const planCard = document.getElementById('planCard');
-  if (accountCard) { accountCard.innerHTML = `<div class="account-row"><div class="account-avatar">${(user.name||'?')[0].toUpperCase()}</div><div><div style="font-weight:700;font-size:15px">${escapeHtml(user.name)}</div><div style="font-size:12px;color:var(--text-sec)">${escapeHtml(user.email)}</div><div style="margin-top:6px"><span class="plan-badge ${plan.badgeClass}">${plan.label}</span></div></div></div><div><button class="sh-btn" onclick="logout()">Sign out</button></div>`; }
-  if (planCard) { planCard.innerHTML = `<div class="settings-section-title">📋 Your plan: <span style="color:var(--accent)">${plan.label}</span></div><div style="font-size:12px;color:var(--text-sec);margin-bottom:16px">${plan.crawlLimit===Infinity ? 'Unlimited crawls' : `${plan.crawlLimit} crawls/month`} · ${plan.briefs ? 'Briefs & Drafts ✓' : 'No briefs or drafts'} · ${plan.allSources ? 'All sources ✓' : '3 sources only'}</div>${plan.label==='Free' ? '<a href="pricing.html"><button class="save-btn" style="max-width:240px">⚡ Upgrade to Pro</button></a><div style="margin-top:10px;font-size:11px;color:var(--text-hint)">Pro: $19/mo · unlimited crawls · briefs & drafts · all sources · AI keywords</div>' : ''}${plan.label==='Pro' ? '<a href="contact.html"><button class="sh-btn" style="padding:10px 20px;font-size:13px">Contact sales for Enterprise</button></a>' : ''}`; }
-}
-async function renderTabLocks() {
-  const plan = await getCurrentPlan();
-  document.getElementById('briefsTabLock').textContent = plan.briefs ? '' : '🔒';
-  document.getElementById('draftTabLock').textContent = plan.drafts ? '' : '🔒';
-  document.getElementById('humanizerTabLock').textContent = plan.drafts ? '' : '🔒';
-  document.getElementById('enrichPlanNote').textContent = plan.aiKeywords ? '' : '(Pro feature)';
-}
-async function loadSettingsUI() {
-  try { const s = await loadSettings(); settings = s; } catch(e) { console.warn(e); }
-  document.getElementById('rss2jsonKey').value = settings.rss2jsonKey || '';
-  document.getElementById('proxyUrl').value = settings.proxyUrl || '';
-  const enrichToggle = document.getElementById('aiEnrichToggle');
-  if (enrichToggle && settings.aiKeywords) enrichToggle.classList.add('on');
-  if (settings.aiProvider === 'mistral') document.getElementById('providerMistral')?.click(); else document.getElementById('providerAnthropic')?.click();
-}
-async function saveSettingsUI() {
-  settings.aiProvider = document.querySelector('.provider-btn.active')?.id === 'providerMistral' ? 'mistral' : 'anthropic';
-  settings.rss2jsonKey = document.getElementById('rss2jsonKey')?.value || '';
-  settings.proxyUrl = document.getElementById('proxyUrl')?.value || '';
-  settings.aiKeywords = document.getElementById('aiEnrichToggle')?.classList.contains('on') || false;
-  await saveSettings(settings);
-  const msg = document.getElementById('settingsMsg');
-  if (msg) { msg.textContent = '✓ Saved'; setTimeout(() => msg.textContent = '', 2000); }
-}
-async function updateSiteHeader() {
-  const el = document.getElementById('siteHeaderAuth');
-  if (!el) return;
-  const user = await getCurrentUser();
-  if (user) { const plan = await getCurrentPlan(); el.innerHTML = `<span class="plan-badge ${plan.badgeClass}">${plan.label}</span><span class="sh-username">${escapeHtml(user.name || user.email)}</span><button class="sh-btn" onclick="logout()">Sign out</button>`; }
-  else { el.innerHTML = `<button class="sh-btn-accent" onclick="openModal('login')">Sign in</button>`; }
-}
-async function initDashboard() {
-  await loadSettingsUI();
-  await renderSourceChips();
-  await renderUsageBar();
-  await renderTabLocks();
-  await renderAccountPane();
-  await updateSiteHeader();
-  document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => { document.querySelectorAll('.tab').forEach(t => t.classList.remove('active')); document.querySelectorAll('.pane').forEach(p => p.classList.remove('active')); tab.classList.add('active'); document.getElementById(`pane-${tab.dataset.tab}`)?.classList.add('active'); }));
-  document.getElementById('crawlBtn')?.addEventListener('click', runPipeline);
-  document.getElementById('refreshBtn')?.addEventListener('click', runPipeline);
-  document.getElementById('settingsBtn')?.addEventListener('click', () => document.querySelector('.tab[data-tab="settings"]').click());
-  document.getElementById('saveSettingsBtn')?.addEventListener('click', saveSettingsUI);
-  document.getElementById('aiEnrichToggle')?.addEventListener('click', e => e.currentTarget.classList.toggle('on'));
-  document.getElementById('briefManualBtn')?.addEventListener('click', async () => { if (!(await getCurrentPlan()).briefs) { renderUpsellBanner('briefsContent','briefs'); return; } const topic = document.getElementById('briefTopicInput')?.value.trim(); if (!topic) { document.getElementById('briefsContent').innerHTML = '<div class="error-msg">Please enter a topic.</div>'; return; } generateBriefFromTopic(topic); });
-  document.getElementById('draftManualBtn')?.addEventListener('click', async () => { if (!(await getCurrentPlan()).drafts) { renderUpsellBanner('draftContent','drafts'); return; } const prompt = document.getElementById('draftPromptInput')?.value.trim(); const wordCount = document.getElementById('draftWordCount')?.value || '1000'; const style = document.getElementById('draftStyleInput')?.value || 'AP style'; if (!prompt) { document.getElementById('draftContent').innerHTML = '<div class="error-msg">Please describe the article.</div>'; return; } generateDraftFromPrompt(prompt, wordCount, style); });
-  const providerAnth = document.getElementById('providerAnthropic'), providerMist = document.getElementById('providerMistral'), groupAnth = document.getElementById('groupAnthropicKey'), groupMist = document.getElementById('groupMistralKey');
-  if (providerAnth) providerAnth.addEventListener('click', () => { settings.aiProvider = 'anthropic'; providerAnth.classList.add('active'); providerMist?.classList.remove('active'); if (groupAnth) groupAnth.style.display = 'block'; if (groupMist) groupMist.style.display = 'none'; });
-  if (providerMist) providerMist.addEventListener('click', () => { settings.aiProvider = 'mistral'; providerMist.classList.add('active'); providerAnth?.classList.remove('active'); if (groupMist) groupMist.style.display = 'block'; if (groupAnth) groupAnth.style.display = 'none'; });
-  // Humanizer minimal placeholder (full humanizer implementation can be added similarly using callAIWithRetry)
-}
-async function checkAuthAndRender() {
-  const user = await getCurrentUser();
-  const authGate = document.getElementById('authGate');
-  const dashboardContent = document.getElementById('dashboardContent');
-  if (user) { authGate.style.display = 'none'; dashboardContent.style.display = 'block'; if (!window.dashboardInitialized) { window.dashboardInitialized = true; await initDashboard(); } await updateSiteHeader(); }
-  else { authGate.style.display = 'block'; dashboardContent.style.display = 'none'; await updateSiteHeader(); }
-}
-document.addEventListener('DOMContentLoaded', () => { checkAuthAndRender(); window.addEventListener('storage', checkAuthAndRender); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkAuthAndRender(); }); });
-if (window.supabaseClient) window.supabaseClient.auth.onAuthStateChange(() => { checkAuthAndRender(); });
-function renderUpsellBanner(containerId, feature) { const container = document.getElementById(containerId); if (container) container.innerHTML = `<div class="empty"><div class="empty-icon">🔒</div><h3>${feature} is a Pro feature</h3><p>Upgrade to Pro for unlimited briefs, drafts, and all sources.</p><a href="pricing.html"><button class="sh-btn-accent" style="margin-top:12px">View Pro Plan →</button></a></div>`; }
-async function generateDraftFromPrompt(userPrompt, wordCount, style) {
-  if (!(await getCurrentPlan()).drafts) { renderUpsellBanner('draftContent','drafts'); return; }
-  const draftDiv = document.getElementById('draftContent');
-  if (draftDiv) draftDiv.innerHTML = '<div class="empty"><span class="spinner"></span> Writing draft…</div>';
-  document.querySelector('.tab[data-tab="draft"]').click();
-  const prompt = `Write a ${wordCount}-word article in ${style}.\n\nUser brief: ${userPrompt}\n\nRequirements: engaging lede, short paragraphs, clear subheadings, no fabricated quotes, strong conclusion.`;
-  try {
-    const draft = await callAIWithRetry({ prompt, maxTokens:2500, provider:settings.aiProvider, retries:2, delayMs:1500 });
-    if (draftDiv) draftDiv.innerHTML = `<div class="draft-output">${esc(draft)}</div><div class="draft-actions"><button id="copyDraftBtn" class="act-btn">📋 Copy Draft</button><div class="tone-selector">🎭 Tone <select id="humanizerToneSelect"><option value="casual">Casual</option><option value="professional">Professional</option><option value="witty">Witty</option><option value="empathetic">Empathetic</option><option value="simple">Simple & Clear</option></select></div><button id="humanizeDraftBtn" class="act-btn">✨ Humanize</button><button id="exportMdBtn" class="act-btn">⬇ Export MD</button></div>`;
-    document.getElementById('copyDraftBtn')?.addEventListener('click', () => navigator.clipboard?.writeText(draft));
-    document.getElementById('exportMdBtn')?.addEventListener('click', () => { const blob = new Blob([draft], {type:'text/markdown'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `draft-${Date.now()}.md`; a.click(); });
-    document.getElementById('humanizeDraftBtn')?.addEventListener('click', () => humanizeDraft(draft, document.getElementById('humanizerToneSelect')?.value));
-  } catch(e) { if (draftDiv) draftDiv.innerHTML = `<div class="error-msg">Draft error: ${esc(e.message)}</div>`; }
-}
-async function humanizeDraft(text, tone) {
-  // Simplified humanizer stub – implement full multi-pass if needed
-  const draftDiv = document.getElementById('draftContent');
-  if (draftDiv) draftDiv.innerHTML = '<div class="empty"><span class="spinner"></span> Humanizing…</div>';
-  const prompt = `Rewrite the following article in a ${tone} tone. Make it sound natural, human, and varied. Keep all facts intact. Return only the rewritten article.\n\n${text}`;
-  try {
-    const result = await callAIWithRetry({ prompt, maxTokens:3000, provider:settings.aiProvider, retries:2, delayMs:1500 });
-    if (draftDiv) draftDiv.innerHTML = `<div class="draft-output">${esc(result)}</div><div class="draft-actions"><button id="copyDraftBtn" class="act-btn">📋 Copy Draft</button><button id="humanizeDraftBtn" class="act-btn">✨ Humanize again</button><button id="exportMdBtn" class="act-btn">⬇ Export MD</button></div>`;
-    document.getElementById('copyDraftBtn')?.addEventListener('click', () => navigator.clipboard?.writeText(result));
-    document.getElementById('exportMdBtn')?.addEventListener('click', () => { const blob = new Blob([result], {type:'text/markdown'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `humanized-${Date.now()}.md`; a.click(); });
-    document.getElementById('humanizeDraftBtn')?.addEventListener('click', () => humanizeDraft(result, document.getElementById('humanizerToneSelect')?.value));
-  } catch(e) { if (draftDiv) draftDiv.innerHTML = `<div class="error-msg">Humanizer error: ${esc(e.message)}</div>`; }
-}
+function renderStories(){ const container=document.getElementById('storyList'); if(!container) return; getCurrentPlan().then(plan=>{ const hasBriefs=plan.briefs; const filtered=activeFilter?stories.filter(s=>s.emotion===activeFilter):stories; if(!filtered.length){ container.innerHTML='<div class="empty"><div class="empty-icon">📭</div>No stories match this filter.</div>'; return; } container.innerHTML=filtered.map(s=>{ const emoji=emojiMap[s.emotion]||'😐'; const sentCls=s.sentiment==='positive'?'badge-pos':(s.sentiment==='negative'?'badge-neg':'badge-neutral'); return `<div class="story-card"><div class="card-top"><div class="emotion-dot">${emoji}</div><div class="card-body"><div class="card-meta"><span class="badge">${esc(s.source)}</span><span class="badge ${sentCls}">${s.sentiment||'neutral'}</span><span class="ts">${timeAgo(s.publishedAt)}</span></div><div class="card-title"><a href="${esc(s.url)}" target="_blank">${esc(s.title)}</a></div>${s.explanation?`<div class="card-explain">${esc(s.explanation)}</div>`:''}<div class="card-kw">${(s.keywords||[]).slice(0,3).map(k=>`<span class="kw">${esc(k)}</span>`).join('')}</div><div class="conf-row"><span style="font-size:10px;color:var(--text-hint)">${Math.round((s.confidence||0.5)*100)}%</span><div class="conf-track"><div class="conf-fill" style="width:${Math.round((s.confidence||0.5)*100)}%"></div></div></div></div></div><div class="card-actions"><button class="act-btn brief-btn ${hasBriefs?'':'locked-btn'}" data-url="${esc(s.url)}">📝 Brief${hasBriefs?'':' 🔒'}</button><button class="act-btn open-btn" data-url="${esc(s.url)}">↗ Open</button></div></div>`; }).join(''); document.querySelectorAll('.brief-btn').forEach(btn=>btn.addEventListener('click',()=>{ if(!hasBriefs){ renderUpsellBanner('briefsContent','briefs'); document.querySelector('.tab[data-tab="briefs"]').click(); return; } const story=stories.find(s=>s.url===btn.dataset.url); if(story) generateBrief(story); })); document.querySelectorAll('.open-btn').forEach(btn=>btn.addEventListener('click',()=>window.open(btn.dataset.url,'_blank'))); }); }
+function renderStats(){ const strip=document.getElementById('statsStrip'); if(!strip) return; if(!stories.length){ strip.style.display='none'; return; } const pos=stories.filter(s=>s.sentiment==='positive').length; const neg=stories.filter(s=>s.sentiment==='negative').length; strip.style.display='grid'; strip.innerHTML=`<div class="stat-box"><div class="stat-value">${stories.length}</div><div class="stat-label">Total</div></div><div class="stat-box"><div class="stat-value" style="color:#8BC97F">${pos}</div><div class="stat-label">Positive</div></div><div class="stat-box"><div class="stat-value" style="color:#E07A5F">${neg}</div><div class="stat-label">Negative</div></div><div class="stat-box"><div class="stat-value">✦</div><div class="stat-label">AI analyzed</div></div>`; }
+function renderFilterRow(){ const row=document.getElementById('filterRow'); if(!row) return; if(!stories.length){ row.style.display='none'; return; } const emotions=[...new Set(stories.map(s=>s.emotion))]; row.innerHTML=`<button class="filter-chip active" data-em="">All</button>`+emotions.map(em=>`<button class="filter-chip" data-em="${em}">${em}</button>`).join(''); row.style.display='flex'; row.querySelectorAll('.filter-chip').forEach(chip=>chip.addEventListener('click',()=>{ activeFilter=chip.dataset.em||null; document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active')); chip.classList.add('active'); renderStories(); })); }
+async function renderKeywords(){ if(!stories.length) return; const plan=await getCurrentPlan(); const container=document.getElementById('kwContent'); if(!container) return; const kwMap={}; stories.forEach(s=>(s.keywords||[]).forEach(k=>kwMap[k]=(kwMap[k]||0)+1)); const topKw=Object.entries(kwMap).sort((a,b)=>b[1]-a[1]).slice(0,30); if(!plan.aiKeywords){ container.innerHTML=`<div class="section-label">🔥 Trending keywords</div><div class="kw-grid">${topKw.map(([k,c])=>`<span class="kw-tag">${esc(k)} <span style="opacity:0.5">${c}</span></span>`).join('')}</div><div style="background:#2A1E0A;border:1px solid rgba(245,176,66,0.25);border-radius:12px;padding:18px;margin-top:20px;text-align:center;"><div style="font-size:1.1rem;margin-bottom:8px;">⚡ Upgrade to Pro for full keyword intelligence</div><div style="font-size:12px;color:var(--text-sec);margin-bottom:14px;">AI keyword clusters · content gap analysis · question keywords · topic briefs</div><a href="pricing.html"><button style="background:var(--accent);color:#0a0c10;border:none;border-radius:30px;padding:8px 22px;font-weight:700;cursor:pointer;font-size:13px;">View Pro Plan →</button></a></div>`; return; } container.innerHTML=`<div class="section-label">🔥 Trending keywords</div><div class="kw-grid">${topKw.map(([k,c])=>`<span class="kw-tag" data-term="${esc(k)}">${esc(k)} <span style="opacity:0.5">${c}</span></span>`).join('')}</div><div class="section-label" style="margin-top:16px">🧠 Click any keyword to generate a topic brief</div><div id="kwAiSection" style="margin-top:20px"><div style="text-align:center;padding:24px;color:var(--text-hint)"><span class="spinner"></span> Loading AI keyword intelligence…</div></div>`; container.querySelectorAll('.kw-tag').forEach(el=>el.addEventListener('click',()=>generateBriefFromTopic(el.dataset.term))); const phraseMap={}; stories.forEach(s=>{ const words=s.title.toLowerCase().replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(w=>w.length>=4&&!['this','that','with','from','have','been','will','were','they','their','what','when','which','about','after','before'].includes(w)); for(let i=0;i<words.length-1;i++){ const b=`${words[i]} ${words[i+1]}`; phraseMap[b]=(phraseMap[b]||0)+1; } }); const topPhrases=Object.entries(phraseMap).filter(([,c])=>c>=2).sort((a,b)=>b[1]-a[1]).slice(0,15); const qWords=['how','why','what','when','who','which','will','can','should']; const questions=stories.filter(s=>qWords.some(q=>s.title.toLowerCase().startsWith(q))).slice(0,8); const prompt=`You are a senior SEO content strategist. Analyze these trending keywords from live news data.\n\nTOP KEYWORDS:\n${topKw.slice(0,20).map(([k,c])=>`- "${k}" (frequency: ${c})`).join('\n')}\n\nTRENDING PHRASES:\n${topPhrases.slice(0,12).map(([p,c])=>`- "${p}" (${c} articles)`).join('\n')}\n\nQUESTION KEYWORDS:\n${questions.map(s=>`- "${s.title}"`).join('\n')}\n\nTOP HEADLINES FOR CONTEXT:\n${stories.slice(0,8).map(s=>`- [${s.source}] ${s.title}`).join('\n')}\n\nRespond ONLY with valid JSON, no markdown: {"clusters":[{"theme":"","intent":"informational|news|opinion|commercial","urgency":"breaking|trending|evergreen","keywords":["kw1","kw2","kw3"],"competition":"low|medium|high","potential":"low|medium|high","summary":"one sentence"}],"gaps":[{"keyword":"","reason":"why this is an opportunity","angle":"suggested article angle"}],"questions":[{"question":"","why":"why readers are asking this"}],"avoid":[{"keyword":"","reason":""}]}`; try{ const raw=await callAIWithRetry({prompt,maxTokens:2000,provider:settings.aiProvider,retries:3,delayMs:2000}); const data=safeJsonParse(raw,{clusters:[],gaps:[],questions:[],avoid:[]}); const sec=document.getElementById('kwAiSection'); if(!sec) return; let h=''; if(topPhrases.length) h+=`<div class="section-label">📌 Trending phrases</div><div class="kw-grid">${topPhrases.map(([p])=>`<button class="kw-tag" data-term="${esc(p)}" style="color:var(--accent);border-color:rgba(245,176,66,0.3)">${esc(p)}</button>`).join('')}</div>`; if(data.questions?.length){ h+=`<div class="section-label" style="margin-top:18px">❓ People are asking</div>`; data.questions.forEach(q=>{ h+=`<div class="kw-tag" data-term="${esc(q.question)}" style="display:block;padding:8px 14px;margin-bottom:6px;border-radius:10px;cursor:pointer"><span style="color:var(--accent);font-weight:600;margin-right:6px">→</span>${esc(q.question)}${q.why?`<span style="color:var(--text-hint);font-size:11px;margin-left:8px">${esc(q.why)}</span>`:''}</div>`; }); } if(data.clusters?.length){ h+=`<div class="section-label" style="margin-top:18px">🤖 AI keyword clusters</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:6px">`; data.clusters.forEach(c=>{ const urgencyColor={breaking:'#E07A5F',trending:'#f5b042',evergreen:'#8BC97F'}[c.urgency]||'#f5b042'; h+=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-weight:700;font-size:13px;flex:1">${esc(c.theme)}</span><span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(0,0,0,0.3);color:${urgencyColor};border:1px solid ${urgencyColor}33">${c.urgency}</span><span style="font-size:10px;color:var(--text-hint)">${c.intent}</span></div><div style="font-size:12px;color:var(--text-sec);margin-bottom:10px;line-height:1.5">${esc(c.summary)}</div><div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">${(c.keywords||[]).map(k=>`<button class="kw-tag" data-term="${esc(k)}" style="padding:2px 9px;font-size:11px">${esc(k)}</button>`).join('')}</div><div style="font-size:11px;color:var(--text-hint)">Competition: ${c.competition} · Potential: ${c.potential}</div></div>`; }); h+=`</div>`; } if(data.gaps?.length){ h+=`<div class="section-label" style="margin-top:18px">🎯 Content gap opportunities</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:6px">`; data.gaps.forEach(g=>{ h+=`<div style="background:var(--surface);border:1px solid rgba(245,176,66,0.15);border-radius:12px;padding:14px"><div style="font-weight:700;font-size:13px;margin-bottom:6px;color:var(--accent)">${esc(g.keyword)}</div><div style="font-size:12px;color:var(--text-sec);margin-bottom:8px;line-height:1.5">${esc(g.reason)}</div><div style="font-size:11px;color:var(--text-hint);font-style:italic;margin-bottom:10px">${esc(g.angle)}</div><button class="kw-tag" data-term="${esc(g.keyword)}" style="font-size:11px;padding:4px 12px;color:var(--accent);border-color:rgba(245,176,66,0.3)">📝 Generate brief →</button></div>`; }); h+=`</div>`; } if(data.avoid?.length){ h+=`<div class="section-label" style="margin-top:18px">🚫 Keywords to avoid</div><div class="kw-grid">`; data.avoid.forEach(a=>{ h+=`<span title="${esc(a.reason)}" style="padding:4px 12px;border:1px solid var(--border);border-radius:20px;font-size:11px;color:var(--text-hint);text-decoration:line-through;opacity:0.5">${esc(a.keyword)}</span>`; }); h+=`</div>`; } sec.innerHTML=h; sec.querySelectorAll('.kw-tag[data-term]').forEach(el=>{ el.addEventListener('click',()=>generateBriefFromTopic(el.dataset.term)); }); }catch(e){ document.getElementById('kwAiSection').innerHTML=`<div class="error-msg">AI keyword enrichment failed: ${esc(e.message)}</div>`; } }
+async function generateBriefFromTopic(topic){ const briefsDiv=document.getElementById('briefsContent'); if(briefsDiv) briefsDiv.innerHTML='<div class="empty"><span class="spinner"></span> Generating brief…</div>'; document.querySelector('.tab[data-tab="briefs"]').click(); const prompt=`Content brief for topic ${JSON.stringify(topic)}. Return ONLY JSON: {"headline":"","primaryKeyword":${JSON.stringify(topic)},"secondaryKeywords":[],"angle":"","outline":["s1","s2","s3","s4"],"audience":"professionals","wordCount":1000,"keyPoints":[],"callToAction":""}`; try{ const raw=await callAIWithRetry({prompt,maxTokens:600,provider:settings.aiProvider,retries:2,delayMs:1000}); let brief=safeJsonParse(raw,{}); if(!brief.headline||!brief.angle) throw new Error('Invalid JSON'); currentBrief=brief; renderBrief(brief); }catch(e){ const fallbackBrief={headline:`${topic} – Complete Analysis`,angle:`Deep dive into ${topic}, covering key facts, recent developments, and future outlook.`,primaryKeyword:topic,secondaryKeywords:[topic,'trends','insights'],outline:['Introduction','Key facts and background','Current situation','Expert opinions','Conclusion'],audience:'General readers and professionals',wordCount:1000,keyPoints:[],callToAction:'Explore more on this topic'}; currentBrief=fallbackBrief; renderBrief(fallbackBrief); } }
+async function generateBrief(story){ if(!(await getCurrentPlan()).briefs){ renderUpsellBanner('briefsContent','briefs'); document.querySelector('.tab[data-tab="briefs"]').click(); return; } const briefsDiv=document.getElementById('briefsContent'); if(briefsDiv) briefsDiv.innerHTML='<div class="empty"><span class="spinner"></span> Creating brief…</div>'; document.querySelector('.tab[data-tab="briefs"]').click(); const prompt=`Story: ${JSON.stringify(story.title)}. Return ONLY JSON brief: {"headline":"","primaryKeyword":"","secondaryKeywords":[],"angle":"","outline":["s1","s2","s3","s4"],"audience":"","wordCount":1200,"keyPoints":[],"callToAction":""}`; try{ const raw=await callAIWithRetry({prompt,maxTokens:700,provider:settings.aiProvider,retries:2,delayMs:1000}); let brief=safeJsonParse(raw,{}); if(!brief.headline||!brief.angle) throw new Error('Invalid'); currentBrief=brief; renderBrief(brief); }catch(e){ if(briefsDiv) briefsDiv.innerHTML=`<div class="error-msg">Brief error: ${esc(e.message)}</div>`; } }
+function renderBrief(brief){ const briefsDiv=document.getElementById('briefsContent'); if(!briefsDiv) return; briefsDiv.innerHTML=`<div class="brief-card"><div class="brief-headline">${esc(brief.headline)}</div><div class="brief-angle">🎯 ${esc(brief.angle)}</div><div style="font-size:12px;margin-bottom:8px"><strong>Primary keyword:</strong> ${esc(brief.primaryKeyword)}</div><div style="font-size:12px;margin-bottom:6px"><strong>Outline:</strong></div><ol class="brief-outline">${(brief.outline||[]).map(o=>`<li>${esc(o)}</li>`).join('')}</ol><div class="card-actions"><button id="genDraftBtn" class="act-btn">✍️ Generate Draft</button><button id="copyBriefBtn" class="act-btn">⎘ Copy</button></div></div>`; document.getElementById('genDraftBtn')?.addEventListener('click',()=>generateDraft(brief)); document.getElementById('copyBriefBtn')?.addEventListener('click',()=>navigator.clipboard?.writeText(JSON.stringify(brief,null,2))); }
+async function generateDraft(brief){ if(!(await getCurrentPlan()).drafts){ renderUpsellBanner('draftContent','drafts'); document.querySelector('.tab[data-tab="draft"]').click(); return; } const draftDiv=document.getElementById('draftContent'); if(draftDiv) draftDiv.innerHTML='<div class="empty"><span class="spinner"></span> Writing draft…</div>'; document.querySelector('.tab[data-tab="draft"]').click(); const prompt=`Write a ${brief.wordCount||1000}-word AP-style article. Headline: ${brief.headline}. Keyword: ${brief.primaryKeyword}. Outline: ${(brief.outline||[]).join(', ')}. Angle: ${brief.angle}. Audience: ${brief.audience || 'general readers'}. Use engaging lede, short paragraphs, subheadings. No fabricated quotes.`; try{ const draft=await callAIWithRetry({prompt,maxTokens:2500,provider:settings.aiProvider,retries:2,delayMs:1500}); if(draftDiv){ draftDiv.innerHTML=`<div class="draft-output">${esc(draft)}</div><div class="draft-actions"><button id="copyDraftBtn" class="act-btn">📋 Copy Draft</button><div class="tone-selector">🎭 Tone <select id="humanizerToneSelect"><option value="casual">Casual</option><option value="professional">Professional</option><option value="witty">Witty</option><option value="empathetic">Empathetic</option><option value="simple">Simple & Clear</option></select></div><button id="humanizeDraftBtn" class="act-btn">✨ Humanize</button><button id="exportMdBtn" class="act-btn">⬇ Export MD</button></div>`; document.getElementById('copyDraftBtn')?.addEventListener('click',()=>navigator.clipboard?.writeText(draft)); document.getElementById('exportMdBtn')?.addEventListener('click',()=>{ const blob=new Blob([draft],{type:'text/markdown'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`draft-${Date.now()}.md`; a.click(); }); document.getElementById('humanizeDraftBtn')?.addEventListener('click',()=>humanizeDraft(draft,document.getElementById('humanizerToneSelect')?.value)); } }catch(e){ if(draftDiv) draftDiv.innerHTML=`<div class="error-msg">Draft error: ${esc(e.message)}</div>`; } }
+async function runPipeline(){ try{ const user=await getCurrentUser(); if(!user){ openModal('login'); return; } const crawlCheck=await canCrawl(); if(!crawlCheck.ok){ renderUpsellBanner('storyList','crawl'); return; } const selected=[...document.querySelectorAll('.source-chip.active:not(.locked)')].map(c=>c.dataset.src); if(!selected.length){ document.getElementById('storyList').innerHTML='<div class="error-msg">Select at least one source category.</div>'; return; } const crawlBtn=document.getElementById('crawlBtn'); const progressDiv=document.getElementById('progressMsg'); const progFill=document.getElementById('progFill'); if(crawlBtn) crawlBtn.disabled=true; if(progressDiv) progressDiv.innerHTML='<span class="spinner"></span> Crawling sources…'; if(progFill) progFill.style.width='5%'; await incrementCrawlCount(); await renderUsageBar(); let raw=await crawlAllSources(selected); raw=rankStories(raw).slice(0,35); if(progressDiv) progressDiv.innerHTML=`<span class="spinner"></span> Analyzing ${raw.length} stories...`; if(progFill) progFill.style.width='30%'; const analyzed=[]; for(let i=0;i<raw.length;i++){ try{ const a=await analyzeArticle(raw[i]); analyzed.push({...raw[i],...a,analyzed:true}); }catch(e){ analyzed.push({...raw[i],emotion:'neutral',sentiment:'neutral',intonation:'informative',confidence:0.5,keywords:[],explanation:''}); } const pct=30+Math.round(((i+1)/raw.length)*65); if(progFill) progFill.style.width=pct+'%'; if(progressDiv) progressDiv.textContent=`Analyzed ${i+1} / ${raw.length}…`; if(i<raw.length-1) await new Promise(resolve=>setTimeout(resolve,1100)); } stories=analyzed; renderStories(); renderStats(); renderFilterRow(); await renderKeywords(); if(progFill) progFill.style.width='100%'; if(progressDiv) progressDiv.textContent='✅ Done'; setTimeout(()=>{ if(progressDiv) progressDiv.textContent=''; if(progFill) progFill.style.width='0%'; },2500); if(crawlBtn) crawlBtn.disabled=false; }catch(err){ console.error('Pipeline error:',err); const storyDiv=document.getElementById('storyList'); if(storyDiv) storyDiv.innerHTML=`<div class="error-msg">❌ Error: ${err.message}</div>`; document.getElementById('crawlBtn').disabled=false; } }
+async function renderUsageBar(){ const plan=await getCurrentPlan(); const bar=document.getElementById('usageBar'); if(!bar) return; if(plan.crawlLimit===Infinity){ bar.style.display='none'; return; } bar.style.display='flex'; const count=await getCrawlCount(); const pct=Math.min((count/plan.crawlLimit)*100,100); const fill=document.getElementById('usageFill'); const countEl=document.getElementById('usageCount'); if(fill) fill.style.width=pct+'%'; if(countEl) countEl.textContent=`${count} / ${plan.crawlLimit}`; if(fill) fill.style.background=pct>=90?'#E07A5F':'#f5b042'; }
+async function renderSourceChips(){ const plan=await getCurrentPlan(); const allowed=plan.sources; const row=document.getElementById('sourceChipsRow'); if(!row) return; row.innerHTML=Object.keys(SOURCE_LABELS).map(src=>{ const isAllowed=allowed.includes(src); return `<button class="source-chip${isAllowed?' active':''}${!isAllowed?' locked':''}" data-src="${src}" ${!isAllowed?'disabled':''}>${SOURCE_LABELS[src]}${!isAllowed?' 🔒':''}</button>`; }).join(''); row.querySelectorAll('.source-chip:not(.locked)').forEach(chip=>chip.addEventListener('click',()=>chip.classList.toggle('active'))); row.querySelectorAll('.source-chip.locked').forEach(chip=>chip.addEventListener('click',()=>window.location.href='pricing.html')); }
+async function renderAccountPane(){ const user=await getCurrentUser(); const plan=await getCurrentPlan(); if(!user) return; const accountCard=document.getElementById('accountCard'); const planCard=document.getElementById('planCard'); if(accountCard){ accountCard.innerHTML=`<div class="account-row"><div class="account-avatar">${(user.name||'?')[0].toUpperCase()}</div><div><div style="font-weight:700;font-size:15px">${escapeHtml(user.name)}</div><div style="font-size:12px;color:var(--text-sec)">${escapeHtml(user.email)}</div><div style="margin-top:6px"><span class="plan-badge ${plan.badgeClass}">${plan.label}</span></div></div></div><div><button class="sh-btn" onclick="logout()">Sign out</button></div>`; } if(planCard){ planCard.innerHTML=`<div class="settings-section-title">📋 Your plan: <span style="color:var(--accent)">${plan.label}</span></div><div style="font-size:12px;color:var(--text-sec);margin-bottom:16px">${plan.crawlLimit===Infinity?'Unlimited crawls':`${plan.crawlLimit} crawls/month`} · ${plan.briefs?'Briefs & Drafts ✓':'No briefs or drafts'} · ${plan.allSources?'All sources ✓':'3 sources only'}</div>${plan.label==='Free'?'<a href="pricing.html"><button class="save-btn" style="max-width:240px">⚡ Upgrade to Pro</button></a><div style="margin-top:10px;font-size:11px;color:var(--text-hint)">Pro: $19/mo · unlimited crawls · briefs & drafts · all sources · AI keywords</div>':''}${plan.label==='Pro'?'<a href="contact.html"><button class="sh-btn" style="padding:10px 20px;font-size:13px">Contact sales for Enterprise</button></a>':''}`; } }
+async function renderTabLocks(){ const plan=await getCurrentPlan(); document.getElementById('briefsTabLock').textContent=plan.briefs?'':'🔒'; document.getElementById('draftTabLock').textContent=plan.drafts?'':'🔒'; document.getElementById('humanizerTabLock').textContent=plan.drafts?'':'🔒'; document.getElementById('enrichPlanNote').textContent=plan.aiKeywords?'':'(Pro feature)'; }
+async function loadSettingsUI(){ try{ const s=await loadSettings(); settings=s; }catch(e){ console.warn(e); document.getElementById('dashboardError').style.display='block'; document.getElementById('dashboardError').innerHTML=`Failed to load settings: ${e.message}. Check Supabase configuration.`; } document.getElementById('rss2jsonKey').value=settings.rss2jsonKey||''; document.getElementById('proxyUrl').value=settings.proxyUrl||''; const enrichToggle=document.getElementById('aiEnrichToggle'); if(enrichToggle&&settings.aiKeywords) enrichToggle.classList.add('on'); if(settings.aiProvider==='mistral') document.getElementById('providerMistral')?.click(); else document.getElementById('providerAnthropic')?.click(); }
+async function saveSettingsUI(){ settings.aiProvider=document.querySelector('.provider-btn.active')?.id==='providerMistral'?'mistral':'anthropic'; settings.rss2jsonKey=document.getElementById('rss2jsonKey')?.value||''; settings.proxyUrl=document.getElementById('proxyUrl')?.value||''; settings.aiKeywords=document.getElementById('aiEnrichToggle')?.classList.contains('on')||false; await saveSettings(settings); const msg=document.getElementById('settingsMsg'); if(msg){ msg.textContent='✓ Saved'; setTimeout(()=>msg.textContent='',2000); } }
+async function updateSiteHeader(){ const el=document.getElementById('siteHeaderAuth'); if(!el) return; const user=await getCurrentUser(); if(user){ const plan=await getCurrentPlan(); el.innerHTML=`<span class="plan-badge ${plan.badgeClass}">${plan.label}</span><span class="sh-username">${escapeHtml(user.name||user.email)}</span><button class="sh-btn" onclick="logout()">Sign out</button>`; }else{ el.innerHTML=`<button class="sh-btn-accent" onclick="openModal('login')">Sign in</button>`; } }
+async function initDashboard(){ try{ await loadSettingsUI(); await renderSourceChips(); await renderUsageBar(); await renderTabLocks(); await renderAccountPane(); await updateSiteHeader(); document.querySelectorAll('.tab').forEach(tab=>tab.addEventListener('click',()=>{ document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active')); tab.classList.add('active'); document.getElementById(`pane-${tab.dataset.tab}`)?.classList.add('active'); })); document.getElementById('crawlBtn')?.addEventListener('click',runPipeline); document.getElementById('refreshBtn')?.addEventListener('click',runPipeline); document.getElementById('settingsBtn')?.addEventListener('click',()=>document.querySelector('.tab[data-tab="settings"]').click()); document.getElementById('saveSettingsBtn')?.addEventListener('click',saveSettingsUI); document.getElementById('aiEnrichToggle')?.addEventListener('click',e=>e.currentTarget.classList.toggle('on')); document.getElementById('briefManualBtn')?.addEventListener('click',async()=>{ if(!(await getCurrentPlan()).briefs){ renderUpsellBanner('briefsContent','briefs'); return; } const topic=document.getElementById('briefTopicInput')?.value.trim(); if(!topic){ document.getElementById('briefsContent').innerHTML='<div class="error-msg">Please enter a topic.</div>'; return; } generateBriefFromTopic(topic); }); document.getElementById('draftManualBtn')?.addEventListener('click',async()=>{ if(!(await getCurrentPlan()).drafts){ renderUpsellBanner('draftContent','drafts'); return; } const prompt=document.getElementById('draftPromptInput')?.value.trim(); const wordCount=document.getElementById('draftWordCount')?.value||'1000'; const style=document.getElementById('draftStyleInput')?.value||'AP style'; if(!prompt){ document.getElementById('draftContent').innerHTML='<div class="error-msg">Please describe the article.</div>'; return; } generateDraftFromPrompt(prompt,wordCount,style); }); const providerAnth=document.getElementById('providerAnthropic'),providerMist=document.getElementById('providerMistral'),groupAnth=document.getElementById('groupAnthropicKey'),groupMist=document.getElementById('groupMistralKey'); if(providerAnth) providerAnth.addEventListener('click',()=>{ settings.aiProvider='anthropic'; providerAnth.classList.add('active'); providerMist?.classList.remove('active'); if(groupAnth) groupAnth.style.display='block'; if(groupMist) groupMist.style.display='none'; }); if(providerMist) providerMist.addEventListener('click',()=>{ settings.aiProvider='mistral'; providerMist.classList.add('active'); providerAnth?.classList.remove('active'); if(groupMist) groupMist.style.display='block'; if(groupAnth) groupAnth.style.display='none'; }); }catch(err){ console.error('Init error:',err); document.getElementById('dashboardError').style.display='block'; document.getElementById('dashboardError').innerHTML=`Failed to initialize dashboard: ${err.message}. Check browser console for details.`; } }
+async function checkAuthAndRender(){ try{ const user=await getCurrentUser(); const authGate=document.getElementById('authGate'); const dashboardContent=document.getElementById('dashboardContent'); if(user){ authGate.style.display='none'; dashboardContent.style.display='block'; if(!window.dashboardInitialized){ window.dashboardInitialized=true; await initDashboard(); } await updateSiteHeader(); }else{ authGate.style.display='flex'; dashboardContent.style.display='none'; await updateSiteHeader(); } }catch(err){ console.error('Auth check error:',err); document.getElementById('authGate').innerHTML=`<div class="error-msg">Error: ${err.message}. Check Supabase URL and anon key in auth-supabase.js</div>`; } }
+document.addEventListener('DOMContentLoaded',()=>{ checkAuthAndRender(); window.addEventListener('storage',checkAuthAndRender); document.addEventListener('visibilitychange',()=>{ if(!document.hidden) checkAuthAndRender(); }); if(window.supabaseClient) window.supabaseClient.auth.onAuthStateChange(()=>{ checkAuthAndRender(); }); });
+function renderUpsellBanner(containerId,feature){ const container=document.getElementById(containerId); if(container) container.innerHTML=`<div class="empty"><div class="empty-icon">🔒</div><h3>${feature} is a Pro feature</h3><p>Upgrade to Pro for unlimited briefs, drafts, and all sources.</p><a href="pricing.html"><button class="sh-btn-accent" style="margin-top:12px">View Pro Plan →</button></a></div>`; }
+async function generateDraftFromPrompt(userPrompt,wordCount,style){ if(!(await getCurrentPlan()).drafts){ renderUpsellBanner('draftContent','drafts'); return; } const draftDiv=document.getElementById('draftContent'); if(draftDiv) draftDiv.innerHTML='<div class="empty"><span class="spinner"></span> Writing draft…</div>'; document.querySelector('.tab[data-tab="draft"]').click(); const prompt=`Write a ${wordCount}-word article in ${style}.\n\nUser brief: ${userPrompt}\n\nRequirements: engaging lede, short paragraphs, clear subheadings, no fabricated quotes, strong conclusion.`; try{ const draft=await callAIWithRetry({prompt,maxTokens:2500,provider:settings.aiProvider,retries:2,delayMs:1500}); if(draftDiv){ draftDiv.innerHTML=`<div class="draft-output">${esc(draft)}</div><div class="draft-actions"><button id="copyDraftBtn" class="act-btn">📋 Copy Draft</button><div class="tone-selector">🎭 Tone <select id="humanizerToneSelect"><option value="casual">Casual</option><option value="professional">Professional</option><option value="witty">Witty</option><option value="empathetic">Empathetic</option><option value="simple">Simple & Clear</option></select></div><button id="humanizeDraftBtn" class="act-btn">✨ Humanize</button><button id="exportMdBtn" class="act-btn">⬇ Export MD</button></div>`; document.getElementById('copyDraftBtn')?.addEventListener('click',()=>navigator.clipboard?.writeText(draft)); document.getElementById('exportMdBtn')?.addEventListener('click',()=>{ const blob=new Blob([draft],{type:'text/markdown'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`draft-${Date.now()}.md`; a.click(); }); document.getElementById('humanizeDraftBtn')?.addEventListener('click',()=>humanizeDraft(draft,document.getElementById('humanizerToneSelect')?.value)); } }catch(e){ if(draftDiv) draftDiv.innerHTML=`<div class="error-msg">Draft error: ${esc(e.message)}</div>`; } }
+async function humanizeDraft(text,tone){ const draftDiv=document.getElementById('draftContent'); if(draftDiv) draftDiv.innerHTML='<div class="empty"><span class="spinner"></span> Humanizing…</div>'; const prompt=`Rewrite the following article in a ${tone} tone. Make it sound natural, human, and varied. Keep all facts intact. Return only the rewritten article.\n\n${text}`; try{ const result=await callAIWithRetry({prompt,maxTokens:3000,provider:settings.aiProvider,retries:2,delayMs:1500}); if(draftDiv){ draftDiv.innerHTML=`<div class="draft-output">${esc(result)}</div><div class="draft-actions"><button id="copyDraftBtn" class="act-btn">📋 Copy Draft</button><button id="humanizeDraftBtn" class="act-btn">✨ Humanize again</button><button id="exportMdBtn" class="act-btn">⬇ Export MD</button></div>`; document.getElementById('copyDraftBtn')?.addEventListener('click',()=>navigator.clipboard?.writeText(result)); document.getElementById('exportMdBtn')?.addEventListener('click',()=>{ const blob=new Blob([result],{type:'text/markdown'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`humanized-${Date.now()}.md`; a.click(); }); document.getElementById('humanizeDraftBtn')?.addEventListener('click',()=>humanizeDraft(result,document.getElementById('humanizerToneSelect')?.value)); } }catch(e){ if(draftDiv) draftDiv.innerHTML=`<div class="error-msg">Humanizer error: ${esc(e.message)}</div>`; } }
 </script>
 </body>
 </html>

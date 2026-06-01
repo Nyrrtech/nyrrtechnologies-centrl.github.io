@@ -183,6 +183,7 @@ textarea.settings-input{resize:vertical;min-height:72px}
       <button class="tab" data-tab="keywords">Keywords</button>
       <button class="tab" data-tab="briefs">Briefs <span class="tab-lock" id="briefsTabLock"></span></button>
       <button class="tab" data-tab="draft">Draft <span class="tab-lock" id="draftTabLock"></span></button>
+      <button class="tab" data-tab="humanizer">✨ Humanizer <span class="tab-lock" id="humanizerTabLock"></span></button>
       <button class="tab" data-tab="settings">Settings</button>
       <button class="tab" data-tab="account">Account</button>
     </div>
@@ -247,6 +248,88 @@ textarea.settings-input{resize:vertical;min-height:72px}
       </div>
       <div id="draftContent" class="empty"><div class="empty-icon">✍️</div>Describe your article above or generate a brief first in the Briefs tab.</div>
     </div>
+    <!-- ========== HUMANIZER PANE ========== -->
+    <div class="pane" id="pane-humanizer">
+      <div class="settings-card" style="border-color:rgba(245,176,66,0.2)">
+        <div class="settings-section-title">✨ Advanced AI Humanizer
+          <span style="font-size:10px;background:rgba(245,176,66,0.12);color:var(--accent);padding:2px 8px;border-radius:20px;margin-left:6px;border:1px solid rgba(245,176,66,0.25)">Anti-Detection</span>
+        </div>
+        <p style="font-size:12px;color:var(--text-sec);margin-bottom:18px;line-height:1.6">Rewrite AI-generated content to pass detection tools (GPTZero, Originality, Turnitin) while preserving all facts and SEO signals. Uses multi-pass rewriting to maximise burstiness and perplexity variation.</p>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+          <div>
+            <div class="settings-label">Writing Persona</div>
+            <select id="hzPersona" class="settings-input">
+              <option value="journalist">📰 Investigative Journalist</option>
+              <option value="blogger">✍️ Personal Blogger</option>
+              <option value="expert">🎓 Industry Expert</option>
+              <option value="storyteller">📖 Storyteller / Narrator</option>
+              <option value="analyst">📊 Business Analyst</option>
+            </select>
+          </div>
+          <div>
+            <div class="settings-label">Tone</div>
+            <select id="hzTone" class="settings-input">
+              <option value="casual">Casual & Conversational</option>
+              <option value="professional">Professional</option>
+              <option value="witty">Witty & Sharp</option>
+              <option value="empathetic">Warm & Empathetic</option>
+              <option value="simple">Plain & Simple</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+          <div>
+            <div class="settings-label">Detection Bypass Level</div>
+            <select id="hzBypassLevel" class="settings-input">
+              <option value="light">Light — Minimal changes</option>
+              <option value="medium" selected>Medium — Balanced rewrite</option>
+              <option value="aggressive">Aggressive — Deep rewrite</option>
+            </select>
+          </div>
+          <div>
+            <div class="settings-label">SEO Optimization</div>
+            <select id="hzSeoMode" class="settings-input">
+              <option value="none">No SEO adjustments</option>
+              <option value="basic" selected>Basic — Headings + NLP terms</option>
+              <option value="full">Full — Entities + semantic depth</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="margin-bottom:14px">
+          <div class="settings-label">Focus Keyword (for SEO) <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></div>
+          <input id="hzKeyword" class="settings-input" type="text" placeholder="e.g. climate policy, AI regulation, crypto markets…">
+        </div>
+
+        <div style="margin-bottom:6px">
+          <div class="settings-label">Paste your article below</div>
+          <textarea id="hzInput" class="settings-input" rows="10" placeholder="Paste your AI-generated article here. It will be rewritten to sound naturally human, bypass AI detectors, and be SEO-friendly…" style="width:100%;resize:vertical;font-family:inherit;line-height:1.6"></textarea>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px">
+          <button id="hzRunBtn" class="run-btn" style="margin-left:0">✨ Humanize Article</button>
+          <div id="hzPassBadges" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+        </div>
+        <div id="hzProgressMsg" style="font-size:11px;color:#B0A07A;margin-top:8px;min-height:16px"></div>
+        <div class="prog-bar-wrap" style="margin-top:6px"><div class="prog-bar-fill" id="hzProgFill"></div></div>
+      </div>
+
+      <div id="hzOutput" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+          <div class="settings-section-title" style="margin:0">✅ Humanized Output</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap" id="hzScoreBadges"></div>
+        </div>
+        <div id="hzOutputText" class="draft-output" style="max-height:600px"></div>
+        <div class="draft-actions" style="margin-top:12px">
+          <button id="hzCopyBtn" class="act-btn">📋 Copy</button>
+          <button id="hzRehumanizeBtn" class="act-btn">🔄 Re-humanize</button>
+          <button id="hzExportBtn" class="act-btn">⬇ Export MD</button>
+        </div>
+      </div>
+    </div>
+
     <div class="pane" id="pane-settings">
       <div class="settings-card">
         <div class="settings-section-title">⚡ AI Provider</div>
@@ -1068,133 +1151,320 @@ Use engaging lede, short paragraphs, subheadings. No fabricated quotes.`;
   } catch(e) { if (draftDiv) draftDiv.innerHTML = `<div class="error-msg">Draft error: ${esc(e.message)}</div>`; }
 }
 
-// ----- ENHANCED HUMANIZER with natural speech patterns & small inconsistencies -----
-async function humanizeDraft(text, tone = 'casual') {
+// ============================================================
+// ADVANCED MULTI-PASS HUMANIZER — Anti-AI-Detection Engine
+// Targets: GPTZero, Originality.ai, Turnitin, Copyleaks, ZeroGPT
+// Strategy: Perplexity boost + Burstiness variation + Lexical fingerprinting
+// ============================================================
+
+const HUMANIZER_BANNED = [
+  'delve','leverage','revolutionize','groundbreaking','unprecedented',
+  'game-changer','transformative','cutting-edge','holistic','synergy',
+  'paradigm','disruptive','innovative','robust','seamless','unlock',
+  'empower','streamline','optimize','utilize','harness','realm',
+  'moreover','furthermore','notably','consequently','accordingly',
+  "in conclusion","to summarize","it is important to note",
+  "it is worth mentioning","one must consider","as we can see",
+  "in today's fast-paced world","in the digital age","in recent years",
+  "needless to say","it goes without saying","at the end of the day",
+  'moving forward','going forward','touch base','circle back',
+  'dive deep','take a deep dive','unpack','explore','navigate',
+  'landscape','ecosystem','journey','pivotal','crucial','vital',
+  'significant','substantial','comprehensive','facilitate','implement'
+];
+
+const HUMANIZER_PERSONAS = {
+  journalist: {
+    voice: 'seasoned investigative journalist with 15+ years of experience',
+    traits: [
+      'Lead with the most surprising or counterintuitive fact',
+      'Use the inverted pyramid: most important first, details later',
+      'Name real people and places specifically — avoid vague references',
+      'Insert short, punchy paragraphs between longer analytical ones',
+      'Challenge assumptions: "But that narrative misses something important."',
+      'Use em-dashes for asides — like this — to add texture',
+      'Occasionally address the reader: "Here\'s what you need to understand."'
+    ]
+  },
+  blogger: {
+    voice: 'enthusiastic personal blogger who has deep knowledge of the topic',
+    traits: [
+      'Start with a personal anecdote or relatable scenario',
+      'Use "I" occasionally — not excessively, but naturally',
+      'Ask rhetorical questions your reader is probably thinking',
+      'Use casual connectors: "Anyway,", "Here\'s the thing:", "Okay so,"',
+      'Break into very short paragraphs — sometimes just one sentence',
+      'Use parenthetical asides (like this) for personality',
+      'Use "you" frequently to make it feel like a conversation'
+    ]
+  },
+  expert: {
+    voice: 'authoritative subject-matter expert writing for peers and informed readers',
+    traits: [
+      'Use precise, field-specific terminology naturally (not to show off)',
+      'Reference historical context: "This mirrors what happened in 2008 when..."',
+      'Acknowledge nuance: "It\'s more complicated than it looks."',
+      'Use hedging language: "The evidence suggests...", "Early data indicates..."',
+      'Be willing to say what others get wrong',
+      'Use the word "actually" to correct misconceptions',
+      'Short declarative sentences after complex ones create rhythm'
+    ]
+  },
+  storyteller: {
+    voice: 'narrative journalist and storyteller who makes dry topics compelling',
+    traits: [
+      'Open with a scene or moment, not a thesis',
+      'Use sensory language: "the numbers tell a stark story"',
+      'Build tension through sequencing: what happened, then what changed',
+      'Vary dramatically between one-word sentences and complex ones',
+      'Use the rule of three in lists',
+      'End paragraphs with a turn or twist when possible'
+    ]
+  },
+  analyst: {
+    voice: 'sharp business/policy analyst who writes clear, data-driven commentary',
+    traits: [
+      'Lead with the key takeaway, not background',
+      'Use numbered breakdowns: "Three things stand out here."',
+      'Contrast what people expect vs. what\'s actually happening',
+      'Reference real-world implications: "For businesses, this means..."',
+      'Keep sentences tight and purposeful — no fluff',
+      'Be direct about uncertainty: "We don\'t know yet, but..."'
+    ]
+  }
+};
+
+const HUMANIZER_BYPASS_INSTRUCTIONS = {
+  light: `Make moderate changes: replace AI buzzwords, add contractions, vary sentence length slightly. Preserve most of the original structure. Target: reduce AI-detection probability by ~30%.`,
+  medium: `Significantly rewrite the text while keeping all facts:
+    - Restructure at least 40% of sentences
+    - Add 3-5 natural human quirks (incomplete thoughts, parenthetical asides, rhetorical questions)
+    - Vary sentence length dramatically: some very short (3-6 words), some complex (25+ words)
+    - Change at least 30% of word choices — especially openings of sentences
+    - Insert at least 2 places where the writer voice bleeds through naturally
+    - Deliberately vary paragraph length: some 1-sentence, some 4-5 sentences
+    Target: reduce AI-detection probability by ~65%.`,
+  aggressive: `Deeply transform the text — keep ONLY facts, data, and named entities:
+    - Rewrite every sentence from scratch in the persona voice
+    - Change all paragraph structures and section transitions
+    - Add personal voice, opinions, and texture throughout
+    - Use highly varied sentence patterns: fragments, occasional run-ons, complex embedded clauses
+    - Add natural imperfections: a comma splice, a sentence starting with "And" or "But"
+    - Introduce burstiness: clusters of short sentences, then one very long analytical one
+    Target: reduce AI-detection probability by ~85%.`
+};
+
+const HUMANIZER_SEO_INSTRUCTIONS = {
+  none: '',
+  basic: `\n\nSEO (Basic): Use the focus keyword naturally in the first paragraph and at least 2 other places. Keep sentences scannable. Use active voice for clarity signals.`,
+  full: `\n\nSEO (Full): Use focus keyword in first 100 words, at least one heading, and final paragraph. Include 3-5 semantically related LSI terms. Use named entities (people, places, organisations) for topical authority. Structure for featured snippets: answer questions directly and early. Strong topic sentences that signal paragraph content to NLP systems.`
+};
+
+async function runAdvancedHumanizer({ text, persona, tone, bypassLevel, seoMode, focusKeyword, targetDiv, onComplete }) {
   const apiKey = settings.aiProvider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
   if (!apiKey) {
-    alert('Please add an AI API key in Settings to use the Humanizer.');
-    return;
+    if (targetDiv) targetDiv.innerHTML = '<div class="error-msg">\u26a0\ufe0f Add your API key in Settings first.</div>';
+    return null;
   }
-  const draftDiv = document.getElementById('draftContent');
-  if (draftDiv) draftDiv.innerHTML = '<div class="empty"><span class="spinner"></span> Humanizing draft…</div>';
 
-  const bannedWords = [
-    'delve', 'leverage', 'revolutionize', 'groundbreaking', 'unprecedented',
-    'game-changer', 'transformative', 'cutting-edge', 'holistic', 'synergy',
-    'paradigm', 'disrupt', 'innovative', 'robust', 'seamless', 'unlock',
-    'empower', 'streamline', 'optimize', 'utilize', 'harness', 'realm',
-    'moreover', 'furthermore', 'notably', 'consequently', 'accordingly'
-  ];
+  const personaData = HUMANIZER_PERSONAS[persona] || HUMANIZER_PERSONAS.journalist;
+  const bypassInstr = HUMANIZER_BYPASS_INSTRUCTIONS[bypassLevel] || HUMANIZER_BYPASS_INSTRUCTIONS.medium;
+  const seoInstr = HUMANIZER_SEO_INSTRUCTIONS[seoMode] || '';
+  const bannedList = HUMANIZER_BANNED.join('", "');
+  const keywordLine = focusKeyword ? `\nFOCUS KEYWORD: "${focusKeyword}" — use naturally, never force it.` : '';
 
-  const toneGuide = {
-    casual: `Write in a warm, conversational, natural human voice – like a knowledgeable friend telling a story.
-      - Use contractions (it's, don't, we'll, that's).
-      - Vary sentence length: mix very short (3-5 words) with longer ones.
-      - Use occasional rhetorical questions ("you know?", "right?").
-      - Add small interjections like "you know", "actually", "the thing is", "look", "here's the deal".
-      - Break long paragraphs into shorter ones (2-4 sentences max).
-      - It's fine to start sentences with "And", "But", "So", "Or" – real people do this.
-      - Use sentence fragments occasionally for emphasis ("Exactly.", "No way.", "Here's why.").
-      - Use "like" as a filler once or twice ("It's like…", "Something like that").`,
-
-    professional: `Write in a polished, professional, yet approachable tone – like a seasoned journalist.
-      - Use clear, concise sentences.
-      - Avoid jargon but maintain authority.
-      - Use active voice.
-      - Keep paragraphs tight (3-5 sentences).
-      - Sound credible and trustworthy.
-      - Avoid sentence fragments unless for deliberate effect.
-      - Use "And" or "But" occasionally – it adds rhythm.`,
-
-    witty: `Rewrite with wit, charm, and a touch of humour.
-      - Use clever wordplay, light sarcasm, and surprising metaphors.
-      - Keep it smart and entertaining – like a sharp columnist.
-      - Don't force jokes, but aim to make the reader smile at least once.
-      - Short, punchy sentences work well.`,
-
-    empathetic: `Rewrite with deep empathy and human warmth.
-      - Use compassionate language.
-      - Acknowledge the reader's possible feelings.
-      - Use "we" and "you" to build connection.
-      - Soften hard facts with understanding.
-      - Make the reader feel seen and supported.
-      - Sentence fragments like "That hurts." or "We get it." are fine.`,
-
-    simple: `Rewrite in extremely simple, clear English – like explaining to a 12-year-old.
-      - Use the most common words (no fancy vocabulary).
-      - Keep sentences very short (max 15-20 words).
-      - One idea per sentence.
-      - Avoid any jargon, metaphors, or complex clauses.
-      - Use bullet points or short paragraphs for lists.
-      - Use "you" and "we" to be direct.
-      - Never use words longer than three syllables unless unavoidable.
-      - Replace "utilize" with "use", "commence" with "start", "terminate" with "end".`
+  const toneGuideMap = {
+    casual: 'warm, conversational, like a knowledgeable friend — use contractions, short paragraphs, rhetorical questions',
+    professional: 'polished and authoritative yet approachable — clear, active voice, tight paragraphs',
+    witty: 'sharp, clever, with light humour — wordplay, surprising metaphors, punchy sentences',
+    empathetic: 'warm and human — use "we" and "you", acknowledge feelings, compassionate language',
+    simple: 'plain English — short sentences (max 15 words), common words only, one idea per sentence'
   };
 
-  const bannedList = bannedWords.join('", "');
-  const prompt = `${toneGuide[tone]}
+  const passes = bypassLevel === 'light' ? 1 : bypassLevel === 'medium' ? 2 : 3;
+  let currentText = text;
 
-STRICT RULES – MUST FOLLOW:
-1. NEVER use any of these AI buzzwords: "${bannedList}". Replace them with simple words.
-2. DO NOT write perfectly formal, textbook English. Allow natural flow:
-   - Start sentences with "And", "But", "So", "Or" when it feels right.
-   - Use sentence fragments occasionally (e.g., "Exactly.", "No surprise there.", "Here's the thing.").
-   - Use "like" as a filler once or twice (but not excessively).
-   - Use "you know", "I mean", "actually", "basically" sparingly.
-   - Comma splices are okay if they improve rhythm (e.g., "It's simple, just do this.").
-3. Vary sentence openings – don't always start with subject-verb.
-4. Avoid "In addition", "Moreover", "Furthermore", "Consequently". Instead use "Also", "Plus", "So", "That's why".
-5. Prefer active voice over passive voice.
-6. Use contractions (it's, don't, we'll, that's) unless tone is "professional".
-7. Break any sentence longer than 25 words into two or more sentences.
-8. Remove "in order to" – replace with "to".
-9. Replace "is able to" with "can", "has the ability to" with "can".
+  const setProgress = (msg, pct) => {
+    const progMsg = document.getElementById('hzProgressMsg');
+    const progFill = document.getElementById('hzProgFill');
+    if (progMsg) progMsg.innerHTML = msg;
+    if (progFill) progFill.style.width = pct + '%';
+  };
 
-IMPORTANT: Keep ALL facts, names, dates, quotes, statistics, and key points exactly as they are. Do NOT add false information. Do NOT remove any essential data.
+  const setBadge = (label, color) => {
+    const badges = document.getElementById('hzPassBadges');
+    if (badges) {
+      const b = document.createElement('span');
+      b.style.cssText = `font-size:10px;padding:2px 9px;border-radius:20px;background:${color}22;color:${color};border:1px solid ${color}44`;
+      b.textContent = label;
+      badges.appendChild(b);
+    }
+  };
 
-Now rewrite the following article following all the rules above and the tone instructions. Return only the rewritten article.
-
-ARTICLE:
-${text}`;
+  const passBadges = document.getElementById('hzPassBadges');
+  if (passBadges) passBadges.innerHTML = '';
 
   try {
-    const humanized = await callAIWithRetry({ prompt, maxTokens: 3000, apiKey, provider: settings.aiProvider, retries: 2, delayMs: 1500 });
-    if (draftDiv) {
-      draftDiv.innerHTML = `<div class="draft-output">${esc(humanized)}</div>
-        <div class="draft-actions">
-          <button id="copyDraftBtn" class="act-btn">📋 Copy Draft</button>
-          <div class="tone-selector">
-            🎭 Tone 
-            <select id="humanizerToneSelect">
-              <option value="casual" ${tone === 'casual' ? 'selected' : ''}>Casual</option>
-              <option value="professional" ${tone === 'professional' ? 'selected' : ''}>Professional</option>
-              <option value="witty" ${tone === 'witty' ? 'selected' : ''}>Witty</option>
-              <option value="empathetic" ${tone === 'empathetic' ? 'selected' : ''}>Empathetic</option>
-              <option value="simple" ${tone === 'simple' ? 'selected' : ''}>Simple & Clear</option>
-            </select>
-          </div>
-          <button id="humanizeDraftBtn" class="act-btn">✨ Humanize again</button>
-          ${canUseExport() ? `<button id="exportMdBtn" class="act-btn">⬇ Export MD</button>` : ''}
-        </div>`;
-      document.getElementById('copyDraftBtn')?.addEventListener('click', () => navigator.clipboard?.writeText(humanized));
-      const toneSelect = document.getElementById('humanizerToneSelect');
-      if (toneSelect) {
-        toneSelect.addEventListener('change', (e) => humanizeDraft(humanized, e.target.value));
-      }
-      document.getElementById('humanizeDraftBtn')?.addEventListener('click', () => {
-        const newTone = document.getElementById('humanizerToneSelect')?.value || 'casual';
-        humanizeDraft(humanized, newTone);
-      });
-      if (canUseExport()) {
-        document.getElementById('exportMdBtn')?.addEventListener('click', () => {
-          const blob = new Blob([humanized], { type: 'text/markdown' });
-          const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-          a.download = `humanized-${Date.now()}.md`; a.click();
-        });
-      }
+    // PASS 1: Structure & Voice Transformation
+    setProgress('<span class="spinner"></span> Pass 1/' + passes + ': Restructuring & voice\u2026', 10);
+    setBadge('Pass 1: Structure', '#f5b042');
+
+    const pass1Prompt = `You are a ${personaData.voice}. Rewrite the article below with a completely new structure and voice.
+
+PERSONA TRAITS — apply all:
+${personaData.traits.map((t, i) => `${i+1}. ${t}`).join('\n')}
+
+TONE: ${toneGuideMap[tone] || toneGuideMap.casual}
+
+BYPASS LEVEL: ${bypassInstr}${keywordLine}
+
+ABSOLUTE RULES:
+1. NEVER use these AI-signature words/phrases: "${bannedList}"
+2. Keep ALL facts, statistics, dates, names, and quotes 100% accurate
+3. Do NOT add invented facts, quotes, or data
+4. Do NOT use "In conclusion", "To summarize", "It is important to note"
+5. Vary sentence length dramatically — critical for passing AI detection
+6. At least 20% of sentences should start with something other than subject-verb
+7. Use contractions freely unless tone is professional
+8. Add at least one sentence that states the writer's perspective or reaction
+9. Include at least one parenthetical aside for texture
+
+Return ONLY the rewritten article — no preamble, no explanation.
+
+ARTICLE:
+${currentText}`;
+
+    currentText = await callAIWithRetry({ prompt: pass1Prompt, maxTokens: 3200, apiKey, provider: settings.aiProvider, retries: 2, delayMs: 1500 });
+    setProgress('<span class="spinner"></span> Pass 1 complete.', 30);
+
+    if (passes >= 2) {
+      await new Promise(r => setTimeout(r, 800));
+      setProgress('<span class="spinner"></span> Pass 2/' + passes + ': Maximising burstiness & perplexity\u2026', 35);
+      setBadge('Pass 2: Burstiness', '#8BC97F');
+
+      const pass2Prompt = `You are an expert editor specialising in making AI-written text undetectable by AI detectors (GPTZero, Originality.ai, Turnitin).
+
+AI detectors look for:
+- LOW PERPLEXITY: predictable word choices. Fix by choosing unexpected but accurate synonyms.
+- LOW BURSTINESS: uniform sentence lengths. Fix with dramatic variation — very short next to very long.
+- UNIFORM TRANSITIONS: over-used transition words. Fix by cutting or replacing with natural ones.
+
+EDITING TASKS:
+1. Find the 5 longest sentences — restructure at least 3 of them
+2. Find the 5 shortest sentences — expand 2 OR leave as fragments for effect
+3. Replace predictable word choices with vivid, unexpected alternatives (accurate)
+4. Remove: "moreover", "furthermore", "however", "therefore", "thus", "hence", "consequently", "in addition", "additionally"
+5. Add 2-3 natural imperfections:
+   - A comma splice: "This matters, it changes everything."
+   - A sentence starting with "And" or "But" or "So"
+   - An em-dash interruption — like this — mid-sentence
+6. Make sure no two consecutive sentences have similar structure or length
+7. Check: does this read like a real human wrote it under deadline?${seoInstr}
+
+KEEP: all facts, all data, all names, all quotes unchanged.
+Return ONLY the edited article.
+
+ARTICLE:
+${currentText}`;
+
+      currentText = await callAIWithRetry({ prompt: pass2Prompt, maxTokens: 3200, apiKey, provider: settings.aiProvider, retries: 2, delayMs: 1500 });
+      setProgress('<span class="spinner"></span> Pass 2 complete.', 65);
     }
+
+    if (passes >= 3) {
+      await new Promise(r => setTimeout(r, 800));
+      setProgress('<span class="spinner"></span> Pass 3/' + passes + ': Scrubbing AI fingerprints\u2026', 70);
+      setBadge('Pass 3: Fingerprint Scrub', '#9B7EDE');
+
+      const pass3Prompt = `You are an AI-text forensics expert performing a final fingerprint scrub to make this article completely undetectable.
+
+FINAL CHECKS:
+1. LEXICAL DIVERSITY: Any word used more than 3 times (excluding common words)? Vary with synonyms.
+2. SENTENCE START PATTERNS: More than 3 consecutive sentences starting the same way? Change the pattern.
+3. PARAGRAPH RHYTHM: No two consecutive paragraphs should be the same length.
+4. HUMAN VOICE SIGNALS — add if missing:
+   - One place of mild surprise: "And that's actually remarkable when you think about it."
+   - One mild opinion: "Frankly, the industry has been slow to respond."
+   - One short standalone sentence for emphasis (3-7 words)
+   - One rhetorical question the reader is probably thinking
+5. REMOVE AI GIVEAWAYS:
+   - Any phrase sounding like a Wikipedia introduction
+   - Any perfectly balanced "on one hand... on the other hand" — make it messier
+   - Any "It is" + passive voice — rewrite actively
+   - Any triple parallel structure in a list of claims — break the pattern
+${focusKeyword ? `6. Confirm keyword "${focusKeyword}" appears naturally in first 150 words and at least once more` : ''}
+
+Return ONLY the final polished article. No commentary.
+
+ARTICLE:
+${currentText}`;
+
+      currentText = await callAIWithRetry({ prompt: pass3Prompt, maxTokens: 3200, apiKey, provider: settings.aiProvider, retries: 2, delayMs: 1500 });
+      setProgress('\u2705 All passes complete.', 100);
+      setBadge('\u2713 Done', '#f5b042');
+    } else {
+      setProgress('\u2705 Humanization complete.', 100);
+    }
+
+    setTimeout(() => {
+      const p = document.getElementById('hzProgressMsg');
+      const f = document.getElementById('hzProgFill');
+      if (p) p.textContent = '';
+      if (f) f.style.width = '0%';
+    }, 3000);
+
+    if (onComplete) onComplete(currentText);
+    return currentText;
+
   } catch (e) {
-    if (draftDiv) draftDiv.innerHTML = `<div class="error-msg">Humanizer failed: ${esc(e.message)}</div><div class="draft-output">${esc(text)}</div>`;
+    setProgress('', 0);
+    if (targetDiv) targetDiv.innerHTML = `<div class="error-msg">Humanizer error (${e.message}). Check your API key and try again.</div>`;
+    return null;
+  }
+}
+
+// Legacy humanizeDraft used by Draft tab — delegates to advanced engine
+async function humanizeDraft(text, tone = 'casual') {
+  const draftDiv = document.getElementById('draftContent');
+  if (draftDiv) draftDiv.innerHTML = '<div class="empty"><span class="spinner"></span> Humanizing draft\u2026</div>';
+
+  const result = await runAdvancedHumanizer({
+    text, persona: 'journalist', tone, bypassLevel: 'medium',
+    seoMode: 'basic', focusKeyword: '',
+    targetDiv: draftDiv, onComplete: null
+  });
+
+  if (!result) return;
+
+  if (draftDiv) {
+    draftDiv.innerHTML = `<div class="draft-output">${esc(result)}</div>
+      <div class="draft-actions">
+        <button id="copyDraftBtn" class="act-btn">\ud83d\udccb Copy Draft</button>
+        <div class="tone-selector">
+          \ud83c\udfa d Tone
+          <select id="humanizerToneSelect">
+            <option value="casual" ${tone==='casual'?'selected':''}>Casual</option>
+            <option value="professional" ${tone==='professional'?'selected':''}>Professional</option>
+            <option value="witty" ${tone==='witty'?'selected':''}>Witty</option>
+            <option value="empathetic" ${tone==='empathetic'?'selected':''}>Empathetic</option>
+            <option value="simple" ${tone==='simple'?'selected':''}>Simple & Clear</option>
+          </select>
+        </div>
+        <button id="humanizeDraftBtn" class="act-btn">\u2728 Humanize again</button>
+        ${canUseExport() ? `<button id="exportMdBtn" class="act-btn">\u2b07 Export MD</button>` : ''}
+      </div>`;
+    document.getElementById('copyDraftBtn')?.addEventListener('click', () => navigator.clipboard?.writeText(result));
+    document.getElementById('humanizeDraftBtn')?.addEventListener('click', () => {
+      const t = document.getElementById('humanizerToneSelect')?.value || 'casual';
+      humanizeDraft(result, t);
+    });
+    if (canUseExport()) {
+      document.getElementById('exportMdBtn')?.addEventListener('click', () => {
+        const blob = new Blob([result], {type:'text/markdown'});
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+        a.download = `humanized-${Date.now()}.md`; a.click();
+      });
+    }
   }
 }
 
@@ -1336,6 +1606,75 @@ function initDashboard() {
     if (groupMist) groupMist.style.display = 'block';
     if (groupAnth) groupAnth.style.display = 'none';
   });
+
+  // ── Humanizer Tab Init ──
+  const humanizerLock = document.getElementById('humanizerTabLock');
+  if (humanizerLock) humanizerLock.textContent = canUseDrafts() ? '' : '🔒';
+
+  let lastHumanizedText = '';
+
+  const hzRunBtn = document.getElementById('hzRunBtn');
+  if (hzRunBtn) hzRunBtn.addEventListener('click', async () => {
+    if (!canUseDrafts()) { renderUpsellBanner('hzOutput', 'drafts'); document.getElementById('hzOutput').style.display = 'block'; return; }
+    const text = document.getElementById('hzInput')?.value.trim();
+    if (!text || text.length < 50) {
+      document.getElementById('hzProgressMsg').textContent = '⚠️ Please paste an article (at least 50 characters).';
+      return;
+    }
+    const persona   = document.getElementById('hzPersona')?.value || 'journalist';
+    const tone      = document.getElementById('hzTone')?.value || 'casual';
+    const bypassLevel = document.getElementById('hzBypassLevel')?.value || 'medium';
+    const seoMode   = document.getElementById('hzSeoMode')?.value || 'basic';
+    const focusKeyword = document.getElementById('hzKeyword')?.value.trim() || '';
+
+    hzRunBtn.disabled = true;
+    document.getElementById('hzOutput').style.display = 'none';
+
+    const result = await runAdvancedHumanizer({
+      text, persona, tone, bypassLevel, seoMode, focusKeyword,
+      targetDiv: document.getElementById('hzOutput'),
+      onComplete: null
+    });
+
+    hzRunBtn.disabled = false;
+
+    if (result) {
+      lastHumanizedText = result;
+      const outputEl = document.getElementById('hzOutput');
+      const outputText = document.getElementById('hzOutputText');
+      if (outputText) outputText.textContent = result;
+      if (outputEl) outputEl.style.display = 'block';
+
+      // Rough humanness score (sentence length variance heuristic)
+      const sentences = result.match(/[^.!?]+[.!?]+/g) || [];
+      const lens = sentences.map(s => s.trim().split(/\s+/).length);
+      const avg = lens.reduce((a, b) => a + b, 0) / (lens.length || 1);
+      const variance = lens.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / (lens.length || 1);
+      const burstScore = Math.min(Math.round(Math.sqrt(variance) * 5), 99);
+      const passScore  = bypassLevel === 'aggressive' ? Math.min(burstScore + 20, 99) : bypassLevel === 'medium' ? Math.min(burstScore + 10, 95) : Math.min(burstScore + 5, 85);
+
+      const scoreBadges = document.getElementById('hzScoreBadges');
+      if (scoreBadges) {
+        scoreBadges.innerHTML = `
+          <span style="font-size:11px;padding:3px 10px;border-radius:20px;background:rgba(139,201,127,0.15);color:#8BC97F;border:1px solid rgba(139,201,127,0.3)">Burstiness: ${burstScore}%</span>
+          <span style="font-size:11px;padding:3px 10px;border-radius:20px;background:rgba(245,176,66,0.15);color:var(--accent);border:1px solid rgba(245,176,66,0.3)">Human Score: ~${passScore}%</span>
+          <span style="font-size:11px;padding:3px 10px;border-radius:20px;background:rgba(155,126,222,0.15);color:#9B7EDE;border:1px solid rgba(155,126,222,0.3)">${passes(bypassLevel)}-pass</span>`;
+      }
+
+      document.getElementById('hzCopyBtn')?.addEventListener('click', () => navigator.clipboard?.writeText(result));
+      document.getElementById('hzExportBtn')?.addEventListener('click', () => {
+        const blob = new Blob([result], { type: 'text/markdown' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+        a.download = `humanized-${Date.now()}.md`; a.click();
+      });
+      document.getElementById('hzRehumanizeBtn')?.addEventListener('click', () => {
+        document.getElementById('hzInput').value = result;
+        hzRunBtn.click();
+      });
+    }
+  });
+
+  function passes(level) { return level === 'light' ? '1' : level === 'medium' ? '2' : '3'; }
 }
 
 function checkAuthAndRender() {

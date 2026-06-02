@@ -1,8 +1,7 @@
 // ========== SUPABASE CLIENT INITIALIZATION ==========
-const SUPABASE_URL = 'https://mpwbiaquisxwgugejfra.supabase.co';  
+const SUPABASE_URL = 'https://mpwbiaquisxwgugejfra.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable__6fx1vLV-dnLmTNd0uYV9g_CQKy2Cju';
 
-// Initialize Supabase client (global for all pages)
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ========== PLANS DEFINITION ==========
@@ -50,6 +49,21 @@ function escapeHtml(str) {
   });
 }
 
+// ========== ENSURE PROFILE EXISTS ==========
+async function ensureProfileExists(userId, name) {
+  const { data: existing } = await supabaseClient
+    .from('profiles')
+    .select('id')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (!existing) {
+    await supabaseClient
+      .from('profiles')
+      .insert({ id: userId, name: name || 'User', plan: 'free' });
+  }
+}
+
 // ========== AUTHENTICATION FUNCTIONS ==========
 async function register(name, email, password) {
   const { data, error } = await supabaseClient.auth.signUp({
@@ -58,30 +72,34 @@ async function register(name, email, password) {
     options: { data: { name } }
   });
   if (error) throw error;
+  if (data.user) await ensureProfileExists(data.user.id, name);
   return data.user;
 }
 
 async function login(email, password) {
   const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
   if (error) throw error;
+  if (data.user) await ensureProfileExists(data.user.id, data.user.user_metadata?.name);
   return data.user;
 }
 
 async function logout() {
   await supabaseClient.auth.signOut();
-  window.location.reload();
+  window.location.href = '/'; // redirect to home after logout
 }
 
 async function getCurrentUser() {
   const { data: { user } } = await supabaseClient.auth.getUser();
   if (!user) return null;
-  
+
+  await ensureProfileExists(user.id, user.user_metadata?.name);
+
   const { data: profile } = await supabaseClient
     .from('profiles')
     .select('*')
     .eq('id', user.id)
     .single();
-  
+
   return {
     ...user,
     name: profile?.name || user.user_metadata?.name,
@@ -143,7 +161,6 @@ async function loadSettings() {
   
   if (error && error.code !== 'PGRST116') throw error;
   if (!data) {
-    // Create default settings
     const { data: newData, error: insertError } = await supabaseClient
       .from('user_settings')
       .insert({ user_id: user.id, ai_provider: 'anthropic', ai_keywords_enabled: true })
@@ -209,7 +226,7 @@ async function callAIWithRetry({ prompt, maxTokens, provider, retries = 3, delay
   throw lastError;
 }
 
-// ========== REFINED MODAL FUNCTIONS ==========
+// ========== MODAL FUNCTIONS ==========
 let modalOpenCallback = null;
 
 function openModal(tab = 'login') {
@@ -217,18 +234,15 @@ function openModal(tab = 'login') {
   if (!modal) return;
   modal.classList.add('open');
   switchModalTab(tab);
-  // Focus on first input
   setTimeout(() => {
     const input = document.querySelector(`#${tab === 'login' ? 'loginEmail' : 'regName'}`);
     if (input) input.focus();
   }, 100);
-  modalOpenCallback = null;
 }
 
 function closeModal() {
   const modal = document.getElementById('authModal');
   if (modal) modal.classList.remove('open');
-  // Clear form state
   document.getElementById('loginEmail').value = '';
   document.getElementById('loginPassword').value = '';
   document.getElementById('regName').value = '';
@@ -254,7 +268,6 @@ function switchModalTab(tab) {
     tabLogin.classList.remove('active');
   }
   
-  // Clear errors
   const loginError = document.getElementById('loginError');
   const registerError = document.getElementById('registerError');
   const registerSuccess = document.getElementById('registerSuccess');
@@ -283,7 +296,7 @@ async function doLogin() {
   try {
     await login(email, password);
     closeModal();
-    window.location.reload();
+    window.location.href = 'dashboard.html';
   } catch (err) {
     if (errorDiv) {
       errorDiv.textContent = err.message || 'Failed to sign in. Please check your credentials.';
@@ -391,7 +404,6 @@ async function initAccountDropdown() {
     </div>
   `;
   
-  // Close dropdown on click outside
   document.addEventListener('click', function(e) {
     const dropdown = document.getElementById(dropdownId);
     const btn = e.target.closest('.account-menu-btn');
@@ -404,7 +416,6 @@ async function initAccountDropdown() {
 function toggleAccountDropdown(dropdownId) {
   const dropdown = document.getElementById(dropdownId);
   if (dropdown.style.display === 'none') {
-    // Close other dropdowns
     document.querySelectorAll('.account-dropdown').forEach(d => {
       if (d.id !== dropdownId) d.style.display = 'none';
     });
@@ -414,7 +425,7 @@ function toggleAccountDropdown(dropdownId) {
   }
 }
 
-// ========== EXPORT TO GLOBAL SCOPE ==========
+// ========== EXPORT ==========
 window.supabaseClient = supabaseClient;
 window.register = register;
 window.login = login;

@@ -1,798 +1,233 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard – News Sentiment Radar</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#0A0A0A;--surface:#111317;--surface2:#1A1A1E;--surface3:#232328;--border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);--text:#F0F0F0;--text-sec:#9A9A9A;--text-hint:#5A5A5A;--accent:#f5b042;--gold-glow:rgba(245,176,66,0.15);--radius:10px;--radius-lg:16px;--font:'Inter',system-ui,sans-serif}
-body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.5}
-
-/* Header */
-.site-header{display:flex;align-items:center;gap:16px;padding:14px 28px;border-bottom:1px solid var(--border);background:rgba(10,12,16,0.95);position:sticky;top:0;z-index:200;backdrop-filter:blur(8px)}
-.sh-logo{display:flex;align-items:center;gap:10px;text-decoration:none}
-.sh-logo-text{font-size:16px;font-weight:700;background:linear-gradient(135deg,#fff 30%,var(--accent) 80%);-webkit-background-clip:text;background-clip:text;color:transparent}
-.sh-right{margin-left:auto;display:flex;align-items:center;gap:14px}
-
-.account-menu-container{position:relative}
-.account-menu-btn{display:flex;align-items:center;gap:10px;background:transparent;border:1px solid var(--border2);border-radius:50px;padding:6px 12px;cursor:pointer;font-family:var(--font);transition:all 0.2s;color:var(--text);font-size:13px}
-.account-menu-btn:hover{background:var(--surface2);border-color:var(--accent)}
-.account-avatar{width:32px;height:32px;border-radius:50%;background:var(--gold-glow);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:var(--accent)}
-.account-name{font-weight:500;max-width:100px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.dropdown-caret{font-size:11px;color:var(--text-sec);transition:transform 0.2s}
-.account-menu-btn:hover .dropdown-caret{transform:translateY(2px)}
-.account-dropdown{position:absolute;top:100%;right:0;margin-top:8px;background:var(--surface);border:1px solid var(--border);border-radius:16px;min-width:260px;box-shadow:0 12px 40px rgba(0,0,0,0.4);z-index:1000}
-.account-dropdown-header{display:flex;align-items:center;gap:12px;padding:14px}
-.account-avatar-lg{width:44px;height:44px;border-radius:50%;background:var(--gold-glow);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;color:var(--accent)}
-.account-dropdown-info{min-width:0}
-.account-dropdown-name{font-weight:600;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.account-dropdown-email{font-size:11px;color:var(--text-sec);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.account-dropdown-divider{height:1px;background:var(--border);margin:0 8px}
-.account-dropdown-plan{padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px}
-.plan-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-hint)}
-.account-dropdown-item{display:block;padding:10px 14px;color:var(--text-sec);text-decoration:none;font-size:12px;cursor:pointer;transition:all 0.15s;border:none;background:none;width:100%;text-align:left;font-family:var(--font)}
-.account-dropdown-item:hover{background:var(--surface2);color:var(--text)}
-.account-dropdown-logout:hover{background:rgba(224,122,95,0.1);color:#E07A5F}
-.plan-badge{padding:4px 10px;border-radius:16px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em}
-.plan-free{background:rgba(255,255,255,0.07);color:#888}
-.plan-pro{background:rgba(245,176,66,0.15);color:#f5b042;border:1px solid rgba(245,176,66,0.28)}
-.plan-enterprise{background:rgba(139,201,127,0.15);color:#8BC97F;border:1px solid rgba(139,201,127,0.28)}
-
-.dashboard-wrap{max-width:1400px;margin:0 auto;padding:24px 28px}
-
-/* Usage bar */
-.usage-bar{background:linear-gradient(135deg,var(--surface) 0%,rgba(17,19,23,0.5) 100%);border:1px solid rgba(245,176,66,0.15);border-radius:var(--radius-lg);padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-.usage-label{font-size:12px;color:var(--text-sec);flex-shrink:0}
-.usage-track{flex:1;min-width:120px;height:6px;background:var(--surface3);border-radius:4px;overflow:hidden;border:1px solid var(--border)}
-.usage-fill{height:100%;background:linear-gradient(90deg,var(--accent),#f5c075);border-radius:4px;transition:width 0.4s}
-.usage-count{font-size:12px;font-weight:600;flex-shrink:0;color:var(--text)}
-.usage-upgrade{font-size:11px;color:var(--accent);cursor:pointer;flex-shrink:0;text-decoration:none;font-weight:500;transition:all 0.2s}
-.usage-upgrade:hover{text-decoration:underline}
-
-.topbar{display:flex;align-items:center;gap:12px;padding-bottom:16px;border-bottom:1px solid var(--border);margin-bottom:0}
-.logo{font-weight:700;font-size:18px;flex:1;background:linear-gradient(135deg,#fff 40%,var(--accent) 80%);-webkit-background-clip:text;background-clip:text;color:transparent}
-.icon-btn{background:var(--surface2);border:1px solid var(--border);border-radius:40px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;transition:all 0.18s;color:var(--text-sec);font-family:var(--font);font-weight:500}
-.icon-btn:hover{background:var(--surface3);border-color:var(--accent);color:var(--accent)}
-
-.tabs{display:flex;gap:4px;padding:10px 0 0;border-bottom:1px solid var(--border);overflow-x:auto}
-.tab{padding:9px 16px;background:transparent;border:none;color:var(--text-hint);font-weight:500;font-size:13px;cursor:pointer;border-bottom:2px solid transparent;transition:0.15s;font-family:var(--font);white-space:nowrap}
-.tab:hover{color:var(--text-sec)}
-.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
-.tab-lock{font-size:10px;opacity:0.6;margin-left:4px}
-
-.pane{display:none;padding:20px 0}
-.pane.active{display:block}
-
-.controls-bar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;align-items:center}
-.source-chip{background:transparent;border:1px solid var(--border);border-radius:40px;padding:6px 14px;font-size:12px;color:var(--text-sec);cursor:pointer;transition:all 0.15s;font-family:var(--font);font-weight:500}
-.source-chip:hover{border-color:var(--accent);color:var(--accent)}
-.source-chip.active{background:var(--surface2);border-color:var(--accent);color:var(--accent)}
-.source-chip.locked{opacity:0.35;cursor:not-allowed;background:none}
-
-.run-btn{margin-left:auto;background:linear-gradient(135deg,var(--accent),#f5c075);color:#0a0c10;border:none;padding:8px 22px;border-radius:40px;font-weight:700;display:flex;align-items:center;gap:8px;cursor:pointer;font-family:var(--font);font-size:13px;transition:all 0.15s;box-shadow:0 4px 12px rgba(245,176,66,0.2)}
-.run-btn:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(245,176,66,0.3)}
-.run-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
-
-#progressMsg{font-size:11px;color:#B0A07A;margin-bottom:8px;min-height:18px}
-.prog-bar-wrap{height:4px;background:var(--surface2);border-radius:3px;margin-bottom:14px;overflow:hidden;border:1px solid var(--border)}
-.prog-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),#f5c075);width:0%;transition:width 0.3s;border-radius:3px}
-
-.stats-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
-.stat-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;text-align:center;transition:all 0.2s}
-.stat-box:hover{border-color:var(--accent);background:rgba(245,176,66,0.05)}
-.stat-value{font-size:26px;font-weight:800;color:var(--accent)}
-.stat-label{font-size:10px;color:var(--text-hint);margin-top:4px;text-transform:uppercase;letter-spacing:0.05em}
-
-.filter-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
-.filter-chip{background:var(--surface);border:1px solid var(--border);border-radius:30px;padding:5px 14px;font-size:11px;cursor:pointer;font-family:var(--font);transition:all 0.15s}
-.filter-chip:hover{border-color:var(--accent)}
-.filter-chip.active{background:#2A2418;border-color:var(--accent);color:var(--accent)}
-
-.story-list{display:flex;flex-direction:column;gap:14px}
-.story-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;transition:all 0.2s}
-.story-card:hover{border-color:var(--accent);background:rgba(245,176,66,0.02)}
-
-.card-top{display:flex;gap:12px}
-.emotion-dot{width:40px;height:40px;background:var(--gold-glow);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;border:1px solid rgba(245,176,66,0.2)}
-.card-body{flex:1;min-width:0}
-.card-meta{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;align-items:center}
-.badge{font-size:10px;padding:3px 10px;border-radius:20px;background:var(--surface2);font-weight:500}
-.badge-pos{background:rgba(139,201,127,0.15);color:#8BC97F}
-.badge-neg{background:rgba(224,122,95,0.15);color:#E07A5F}
-.badge-neutral{background:var(--surface3);color:var(--text-hint)}
-.ts{font-size:10px;color:var(--text-hint);margin-left:auto}
-.card-title{font-weight:600;font-size:14px;margin-bottom:6px}
-.card-title a{color:inherit;text-decoration:none;transition:color 0.2s}
-.card-title a:hover{color:var(--accent)}
-.card-explain{font-size:11px;color:var(--text-sec);margin:6px 0;line-height:1.5}
-.card-kw{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0}
-.kw{background:var(--surface3);padding:3px 9px;border-radius:12px;font-size:10px;border:1px solid var(--border)}
-.conf-row{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:10px;color:var(--text-sec)}
-.conf-track{flex:1;height:4px;background:var(--surface3);border-radius:4px;overflow:hidden;border:1px solid var(--border)}
-.conf-fill{height:100%;background:var(--accent);transition:width 0.4s}
-.card-actions{display:flex;gap:8px;margin-top:12px;border-top:1px solid var(--border);padding-top:10px}
-.act-btn{flex:1;background:transparent;border:1px solid var(--border);border-radius:8px;padding:6px;font-size:11px;cursor:pointer;color:var(--text-sec);font-family:var(--font);transition:all 0.15s;font-weight:500}
-.act-btn:hover{background:var(--surface2);color:var(--text);border-color:var(--accent)}
-.act-btn.locked-btn{opacity:0.35;cursor:not-allowed}
-
-.section-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-hint);margin:18px 0 10px}
-.kw-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
-.kw-tag{background:var(--surface2);border:1px solid var(--border);border-radius:30px;padding:5px 13px;font-size:12px;cursor:pointer;font-family:var(--font);transition:all 0.15s;font-weight:500}
-.kw-tag:hover{border-color:var(--accent);color:var(--accent)}
-.brief-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;margin-bottom:14px}
-.brief-headline{font-size:16px;font-weight:700;margin-bottom:10px;color:var(--text)}
-.brief-angle{color:var(--text-sec);margin-bottom:12px;font-size:12px;line-height:1.6;border-left:3px solid var(--accent);padding-left:12px}
-.brief-outline{margin-left:16px;margin-bottom:14px}
-.brief-outline li{color:var(--text-sec);font-size:12px;margin-bottom:6px}
-.draft-output{background:var(--surface2);border-radius:var(--radius);padding:18px;white-space:pre-wrap;font-size:12px;line-height:1.7;max-height:580px;overflow-y:auto;color:var(--text-sec);border:1px solid var(--border)}
-.draft-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px;justify-content:flex-start;align-items:center}
-.draft-actions .act-btn{flex:0 0 auto;padding:7px 14px;font-size:12px}
-.tone-selector{display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:30px;padding:5px 12px;font-size:11px}
-.tone-selector select{background:transparent;border:none;color:var(--text);font-size:11px;font-family:var(--font);outline:none;cursor:pointer}
-.tone-selector select option{background:var(--surface)}
-.settings-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;margin-bottom:16px}
-.settings-section-title{font-size:13px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px;color:var(--text)}
-.settings-group{margin-bottom:16px}
-.settings-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;color:var(--text-hint)}
-.settings-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:11px 13px;color:var(--text);font-family:var(--font);font-size:13px;outline:none;transition:all 0.2s}
-.settings-input:focus{border-color:var(--accent);background:rgba(245,176,66,0.05)}
-textarea.settings-input{resize:vertical;min-height:80px}
-.provider-row{display:flex;gap:10px;margin-bottom:14px}
-.provider-btn{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:40px;padding:10px;cursor:pointer;font-weight:600;font-family:var(--font);font-size:13px;color:var(--text-sec);transition:all 0.15s}
-.provider-btn:hover{border-color:var(--accent)}
-.provider-btn.active{background:#2A2318;border-color:var(--accent);color:var(--accent)}
-.toggle{width:42px;height:22px;background:var(--surface3);border-radius:40px;cursor:pointer;position:relative;flex-shrink:0;border:1px solid var(--border);transition:all 0.2s}
-.toggle.on{background:var(--accent);border-color:var(--accent)}
-.toggle::after{content:'';width:16px;height:16px;background:white;border-radius:50%;position:absolute;top:2px;left:2px;transition:0.2s}
-.toggle.on::after{left:21px}
-.save-btn{background:linear-gradient(135deg,var(--accent),#f5c075);color:#0a0c10;border:none;border-radius:40px;padding:12px;width:100%;font-weight:700;cursor:pointer;font-family:var(--font);font-size:13px;transition:all 0.15s;margin-top:8px;box-shadow:0 4px 12px rgba(245,176,66,0.2)}
-.save-btn:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(245,176,66,0.3)}
-.account-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;margin-bottom:16px}
-.account-avatar-lg-dash{width:56px;height:56px;border-radius:50%;background:var(--gold-glow);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:var(--accent);flex-shrink:0;border:2px solid rgba(245,176,66,0.2)}
-.account-row{display:flex;align-items:center;gap:16px;margin-bottom:16px}
-.empty{text-align:center;padding:56px 20px;color:var(--text-hint)}
-.empty-icon{font-size:2.8rem;margin-bottom:12px}
-.spinner{width:14px;height:14px;border:2px solid rgba(245,176,66,0.2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block;vertical-align:middle}
-@keyframes spin{to{transform:rotate(360deg)}}
-.error-msg{background:rgba(224,122,95,0.12);color:#E07A5F;padding:10px 14px;border-radius:12px;margin-bottom:14px;font-size:12px;border:1px solid rgba(224,122,95,0.2)}
-.auth-gate{text-align:center;padding:100px 20px}
-.auth-gate-icon{font-size:3.2rem;margin-bottom:16px}
-.auth-gate h2{font-size:1.6rem;margin-bottom:12px;color:var(--text)}
-.auth-gate p{color:var(--text-sec);margin-bottom:32px;max-width:400px;margin-left:auto;margin-right:auto;font-size:14px}
-.modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(6px);animation:fadeIn 0.2s}
-.modal-backdrop.open{display:flex}
-@keyframes fadeIn{from{opacity:0;backdrop-filter:blur(0)}to{opacity:1;backdrop-filter:blur(6px)}}
-.modal{background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:36px;width:100%;max-width:440px;position:relative;animation:slideUp 0.3s}
-@keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
-.modal-close{position:absolute;top:18px;right:22px;background:none;border:none;color:var(--text-sec);font-size:24px;cursor:pointer;line-height:1;transition:all 0.2s;width:32px;height:32px;display:flex;align-items:center;justify-content:center}
-.modal-close:hover{color:var(--text);background:var(--surface2);border-radius:50%}
-.modal-tabs{display:flex;gap:0;margin-bottom:28px;border-bottom:1px solid var(--border)}
-.modal-tab{flex:1;padding:12px;background:none;border:none;color:var(--text-sec);font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.15s;font-family:inherit;text-transform:capitalize}
-.modal-tab:hover{color:var(--text)}
-.modal-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
-.form-field{margin-bottom:16px}
-.form-field label{display:block;font-size:11px;font-weight:700;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:7px}
-.form-field input{width:100%;padding:11px 13px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;transition:all 0.2s}
-.form-field input:focus{border-color:var(--accent);background:rgba(245,176,66,0.05)}
-.modal-error{background:rgba(224,122,95,0.12);color:#E07A5F;padding:10px 13px;border-radius:12px;font-size:12px;margin-bottom:16px;display:none;border:1px solid rgba(224,122,95,0.2)}
-.modal-success{background:rgba(139,201,127,0.12);color:#8BC97F;padding:10px 13px;border-radius:12px;font-size:12px;margin-bottom:16px;display:none;border:1px solid rgba(139,201,127,0.2)}
-.modal-btn-full{width:100%;padding:12px;border-radius:40px;background:linear-gradient(135deg,var(--accent),#f5c075);color:#0a0c10;font-weight:700;font-size:13px;border:none;cursor:pointer;font-family:inherit;transition:all 0.2s;box-shadow:0 4px 12px rgba(245,176,66,0.2)}
-.modal-btn-full:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(245,176,66,0.3)}
-.modal-btn-full:disabled{opacity:0.6;cursor:not-allowed;transform:none}
-.modal-footer-link{text-align:center;margin-top:18px;font-size:12px;color:var(--text-sec)}
-.modal-footer-link a{color:var(--accent);cursor:pointer;font-weight:500;transition:color 0.2s}
-.modal-footer-link a:hover{color:#f5c075}
-@media (max-width:640px){.stats-strip{grid-template-columns:repeat(2,1fr)}.dashboard-wrap{padding:14px 16px}.draft-actions .act-btn{flex:1;text-align:center}.site-header{padding:12px 16px}.account-name{display:none}.modal{padding:28px 20px;margin:16px}}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard – News Sentiment Radar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="dashboard.css">
+  <style>
+    /* Prevent flash of wrong content */
+    #dashboardWrap > .loading-spinner { display: block; text-align: center; padding: 100px 20px; color: var(--text-sec); }
+    #dashboardWrap > .auth-gate, #dashboardWrap > #dashboardContent { display: none; }
+  </style>
+  <script>
+    // Immediately check for existing Supabase session to hide auth gate if logged in
+    (function() {
+      const hasSession = !!localStorage.getItem('supabase.auth.token');
+      if (hasSession) {
+        // We'll still run the full check later, but we hide the auth gate early
+        const style = document.createElement('style');
+        style.textContent = '#dashboardWrap > .auth-gate { display: none !important; } #dashboardWrap > .loading-spinner { display: block; }';
+        document.head.appendChild(style);
+      }
+    })();
+  </script>
 </head>
 <body>
+  <header class="site-header">
+    <a class="sh-logo" href="index.html">
+      <span class="sh-logo-text">Sentiment Radar</span>
+    </a>
+    <div class="sh-right" id="siteHeaderAuth"></div>
+  </header>
 
-<header class="site-header">
-  <a class="sh-logo" href="index.html">
-    <span class="sh-logo-text">Sentiment Radar</span>
-  </a>
-  <div class="sh-right" id="siteHeaderAuth"></div>
-</header>
+  <div class="dashboard-wrap" id="dashboardWrap">
+    <div class="loading-spinner" id="initialLoader">⟳ Loading dashboard...</div>
 
-<div class="dashboard-wrap" id="dashboardWrap">
-  <div id="authGate" class="auth-gate" style="display:flex">
-    <div class="auth-gate-icon">🔐</div>
-    <h2>Sign in to your dashboard</h2>
-    <p>Access your news sentiment analysis, briefs, and AI-powered drafts. Create a free account to get started.</p>
-    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
-      <button class="run-btn" style="margin-left:0;padding:11px 28px;font-size:13px" onclick="openModal('register')">Create free account</button>
-      <button class="source-chip" style="padding:11px 22px;font-size:13px;border:2px solid var(--accent);color:var(--accent)" onclick="openModal('login')">Sign in</button>
-    </div>
-  </div>
-
-  <div id="dashboardContent" style="display:none">
-    <div id="dashboardError" class="error-msg" style="display:none"></div>
-    
-    <div class="usage-bar" id="usageBar" style="display:none">
-      <span class="usage-label">📊 Monthly crawls</span>
-      <div class="usage-track"><div class="usage-fill" id="usageFill"></div></div>
-      <span class="usage-count" id="usageCount"></span>
-      <a href="pricing.html" class="usage-upgrade">Upgrade for unlimited →</a>
-    </div>
-
-    <div class="topbar">
-      <div class="logo">Sentiment <span style="-webkit-background-clip:unset;background:none;color:var(--accent)">Radar</span></div>
-      <button class="icon-btn" id="refreshBtn" title="Re-crawl news">↻</button>
-      <button class="icon-btn" id="settingsBtn" title="Settings">⚙</button>
-    </div>
-
-    <div class="tabs">
-      <button class="tab active" data-tab="news">📰 News</button>
-      <button class="tab" data-tab="keywords">🔑 Keywords</button>
-      <button class="tab" data-tab="briefs">📝 Briefs <span class="tab-lock" id="briefsTabLock"></span></button>
-      <button class="tab" data-tab="draft">✍️ Draft <span class="tab-lock" id="draftTabLock"></span></button>
-      <button class="tab" data-tab="humanizer">✨ Humanizer <span class="tab-lock" id="humanizerTabLock"></span></button>
-      <button class="tab" data-tab="settings">⚙️ Settings</button>
-      <button class="tab" data-tab="account">👤 Account</button>
-    </div>
-
-    <!-- NEWS PANE -->
-    <div class="pane active" id="pane-news">
-      <div class="controls-bar" id="sourceChipsRow"></div>
-      <div class="controls-bar"><button class="run-btn" id="crawlBtn">🚀 Crawl & Analyze</button></div>
-      <div id="progressMsg"></div>
-      <div class="prog-bar-wrap"><div class="prog-bar-fill" id="progFill"></div></div>
-      <div id="statsStrip" class="stats-strip" style="display:none"></div>
-      <div id="filterRow" class="filter-row" style="display:none"></div>
-      <div id="storyList" class="story-list"><div class="empty"><div class="empty-icon">📡</div><strong>Select sources and click Crawl</strong><br>to fetch trending stories across multiple news categories.</div></div>
-    </div>
-
-    <!-- KEYWORDS PANE -->
-    <div class="pane" id="pane-keywords">
-      <div id="kwContent" class="empty"><div class="empty-icon">🔑</div><strong>Run a crawl first</strong><br>to see trending keywords and topics.</div>
-    </div>
-
-    <!-- BRIEFS PANE -->
-    <div class="pane" id="pane-briefs">
-      <div class="settings-card" id="briefInputCard">
-        <div class="settings-section-title">✍️ Generate a brief</div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:8px">
-          <div style="flex:1;min-width:240px"><input id="briefTopicInput" class="settings-input" type="text" placeholder="Enter a topic, keyword, or headline…"></div>
-          <div style="min-width:140px"><select id="briefToneInput" class="settings-input"><option value="">Any tone</option><option value="investigative">Investigative</option><option value="explainer">Explainer</option><option value="opinion">Opinion / Editorial</option><option value="news report">Breaking news</option><option value="feature">Long-form feature</option><option value="how-to">How-to / Guide</option></select></div>
-          <button id="briefManualBtn" class="run-btn" style="margin-left:0;padding:8px 16px">Generate Brief</button>
-        </div>
-        <div style="font-size:11px;color:var(--text-hint)">Or click <strong>Brief</strong> on any story in the News tab.</div>
+    <!-- AUTH GATE (shown only if not logged in) -->
+    <div id="authGate" class="auth-gate">
+      <div class="auth-gate-icon">🔐</div>
+      <h2>Sign in to your dashboard</h2>
+      <p>Access your news sentiment analysis, briefs, and AI-powered drafts. Create a free account to get started.</p>
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+        <button class="run-btn" style="margin-left:0;padding:11px 28px;font-size:13px" onclick="openModal('register')">Create free account</button>
+        <button class="source-chip" style="padding:11px 22px;font-size:13px;border:2px solid var(--accent);color:var(--accent)" onclick="openModal('login')">Sign in</button>
       </div>
-      <div id="briefsContent" class="empty"><div class="empty-icon">📝</div><strong>Enter a topic above</strong><br>or click Brief on any news story card.</div>
     </div>
 
-    <!-- DRAFT PANE -->
-    <div class="pane" id="pane-draft">
-      <div class="settings-card" id="draftInputCard">
-        <div class="settings-section-title">✍️ Write a draft manually</div>
-        <textarea id="draftPromptInput" class="settings-input" rows="3" placeholder="Describe the article you want to write — topic, angle, key points, target audience, word count…"></textarea>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px">
-          <select id="draftWordCount" class="settings-input" style="width:140px"><option value="600">~600 words</option><option value="800">~800 words</option><option value="1000" selected>~1000 words</option><option value="1200">~1200 words</option><option value="1500">~1500 words</option><option value="2000">~2000 words</option></select>
-          <select id="draftStyleInput" class="settings-input" style="width:150px"><option value="AP style">AP news style</option><option value="conversational blog">Blog post</option><option value="academic">Academic</option><option value="opinion editorial">Op-ed</option><option value="feature magazine">Magazine feature</option></select>
-          <button id="draftManualBtn" class="run-btn" style="margin-left:0;padding:8px 16px">Generate Draft</button>
-        </div>
-        <div style="font-size:11px;color:var(--text-hint);margin-top:8px">Or generate a brief first, then click <strong>Generate Draft</strong> there.</div>
+    <!-- MAIN DASHBOARD CONTENT -->
+    <div id="dashboardContent">
+      <div id="dashboardError" class="error-msg" style="display:none"></div>
+      
+      <!-- Usage Bar -->
+      <div class="usage-bar" id="usageBar" style="display:none">
+        <span class="usage-label">📊 Monthly crawls</span>
+        <div class="usage-track"><div class="usage-fill" id="usageFill"></div></div>
+        <span class="usage-count" id="usageCount"></span>
+        <a href="pricing.html" class="usage-upgrade">Upgrade for unlimited →</a>
       </div>
-      <div id="draftContent" class="empty"><div class="empty-icon">✍️</div><strong>Describe your article above</strong><br>or generate a brief first in the Briefs tab.</div>
-    </div>
 
-    <!-- HUMANIZER PANE -->
-    <div class="pane" id="pane-humanizer">
-      <div class="settings-card" style="border-color:rgba(245,176,66,0.2)">
-        <div class="settings-section-title">✨ AI Humanizer <span style="font-size:10px;background:rgba(245,176,66,0.12);color:var(--accent);padding:2px 8px;border-radius:16px;margin-left:6px;border:1px solid rgba(245,176,66,0.25)">Pro</span></div>
-        <p style="font-size:12px;color:var(--text-sec);margin-bottom:16px;line-height:1.6">Rewrite AI-generated content to pass detection tools while preserving facts and SEO signals. Multi-pass rewriting for natural variation.</p>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
-          <div><div class="settings-label">Writing Persona</div><select id="hzPersona" class="settings-input"><option value="journalist">📰 Investigative Journalist</option><option value="blogger">✍️ Personal Blogger</option><option value="expert">🎓 Industry Expert</option><option value="storyteller">📖 Storyteller</option><option value="analyst">📊 Business Analyst</option></select></div>
-          <div><div class="settings-label">Tone</div><select id="hzTone" class="settings-input"><option value="casual">Casual & Conversational</option><option value="professional">Professional</option><option value="witty">Witty & Sharp</option><option value="empathetic">Warm & Empathetic</option><option value="simple">Plain & Simple</option></select></div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
-          <div><div class="settings-label">Detection Bypass</div><select id="hzBypassLevel" class="settings-input"><option value="light">Light — Minimal changes</option><option value="medium" selected>Medium — Balanced</option><option value="aggressive">Aggressive — Deep rewrite</option></select></div>
-          <div><div class="settings-label">SEO Optimization</div><select id="hzSeoMode" class="settings-input"><option value="none">No SEO adjustments</option><option value="basic" selected>Basic — Headings + NLP</option><option value="full">Full — Entities + semantic</option></select></div>
-        </div>
-        <div style="margin-bottom:14px"><div class="settings-label">Focus Keyword</div><input id="hzKeyword" class="settings-input" type="text" placeholder="e.g. climate policy, AI regulation…"></div>
-        <div style="margin-bottom:12px"><div class="settings-label">Article text</div><textarea id="hzInput" class="settings-input" rows="10" placeholder="Paste your AI-generated article here. It will be rewritten to sound naturally human and pass AI detectors…"></textarea></div>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><button id="hzRunBtn" class="run-btn" style="margin-left:0">✨ Humanize Article</button><div id="hzPassBadges" style="display:flex;gap:6px;flex-wrap:wrap"></div></div>
-        <div id="hzProgressMsg" style="font-size:11px;color:#B0A07A;margin-top:8px;min-height:16px"></div>
-        <div class="prog-bar-wrap" style="margin-top:6px"><div class="prog-bar-fill" id="hzProgFill"></div></div>
+      <!-- Top Bar -->
+      <div class="topbar">
+        <div class="logo">Sentiment <span style="-webkit-background-clip:unset;background:none;color:var(--accent)">Radar</span></div>
+        <button class="icon-btn" id="refreshBtn" title="Refresh stories">↻</button>
+        <button class="icon-btn" id="settingsBtn" title="Settings">⚙</button>
       </div>
-      <div id="hzOutput" style="display:none"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px"><div class="settings-section-title" style="margin:0">✅ Humanized Output</div><div style="display:flex;gap:8px;flex-wrap:wrap" id="hzScoreBadges"></div></div><div id="hzOutputText" class="draft-output" style="max-height:600px"></div><div class="draft-actions" style="margin-top:12px"><button id="hzCopyBtn" class="act-btn">📋 Copy</button><button id="hzRehumanizeBtn" class="act-btn">🔄 Re-humanize</button><button id="hzExportBtn" class="act-btn">⬇ Export MD</button></div></div>
-    </div>
 
-    <!-- SETTINGS PANE -->
-    <div class="pane" id="pane-settings">
-      <div class="settings-card">
-        <div class="settings-section-title">⚡ AI Provider</div>
-        <div class="provider-row">
-          <button class="provider-btn active" id="providerAnthropic">✦ Anthropic (Claude)</button>
-          <button class="provider-btn" id="providerMistral">◈ Mistral</button>
-        </div>
-        <div class="settings-group"><div class="settings-label">API Key (optional)</div><input class="settings-input" type="password" id="userApiKey" placeholder="Leave empty to use server key"></div>
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab active" data-tab="news">📰 News</button>
+        <button class="tab" data-tab="keywords">🔑 Keywords</button>
+        <button class="tab" data-tab="briefs">📝 Briefs <span class="tab-lock" id="briefsTabLock"></span></button>
+        <button class="tab" data-tab="draft">✍️ Draft <span class="tab-lock" id="draftTabLock"></span></button>
+        <button class="tab" data-tab="humanizer">✨ Humanizer <span class="tab-lock" id="humanizerTabLock"></span></button>
+        <button class="tab" data-tab="settings">⚙️ Settings</button>
+        <button class="tab" data-tab="account">👤 Account</button>
       </div>
-      <div class="settings-card">
-        <div class="settings-section-title">📡 RSS Proxy</div>
-        <div class="settings-group"><div class="settings-label">RSS2JSON Key</div><input class="settings-input" type="password" id="rss2jsonKey" placeholder="free at rss2json.com"></div>
-        <div class="settings-group"><div class="settings-label">Custom Proxy URL</div><input class="settings-input" type="text" id="proxyUrl" placeholder="https://your-worker.workers.dev"></div>
-      </div>
-      <div class="settings-card">
-        <div class="settings-section-title">⚙ Preferences</div>
-        <div class="settings-group" style="display:flex;align-items:center;gap:12px">
-          <button class="toggle" id="aiEnrichToggle"></button>
-          <span style="font-size:12px;color:var(--text-sec)">AI keyword enrichment <span id="enrichPlanNote" style="color:var(--accent);font-size:11px;font-weight:500"></span></span>
-        </div>
-      </div>
-      <button class="save-btn" id="saveSettingsBtn">💾 Save settings</button>
-      <div id="settingsMsg" style="margin-top:10px;text-align:center;font-size:12px;color:var(--accent)"></div>
-    </div>
 
-    <!-- ACCOUNT PANE -->
-    <div class="pane" id="pane-account">
-      <div class="account-card">
-        <div class="settings-section-title">👤 Account details</div>
-        <div class="account-row">
-          <div class="account-avatar-lg-dash" id="accountAvatar"></div>
-          <div>
-            <div id="accountName" style="font-weight:600;font-size:14px;color:var(--text);margin-bottom:2px"></div>
-            <div id="accountEmail" style="font-size:12px;color:var(--text-sec);margin-bottom:8px"></div>
-            <div id="accountPlanInfo" style="font-size:12px;color:var(--text-sec)"></div>
+      <!-- NEWS PANE -->
+      <div class="pane active" id="pane-news">
+        <div class="controls-bar" id="sourceChipsRow"></div>
+        <div class="controls-bar"><button class="run-btn" id="crawlBtn">🚀 Crawl & Analyze</button></div>
+        <div id="progressMsg"></div>
+        <div class="prog-bar-wrap"><div class="prog-bar-fill" id="progFill"></div></div>
+        <div id="statsStrip" class="stats-strip" style="display:none"></div>
+        <div id="filterRow" class="filter-row" style="display:none">
+          <button class="filter-chip active" data-filter="all">All</button>
+          <button class="filter-chip" data-filter="positive">Positive</button>
+          <button class="filter-chip" data-filter="negative">Negative</button>
+          <button class="filter-chip" data-filter="neutral">Neutral</button>
+        </div>
+        <div id="storyList" class="story-list"><div class="empty"><div class="empty-icon">📡</div><strong>Select sources and click Crawl</strong><br>to fetch trending stories across multiple news categories.</div></div>
+      </div>
+
+      <!-- KEYWORDS PANE -->
+      <div class="pane" id="pane-keywords">
+        <div id="kwContent" class="empty"><div class="empty-icon">🔑</div><strong>Run a crawl first</strong><br>to see trending keywords and topics.</div>
+      </div>
+
+      <!-- BRIEFS PANE -->
+      <div class="pane" id="pane-briefs">
+        <div class="settings-card" id="briefInputCard">
+          <div class="settings-section-title">✍️ Generate a brief</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:8px">
+            <div style="flex:1;min-width:240px"><input id="briefTopicInput" class="settings-input" type="text" placeholder="Enter a topic, keyword, or headline…"></div>
+            <div style="min-width:140px"><select id="briefToneInput" class="settings-input"><option value="">Any tone</option><option value="investigative">Investigative</option><option value="explainer">Explainer</option><option value="opinion">Opinion / Editorial</option><option value="news report">Breaking news</option><option value="feature">Long-form feature</option><option value="how-to">How-to / Guide</option></select></div>
+            <button id="briefManualBtn" class="run-btn" style="margin-left:0;padding:8px 16px">Generate Brief</button>
+          </div>
+          <div style="font-size:11px;color:var(--text-hint)">Or click <strong>Brief</strong> on any story in the News tab.</div>
+        </div>
+        <div id="briefsContent" class="empty"><div class="empty-icon">📝</div><strong>Enter a topic above</strong><br>or click Brief on any news story card.</div>
+      </div>
+
+      <!-- DRAFT PANE -->
+      <div class="pane" id="pane-draft">
+        <div class="settings-card" id="draftInputCard">
+          <div class="settings-section-title">✍️ Write a draft manually</div>
+          <textarea id="draftPromptInput" class="settings-input" rows="3" placeholder="Describe the article you want to write — topic, angle, key points, target audience, word count…"></textarea>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px">
+            <select id="draftWordCount" class="settings-input" style="width:140px"><option value="600">~600 words</option><option value="800">~800 words</option><option value="1000" selected>~1000 words</option><option value="1200">~1200 words</option><option value="1500">~1500 words</option><option value="2000">~2000 words</option></select>
+            <select id="draftStyleInput" class="settings-input" style="width:150px"><option value="AP style">AP news style</option><option value="conversational blog">Blog post</option><option value="academic">Academic</option><option value="opinion editorial">Op-ed</option><option value="feature magazine">Magazine feature</option></select>
+            <button id="draftManualBtn" class="run-btn" style="margin-left:0;padding:8px 16px">Generate Draft</button>
+          </div>
+          <div style="font-size:11px;color:var(--text-hint);margin-top:8px">Or generate a brief first, then click <strong>Generate Draft</strong> there.</div>
+        </div>
+        <div id="draftContent" class="empty"><div class="empty-icon">✍️</div><strong>Describe your article above</strong><br>or generate a brief first in the Briefs tab.</div>
+      </div>
+
+      <!-- HUMANIZER PANE -->
+      <div class="pane" id="pane-humanizer">
+        <div class="settings-card" style="border-color:rgba(245,176,66,0.2)">
+          <div class="settings-section-title">✨ AI Humanizer <span style="font-size:10px;background:rgba(245,176,66,0.12);color:var(--accent);padding:2px 8px;border-radius:16px;margin-left:6px;border:1px solid rgba(245,176,66,0.25)">Pro</span></div>
+          <p style="font-size:12px;color:var(--text-sec);margin-bottom:16px;line-height:1.6">Rewrite AI-generated content to pass detection tools while preserving facts and SEO signals. Multi-pass rewriting for natural variation.</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+            <div><div class="settings-label">Writing Persona</div><select id="hzPersona" class="settings-input"><option value="journalist">📰 Investigative Journalist</option><option value="blogger">✍️ Personal Blogger</option><option value="expert">🎓 Industry Expert</option><option value="storyteller">📖 Storyteller</option><option value="analyst">📊 Business Analyst</option></select></div>
+            <div><div class="settings-label">Tone</div><select id="hzTone" class="settings-input"><option value="casual">Casual & Conversational</option><option value="professional">Professional</option><option value="witty">Witty & Sharp</option><option value="empathetic">Warm & Empathetic</option><option value="simple">Plain & Simple</option></select></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+            <div><div class="settings-label">Detection Bypass</div><select id="hzBypassLevel" class="settings-input"><option value="light">Light — Minimal changes</option><option value="medium" selected>Medium — Balanced</option><option value="aggressive">Aggressive — Deep rewrite</option></select></div>
+            <div><div class="settings-label">SEO Optimization</div><select id="hzSeoMode" class="settings-input"><option value="none">No SEO adjustments</option><option value="basic" selected>Basic — Headings + NLP</option><option value="full">Full — Entities + semantic</option></select></div>
+          </div>
+          <div style="margin-bottom:14px"><div class="settings-label">Focus Keyword</div><input id="hzKeyword" class="settings-input" type="text" placeholder="e.g. climate policy, AI regulation…"></div>
+          <div style="margin-bottom:12px"><div class="settings-label">Article text</div><textarea id="hzInput" class="settings-input" rows="10" placeholder="Paste your AI-generated article here. It will be rewritten to sound naturally human and pass AI detectors…"></textarea></div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><button id="hzRunBtn" class="run-btn" style="margin-left:0">✨ Humanize Article</button><div id="hzPassBadges" style="display:flex;gap:6px;flex-wrap:wrap"></div></div>
+          <div id="hzProgressMsg" style="font-size:11px;color:#B0A07A;margin-top:8px;min-height:16px"></div>
+          <div class="prog-bar-wrap" style="margin-top:6px"><div class="prog-bar-fill" id="hzProgFill"></div></div>
+        </div>
+        <div id="hzOutput" style="display:none"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px"><div class="settings-section-title" style="margin:0">✅ Humanized Output</div><div style="display:flex;gap:8px;flex-wrap:wrap" id="hzScoreBadges"></div></div><div id="hzOutputText" class="draft-output" style="max-height:600px"></div><div class="draft-actions" style="margin-top:12px"><button id="hzCopyBtn" class="act-btn">📋 Copy</button><button id="hzRehumanizeBtn" class="act-btn">🔄 Re-humanize</button><button id="hzExportBtn" class="act-btn">⬇ Export MD</button></div></div>
+      </div>
+
+      <!-- SETTINGS PANE -->
+      <div class="pane" id="pane-settings">
+        <div class="settings-card">
+          <div class="settings-section-title">⚡ AI Provider</div>
+          <div class="provider-row">
+            <button class="provider-btn active" id="providerAnthropic">✦ Anthropic (Claude)</button>
+            <button class="provider-btn" id="providerMistral">◈ Mistral</button>
+          </div>
+          <div class="settings-group"><div class="settings-label">API Key (optional)</div><input class="settings-input" type="password" id="userApiKey" placeholder="Leave empty to use server key"></div>
+        </div>
+        <div class="settings-card">
+          <div class="settings-section-title">📡 RSS Proxy</div>
+          <div class="settings-group"><div class="settings-label">RSS2JSON Key</div><input class="settings-input" type="password" id="rss2jsonKey" placeholder="free at rss2json.com"></div>
+          <div class="settings-group"><div class="settings-label">Custom Proxy URL</div><input class="settings-input" type="text" id="proxyUrl" placeholder="https://your-worker.workers.dev"></div>
+        </div>
+        <div class="settings-card">
+          <div class="settings-section-title">⚙ Preferences</div>
+          <div class="settings-group" style="display:flex;align-items:center;gap:12px">
+            <button class="toggle" id="aiEnrichToggle"></button>
+            <span style="font-size:12px;color:var(--text-sec)">AI keyword enrichment <span id="enrichPlanNote" style="color:var(--accent);font-size:11px;font-weight:500"></span></span>
           </div>
         </div>
+        <button class="save-btn" id="saveSettingsBtn">💾 Save settings</button>
+        <div id="settingsMsg" style="margin-top:10px;text-align:center;font-size:12px;color:var(--accent)"></div>
       </div>
-      <div class="settings-card">
-        <div class="settings-section-title">📊 Subscription</div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-          <div><div style="font-size:12px;color:var(--text-sec);margin-bottom:4px">Current plan</div><div id="subscriptionPlan" style="font-weight:700;font-size:14px;color:var(--text)">—</div></div>
-          <a href="pricing.html" class="run-btn" style="margin-left:0;padding:8px 18px">Upgrade</a>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
 
-<!-- AUTH MODAL -->
-<div class="modal-backdrop" id="authModal">
-  <div class="modal">
-    <button class="modal-close" onclick="closeModal()">×</button>
-    <div class="modal-tabs">
-      <button class="modal-tab active" id="tabLogin" onclick="switchModalTab('login')">Sign in</button>
-      <button class="modal-tab" id="tabRegister" onclick="switchModalTab('register')">Create account</button>
-    </div>
-    <div id="formLogin">
-      <div class="modal-error" id="loginError"></div>
-      <div class="form-field"><label>Email address</label><input type="email" id="loginEmail" placeholder="you@example.com" autocomplete="email"></div>
-      <div class="form-field"><label>Password</label><input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password"></div>
-      <button class="modal-btn-full" onclick="doLogin()">Sign in</button>
-      <div class="modal-footer-link"><a onclick="switchModalTab('register')">Don't have an account? Create one free →</a></div>
-    </div>
-    <div id="formRegister" style="display:none">
-      <div class="modal-error" id="registerError"></div>
-      <div class="modal-success" id="registerSuccess"></div>
-      <div class="form-field"><label>Full name</label><input type="text" id="regName" placeholder="Jane Smith" autocomplete="name"></div>
-      <div class="form-field"><label>Email address</label><input type="email" id="regEmail" placeholder="you@example.com" autocomplete="email"></div>
-      <div class="form-field"><label>Password</label><input type="password" id="regPassword" placeholder="At least 8 characters" autocomplete="new-password"></div>
-      <button class="modal-btn-full" onclick="doRegister()">Create free account</button>
-      <div class="modal-footer-link" style="color:var(--text-sec); font-size:11px; margin-top:14px;">By signing up you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.</div>
-    </div>
-  </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="auth-supabase.js"></script>
-<script>
-// ----------------------------- GLOBAL STATE -----------------------------
-let currentStories = [];        // array of story objects with sentiment, keywords, etc.
-let selectedSources = [];       // e.g. ['world','tech','hackernews']
-let currentFilter = 'all';      // 'all', 'positive', 'negative', 'neutral'
-let currentPlan = null;
-let currentSettings = { aiProvider: 'anthropic', rss2jsonKey: '', proxyUrl: '', aiKeywords: true };
-let hzOriginalText = '';
-
-// Source definitions (RSS feeds)
-const SOURCES = {
-  world: { label: 'World News', url: 'https://feeds.bbci.co.uk/news/world/rss.xml', free: true },
-  us: { label: 'US News', url: 'https://feeds.bbci.co.uk/news/world/us_and_canada/rss.xml', free: false },
-  tech: { label: 'Technology', url: 'https://feeds.bbci.co.uk/news/technology/rss.xml', free: true },
-  science: { label: 'Science', url: 'https://feeds.bbci.co.uk/news/science_and_environment/rss.xml', free: false },
-  business: { label: 'Business', url: 'https://feeds.bbci.co.uk/news/business/rss.xml', free: false },
-  reddit: { label: 'Reddit (r/all)', url: 'https://www.reddit.com/.rss', free: false },
-  hackernews: { label: 'Hacker News', url: 'https://news.ycombinator.com/rss', free: true },
-  climate: { label: 'Climate', url: 'https://feeds.bbci.co.uk/news/science_and_environment/climate/rss.xml', free: false }
-};
-
-// Helper: fetch RSS via proxy
-async function fetchRSSFeed(sourceKey) {
-  const url = SOURCES[sourceKey].url;
-  let proxyUrl = currentSettings.proxyUrl || 'https://api.rss2json.com/v1/api.json?rss_url=';
-  let finalUrl;
-  if (proxyUrl.includes('rss2json')) {
-    finalUrl = `${proxyUrl}${encodeURIComponent(url)}&api_key=${currentSettings.rss2jsonKey || ''}`;
-  } else {
-    finalUrl = `${proxyUrl}?url=${encodeURIComponent(url)}`;
-  }
-  const res = await fetch(finalUrl);
-  const data = await res.json();
-  if (data.items) return data.items.map(item => ({ title: item.title, link: item.link, content: item.description, pubDate: item.pubDate }));
-  else if (data.articles) return data.articles;
-  else throw new Error('Invalid RSS response');
-}
-
-// Call AI for sentiment analysis
-async function analyzeStory(title, content, provider) {
-  const prompt = `Analyze the sentiment of this news story. Return JSON: { "sentiment": "positive/negative/neutral", "emotion": "joy/anger/fear/surprise/sadness/neutral", "explanation": "short reason", "keywords": ["keyword1","keyword2"] }. Story: ${title}. ${content.substring(0, 800)}`;
-  const response = await callAIWithRetry({ prompt, maxTokens: 300, provider });
-  try {
-    const jsonMatch = response.match(/\{.*\}/s);
-    if (jsonMatch) return JSON.parse(jsonMatch[0]);
-    else throw new Error('No JSON');
-  } catch(e) {
-    return { sentiment: 'neutral', emotion: 'neutral', explanation: 'Analysis failed', keywords: [] };
-  }
-}
-
-// Crawl selected sources
-async function crawlAndAnalyze() {
-  const { ok, used, limit } = await canCrawl();
-  if (!ok) {
-    alert(`Monthly crawl limit reached (${used}/${limit}). Upgrade to Pro for unlimited.`);
-    return;
-  }
-  const provider = currentSettings.aiProvider;
-  const progressDiv = document.getElementById('progressMsg');
-  const progFill = document.getElementById('progFill');
-  progressDiv.innerText = 'Fetching RSS feeds...';
-  progFill.style.width = '10%';
-  let allItems = [];
-  for (let i = 0; i < selectedSources.length; i++) {
-    const src = selectedSources[i];
-    progressDiv.innerText = `Fetching ${SOURCES[src].label}...`;
-    progFill.style.width = `${10 + (i / selectedSources.length) * 40}%`;
-    try {
-      const items = await fetchRSSFeed(src);
-      allItems.push(...items.map(item => ({ ...item, source: src })));
-    } catch(e) { console.error(e); }
-  }
-  progressDiv.innerText = `Analyzing ${allItems.length} stories with AI...`;
-  progFill.style.width = '60%';
-  const analyzed = [];
-  for (let i = 0; i < allItems.length; i++) {
-    const story = allItems[i];
-    progressDiv.innerText = `Analyzing ${i+1}/${allItems.length}: ${story.title.substring(0,50)}...`;
-    progFill.style.width = `${60 + (i / allItems.length) * 35}%`;
-    try {
-      const analysis = await analyzeStory(story.title, story.content, provider);
-      analyzed.push({ ...story, ...analysis, id: Date.now() + i });
-    } catch(e) { analyzed.push({ ...story, sentiment: 'neutral', emotion: 'neutral', explanation: 'Error', keywords: [], id: Date.now() + i }); }
-  }
-  currentStories = analyzed;
-  localStorage.setItem('sentiment_stories', JSON.stringify(currentStories));
-  await incrementCrawlCount();
-  await updateUsageBar();
-  progressDiv.innerText = 'Done!';
-  progFill.style.width = '100%';
-  setTimeout(() => { progFill.style.width = '0%'; progressDiv.innerText = ''; }, 1500);
-  renderNews();
-  renderKeywords();
-}
-
-// Render news with filters
-function renderNews() {
-  const container = document.getElementById('storyList');
-  let filtered = currentStories;
-  if (currentFilter !== 'all') filtered = filtered.filter(s => s.sentiment === currentFilter);
-  if (filtered.length === 0) {
-    container.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><strong>No stories match your filter</strong><br>Try a different sentiment or crawl new stories.</div>';
-    return;
-  }
-  const stats = {
-    total: currentStories.length,
-    pos: currentStories.filter(s => s.sentiment === 'positive').length,
-    neg: currentStories.filter(s => s.sentiment === 'negative').length,
-    neu: currentStories.filter(s => s.sentiment === 'neutral').length
-  };
-  document.getElementById('statsStrip').style.display = 'grid';
-  document.getElementById('statsStrip').innerHTML = `
-    <div class="stat-box"><div class="stat-value">${stats.total}</div><div class="stat-label">Total stories</div></div>
-    <div class="stat-box"><div class="stat-value" style="color:#8BC97F">${stats.pos}</div><div class="stat-label">Positive</div></div>
-    <div class="stat-box"><div class="stat-value" style="color:#E07A5F">${stats.neg}</div><div class="stat-label">Negative</div></div>
-    <div class="stat-box"><div class="stat-value">${stats.neu}</div><div class="stat-label">Neutral</div></div>
-  `;
-  container.innerHTML = filtered.map(story => `
-    <div class="story-card">
-      <div class="card-top">
-        <div class="emotion-dot">${getEmoji(story.emotion)}</div>
-        <div class="card-body">
-          <div class="card-meta">
-            <span class="badge ${story.sentiment === 'positive' ? 'badge-pos' : story.sentiment === 'negative' ? 'badge-neg' : 'badge-neutral'}">${story.sentiment}</span>
-            <span class="badge">${SOURCES[story.source]?.label || story.source}</span>
-            <span class="ts">${new Date(story.pubDate).toLocaleDateString()}</span>
+      <!-- ACCOUNT PANE -->
+      <div class="pane" id="pane-account">
+        <div class="account-card">
+          <div class="settings-section-title">👤 Account details</div>
+          <div class="account-row">
+            <div class="account-avatar-lg-dash" id="accountAvatar"></div>
+            <div>
+              <div id="accountName" style="font-weight:600;font-size:14px;color:var(--text);margin-bottom:2px"></div>
+              <div id="accountEmail" style="font-size:12px;color:var(--text-sec);margin-bottom:8px"></div>
+              <div id="accountPlanInfo" style="font-size:12px;color:var(--text-sec)"></div>
+            </div>
           </div>
-          <div class="card-title"><a href="${story.link}" target="_blank">${escapeHtml(story.title)}</a></div>
-          <div class="card-explain">${escapeHtml(story.explanation)}</div>
-          <div class="card-kw">${(story.keywords || []).slice(0,3).map(kw => `<span class="kw">${escapeHtml(kw)}</span>`).join('')}</div>
-          <div class="conf-row"><span>Confidence</span><div class="conf-track"><div class="conf-fill" style="width:70%"></div></div></div>
-          <div class="card-actions">
-            <button class="act-btn" onclick="generateBriefFromStory('${escapeHtml(story.title)}', '${escapeHtml(story.content)}')">📝 Brief</button>
-            <button class="act-btn ${currentPlan?.label === 'Free' ? 'locked-btn' : ''}" onclick="generateDraftFromStory('${escapeHtml(story.title)}', '${escapeHtml(story.content)}')" ${currentPlan?.label === 'Free' ? 'disabled' : ''}>✍️ Draft</button>
+        </div>
+        <div class="settings-card">
+          <div class="settings-section-title">📊 Subscription</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+            <div><div style="font-size:12px;color:var(--text-sec);margin-bottom:4px">Current plan</div><div id="subscriptionPlan" style="font-weight:700;font-size:14px;color:var(--text)">—</div></div>
+            <a href="pricing.html" class="run-btn" style="margin-left:0;padding:8px 18px">Upgrade</a>
           </div>
         </div>
       </div>
     </div>
-  `).join('');
-  document.getElementById('filterRow').style.display = 'flex';
-}
+  </div>
 
-function getEmoji(emotion) {
-  const map = { joy:'😊', anger:'😠', fear:'😨', surprise:'😲', sadness:'😢', neutral:'😐' };
-  return map[emotion] || '📰';
-}
+  <!-- AUTH MODAL -->
+  <div class="modal-backdrop" id="authModal">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModal()">×</button>
+      <div class="modal-tabs">
+        <button class="modal-tab active" id="tabLogin" onclick="switchModalTab('login')">Sign in</button>
+        <button class="modal-tab" id="tabRegister" onclick="switchModalTab('register')">Create account</button>
+      </div>
+      <div id="formLogin">
+        <div class="modal-error" id="loginError"></div>
+        <div class="form-field"><label>Email address</label><input type="email" id="loginEmail" placeholder="you@example.com" autocomplete="email"></div>
+        <div class="form-field"><label>Password</label><input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password"></div>
+        <button class="modal-btn-full" onclick="doLogin()">Sign in</button>
+        <div class="modal-footer-link"><a onclick="switchModalTab('register')">Don't have an account? Create one free →</a></div>
+      </div>
+      <div id="formRegister" style="display:none">
+        <div class="modal-error" id="registerError"></div>
+        <div class="modal-success" id="registerSuccess"></div>
+        <div class="form-field"><label>Full name</label><input type="text" id="regName" placeholder="Jane Smith" autocomplete="name"></div>
+        <div class="form-field"><label>Email address</label><input type="email" id="regEmail" placeholder="you@example.com" autocomplete="email"></div>
+        <div class="form-field"><label>Password</label><input type="password" id="regPassword" placeholder="At least 8 characters" autocomplete="new-password"></div>
+        <button class="modal-btn-full" onclick="doRegister()">Create free account</button>
+        <div class="modal-footer-link" style="font-size:11px;">By signing up you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.</div>
+      </div>
+    </div>
+  </div>
 
-// Render keyword cloud
-function renderKeywords() {
-  const container = document.getElementById('kwContent');
-  if (!currentStories.length) {
-    container.innerHTML = '<div class="empty"><div class="empty-icon">🔑</div><strong>Run a crawl first</strong><br>to see trending keywords and topics.</div>';
-    return;
-  }
-  const freq = {};
-  currentStories.forEach(s => {
-    (s.keywords || []).forEach(kw => { freq[kw] = (freq[kw] || 0) + 1; });
-  });
-  const sorted = Object.entries(freq).sort((a,b) => b[1] - a[1]).slice(0, 30);
-  container.innerHTML = `<div class="settings-card"><div class="settings-section-title">🔥 Trending keywords</div><div class="kw-grid">${sorted.map(([kw, count]) => `<button class="kw-tag" onclick="searchKeyword('${escapeHtml(kw)}')">${escapeHtml(kw)} (${count})</button>`).join('')}</div></div>`;
-}
-
-function searchKeyword(kw) {
-  document.getElementById('briefTopicInput').value = kw;
-  document.querySelector('.tab[data-tab="briefs"]').click();
-}
-
-// Brief generation
-async function generateBrief(topic, tone = '') {
-  const provider = currentSettings.aiProvider;
-  const prompt = `Write a structured editorial brief for a news article about: "${topic}". ${tone ? `Tone: ${tone}.` : ''} Include: 1) Working headline, 2) Central angle, 3) Key points to cover (3-5 bullet points), 4) Suggested sources or data to quote.`;
-  const text = await callAIWithRetry({ prompt, maxTokens: 800, provider });
-  document.getElementById('briefsContent').innerHTML = `<div class="brief-card"><div class="brief-headline">📌 Brief for "${escapeHtml(topic)}"</div><div class="brief-angle">${escapeHtml(text)}</div><div class="draft-actions"><button class="act-btn" onclick="generateDraftFromBrief('${escapeHtml(topic)}', \`${escapeHtml(text)}\`)">✍️ Generate Draft from this Brief</button></div></div>`;
-}
-
-async function generateBriefFromStory(title, content) {
-  await generateBrief(`${title} – ${content.substring(0,200)}`);
-}
-
-// Draft generation
-async function generateDraft(promptText, wordCount = 1000, style = 'AP style') {
-  const provider = currentSettings.aiProvider;
-  const fullPrompt = `Write a complete news article of approximately ${wordCount} words in ${style}. Use the following details: ${promptText}. Include a headline, byline, and subheadings where appropriate.`;
-  const draft = await callAIWithRetry({ prompt: fullPrompt, maxTokens: 2000, provider });
-  document.getElementById('draftContent').innerHTML = `<div class="draft-output">${escapeHtml(draft)}</div><div class="draft-actions"><button class="act-btn" onclick="copyToClipboard('${escapeHtml(draft)}')">📋 Copy</button><button class="act-btn" onclick="exportMD('${escapeHtml(draft)}')">⬇ Export MD</button></div>`;
-}
-
-async function generateDraftFromBrief(topic, briefText) {
-  await generateDraft(`Topic: ${topic}\nBrief: ${briefText}`);
-}
-
-async function generateDraftFromStory(title, content) {
-  await generateDraft(`Story: ${title}\nDetails: ${content.substring(0,500)}`);
-}
-
-// Humanizer
-async function humanizeText() {
-  const text = document.getElementById('hzInput').value;
-  if (!text) return;
-  hzOriginalText = text;
-  const persona = document.getElementById('hzPersona').value;
-  const tone = document.getElementById('hzTone').value;
-  const level = document.getElementById('hzBypassLevel').value;
-  const keyword = document.getElementById('hzKeyword').value;
-  const seo = document.getElementById('hzSeoMode').value;
-  const progressMsg = document.getElementById('hzProgressMsg');
-  const progFill = document.getElementById('hzProgFill');
-  progressMsg.innerText = 'Humanizing...';
-  progFill.style.width = '30%';
-  let rewritten = text;
-  if (level === 'aggressive') {
-    // two passes
-    for (let i = 0; i < 2; i++) {
-      const prompt = `Rewrite this text to sound completely human, as if written by a ${persona} with a ${tone} tone. Avoid AI patterns. ${keyword ? `Naturally include the keyword "${keyword}" once.` : ''} ${seo !== 'none' ? 'Optimize for readability and include a subheading.' : ''}\n\nText: ${rewritten}`;
-      rewritten = await callAIWithRetry({ prompt, maxTokens: 2000, provider: currentSettings.aiProvider });
-      progFill.style.width = `${60 + i*20}%`;
-    }
-  } else {
-    const prompt = `Rewrite the following text to be more human-like, using a ${persona} persona and ${tone} tone. ${level === 'light' ? 'Make minimal changes.' : 'Make moderate changes.'} ${keyword ? `Include the keyword "${keyword}" naturally.` : ''}\n\n${text}`;
-    rewritten = await callAIWithRetry({ prompt, maxTokens: 2000, provider: currentSettings.aiProvider });
-    progFill.style.width = '90%';
-  }
-  document.getElementById('hzOutputText').innerHTML = escapeHtml(rewritten);
-  document.getElementById('hzOutput').style.display = 'block';
-  progressMsg.innerText = 'Done!';
-  progFill.style.width = '100%';
-  setTimeout(() => { progFill.style.width = '0%'; progressMsg.innerText = ''; }, 1500);
-}
-
-// Settings & UI initialization
-async function initDashboard() {
-  const user = await getCurrentUser();
-  if (!user) return;
-  currentPlan = await getCurrentPlan();
-  currentSettings = await loadSettings();
-  document.getElementById('authGate').style.display = 'none';
-  document.getElementById('dashboardContent').style.display = 'block';
-  await initAccountDropdown();
-  await updateUsageBar();
-  setupTabs();
-  setupEventListeners();
-  loadStoriesFromLocal();
-  renderSourceChips();
-  renderSettingsForm();
-  renderAccountPane();
-  checkPlanLocks();
-}
-
-function loadStoriesFromLocal() {
-  const stored = localStorage.getItem('sentiment_stories');
-  if (stored) {
-    currentStories = JSON.parse(stored);
-    renderNews();
-    renderKeywords();
-  }
-}
-
-function renderSourceChips() {
-  const container = document.getElementById('sourceChipsRow');
-  const allowedSources = currentPlan.allSources ? Object.keys(SOURCES) : currentPlan.sources;
-  selectedSources = allowedSources.filter(s => SOURCES[s].free || currentPlan.label !== 'Free');
-  container.innerHTML = Object.keys(SOURCES).map(key => {
-    const isAllowed = allowedSources.includes(key);
-    const isActive = selectedSources.includes(key);
-    return `<button class="source-chip ${isActive ? 'active' : ''} ${!isAllowed ? 'locked' : ''}" data-source="${key}" ${!isAllowed ? 'disabled' : ''}>${SOURCES[key].label}</button>`;
-  }).join('');
-  document.querySelectorAll('.source-chip').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const src = btn.dataset.source;
-      if (btn.classList.contains('locked')) return;
-      if (selectedSources.includes(src)) selectedSources = selectedSources.filter(s => s !== src);
-      else selectedSources.push(src);
-      renderSourceChips();
-    });
-  });
-}
-
-function setupTabs() {
-  document.querySelectorAll('.tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      const tabName = tab.dataset.tab;
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
-      tab.classList.add('active');
-      document.getElementById(`pane-${tabName}`).classList.add('active');
-    });
-  });
-}
-
-function setupEventListeners() {
-  document.getElementById('crawlBtn').addEventListener('click', crawlAndAnalyze);
-  document.getElementById('refreshBtn').addEventListener('click', () => { if (currentStories.length) renderNews(); });
-  document.getElementById('settingsBtn').addEventListener('click', () => document.querySelector('.tab[data-tab="settings"]').click());
-  document.getElementById('briefManualBtn').addEventListener('click', () => {
-    const topic = document.getElementById('briefTopicInput').value;
-    const tone = document.getElementById('briefToneInput').value;
-    if (topic) generateBrief(topic, tone);
-    else alert('Enter a topic');
-  });
-  document.getElementById('draftManualBtn').addEventListener('click', () => {
-    const prompt = document.getElementById('draftPromptInput').value;
-    const words = document.getElementById('draftWordCount').value;
-    const style = document.getElementById('draftStyleInput').value;
-    if (prompt) generateDraft(prompt, words, style);
-    else alert('Enter a description');
-  });
-  document.getElementById('hzRunBtn').addEventListener('click', humanizeText);
-  document.getElementById('hzCopyBtn').addEventListener('click', () => copyToClipboard(document.getElementById('hzOutputText').innerText));
-  document.getElementById('hzRehumanizeBtn').addEventListener('click', () => { document.getElementById('hzInput').value = hzOriginalText; humanizeText(); });
-  document.getElementById('hzExportBtn').addEventListener('click', () => exportMD(document.getElementById('hzOutputText').innerText));
-  document.getElementById('saveSettingsBtn').addEventListener('click', saveSettingsUI);
-  document.getElementById('providerAnthropic').addEventListener('click', () => setProvider('anthropic'));
-  document.getElementById('providerMistral').addEventListener('click', () => setProvider('mistral'));
-  document.getElementById('aiEnrichToggle').addEventListener('click', () => toggleAIEnrich());
-  // Filter chips
-  document.querySelectorAll('.filter-chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      currentFilter = chip.dataset.filter;
-      renderNews();
-      document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
-      chip.classList.add('active');
-    });
-  });
-}
-
-function setProvider(prov) {
-  currentSettings.aiProvider = prov;
-  document.querySelectorAll('.provider-btn').forEach(btn => btn.classList.remove('active'));
-  document.getElementById(`provider${prov.charAt(0).toUpperCase() + prov.slice(1)}`).classList.add('active');
-}
-
-function toggleAIEnrich() {
-  currentSettings.aiKeywords = !currentSettings.aiKeywords;
-  const toggle = document.getElementById('aiEnrichToggle');
-  toggle.classList.toggle('on', currentSettings.aiKeywords);
-}
-
-function renderSettingsForm() {
-  document.getElementById('rss2jsonKey').value = currentSettings.rss2jsonKey || '';
-  document.getElementById('proxyUrl').value = currentSettings.proxyUrl || '';
-  document.getElementById('userApiKey').value = '';
-  setProvider(currentSettings.aiProvider);
-  const toggle = document.getElementById('aiEnrichToggle');
-  toggle.classList.toggle('on', currentSettings.aiKeywords);
-  document.getElementById('enrichPlanNote').innerText = currentPlan.aiKeywords ? '' : '(Pro feature)';
-  if (!currentPlan.aiKeywords) toggle.style.opacity = '0.5';
-}
-
-async function saveSettingsUI() {
-  currentSettings.rss2jsonKey = document.getElementById('rss2jsonKey').value;
-  currentSettings.proxyUrl = document.getElementById('proxyUrl').value;
-  const userKey = document.getElementById('userApiKey').value;
-  if (userKey) {
-    // store user key securely? For demo, we ignore, but you could save it.
-  }
-  await saveSettings(currentSettings);
-  document.getElementById('settingsMsg').innerText = 'Settings saved!';
-  setTimeout(() => document.getElementById('settingsMsg').innerText = '', 2000);
-}
-
-async function renderAccountPane() {
-  const user = await getCurrentUser();
-  if (!user) return;
-  const plan = await getCurrentPlan();
-  const initials = (user.name || user.email).split(' ').map(n => n[0]).join('').toUpperCase().slice(0,2);
-  document.getElementById('accountAvatar').innerText = initials;
-  document.getElementById('accountName').innerText = user.name || user.email;
-  document.getElementById('accountEmail').innerText = user.email;
-  document.getElementById('accountPlanInfo').innerHTML = `Plan: ${plan.label} – ${plan.crawlLimit === Infinity ? 'Unlimited crawls' : `${plan.crawlLimit} crawls/month`}`;
-  document.getElementById('subscriptionPlan').innerHTML = plan.label;
-}
-
-async function updateUsageBar() {
-  const plan = await getCurrentPlan();
-  const usageBar = document.getElementById('usageBar');
-  if (plan.crawlLimit === Infinity) {
-    usageBar.style.display = 'none';
-    return;
-  }
-  usageBar.style.display = 'flex';
-  const used = await getCrawlCount();
-  const percent = Math.min((used / plan.crawlLimit) * 100, 100);
-  document.getElementById('usageFill').style.width = percent + '%';
-  document.getElementById('usageCount').textContent = `${used} / ${plan.crawlLimit}`;
-}
-
-function checkPlanLocks() {
-  const isPro = currentPlan.label !== 'Free';
-  document.getElementById('briefsTabLock').innerText = isPro ? '' : '🔒';
-  document.getElementById('draftTabLock').innerText = isPro ? '' : '🔒';
-  document.getElementById('humanizerTabLock').innerText = isPro ? '' : '🔒';
-  if (!isPro) {
-    document.getElementById('briefManualBtn').disabled = true;
-    document.getElementById('draftManualBtn').disabled = true;
-    document.getElementById('hzRunBtn').disabled = true;
-  }
-}
-
-function copyToClipboard(text) { navigator.clipboard.writeText(text); alert('Copied!'); }
-function exportMD(text) {
-  const blob = new Blob([text], {type: 'text/markdown'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'article.md';
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-
-document.addEventListener('DOMContentLoaded', initDashboard);
-if (window.supabaseClient) {
-  window.supabaseClient.auth.onAuthStateChange(() => { window.location.reload(); });
-}
-</script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="auth-supabase.js"></script>
+  <script src="dashboard.js"></script>
 </body>
 </html>

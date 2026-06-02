@@ -145,7 +145,6 @@ function getEmoji(emotion) {
   return map[emotion] || '📰';
 }
 
-// Render keyword cloud
 function renderKeywords() {
   const container = document.getElementById('kwContent');
   if (!currentStories.length) {
@@ -165,7 +164,6 @@ function searchKeyword(kw) {
   document.querySelector('.tab[data-tab="briefs"]').click();
 }
 
-// Brief generation
 async function generateBrief(topic, tone = '') {
   const provider = currentSettings.aiProvider;
   const prompt = `Write a structured editorial brief for a news article about: "${topic}". ${tone ? `Tone: ${tone}.` : ''} Include: 1) Working headline, 2) Central angle, 3) Key points to cover (3-5 bullet points), 4) Suggested sources or data to quote.`;
@@ -177,7 +175,6 @@ async function generateBriefFromStory(title, content) {
   await generateBrief(`${title} – ${content.substring(0,200)}`);
 }
 
-// Draft generation
 async function generateDraft(promptText, wordCount = 1000, style = 'AP style') {
   const provider = currentSettings.aiProvider;
   const fullPrompt = `Write a complete news article of approximately ${wordCount} words in ${style}. Use the following details: ${promptText}. Include a headline, byline, and subheadings where appropriate.`;
@@ -193,7 +190,6 @@ async function generateDraftFromStory(title, content) {
   await generateDraft(`Story: ${title}\nDetails: ${content.substring(0,500)}`);
 }
 
-// Humanizer
 async function humanizeText() {
   const text = document.getElementById('hzInput').value;
   if (!text) return;
@@ -236,18 +232,21 @@ function exportMD(text) {
   URL.revokeObjectURL(a.href);
 }
 
-// Settings & UI initialization
+// Main initialisation – hides spinner and shows correct view
 async function initDashboard() {
-  const loader = document.getElementById('initialLoader');
-  if (loader) loader.remove();
+  // Remove spinner
+  const spinner = document.getElementById('initialSpinner');
+  if (spinner) spinner.remove();
 
   const user = await getCurrentUser();
   if (!user) {
-    document.getElementById('authGate').style.display = 'flex';
+    document.getElementById('authGate').style.display = 'block';
     document.getElementById('dashboardContent').style.display = 'none';
+    // Also hide any usage bar, etc.
     return;
   }
 
+  // User is logged in
   document.getElementById('authGate').style.display = 'none';
   document.getElementById('dashboardContent').style.display = 'block';
 
@@ -332,7 +331,6 @@ function setupEventListeners() {
   document.getElementById('providerMistral').addEventListener('click', () => setProvider('mistral'));
   document.getElementById('aiEnrichToggle').addEventListener('click', () => toggleAIEnrich());
   
-  // Filter chips
   document.querySelectorAll('.filter-chip').forEach(chip => {
     chip.addEventListener('click', () => {
       currentFilter = chip.dataset.filter;
@@ -370,9 +368,7 @@ async function saveSettingsUI() {
   currentSettings.rss2jsonKey = document.getElementById('rss2jsonKey').value;
   currentSettings.proxyUrl = document.getElementById('proxyUrl').value;
   const userKey = document.getElementById('userApiKey').value;
-  if (userKey) {
-    // Optionally save user key – for demo we ignore
-  }
+  if (userKey) { /* optional store */ }
   await saveSettings(currentSettings);
   document.getElementById('settingsMsg').innerText = 'Settings saved!';
   setTimeout(() => document.getElementById('settingsMsg').innerText = '', 2000);
@@ -416,13 +412,5 @@ function checkPlanLocks() {
   }
 }
 
-// ========== FIXED AUTH STATE CHANGE – NO INFINITE RELOOP ==========
-if (window.supabaseClient) {
-  window.supabaseClient.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_OUT' || event === 'SIGNED_IN') {
-      window.location.reload();
-    }
-  });
-}
-
+// NO AUTO-RELOAD LISTENER – just start
 document.addEventListener('DOMContentLoaded', initDashboard);

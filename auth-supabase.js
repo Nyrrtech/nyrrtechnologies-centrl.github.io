@@ -38,7 +38,7 @@ const PLANS = {
   }
 };
 
-// ========== HELPER: ESCAPE HTML ==========
+// ========== HELPER ==========
 function escapeHtml(str) {
   if (!str) return '';
   return str.replace(/[&<>]/g, function(m) {
@@ -64,7 +64,7 @@ async function ensureProfileExists(userId, name) {
   }
 }
 
-// ========== AUTHENTICATION FUNCTIONS ==========
+// ========== AUTHENTICATION ==========
 async function register(name, email, password) {
   const { data, error } = await supabaseClient.auth.signUp({
     email,
@@ -85,7 +85,7 @@ async function login(email, password) {
 
 async function logout() {
   await supabaseClient.auth.signOut();
-  window.location.href = '/'; // redirect to home after logout
+  window.location.href = '/';
 }
 
 async function getCurrentUser() {
@@ -117,18 +117,13 @@ async function getCurrentPlan() {
 async function incrementCrawlCount() {
   const { data: { user } } = await supabaseClient.auth.getUser();
   if (!user) throw new Error('Not logged in');
-  
-  const { data, error } = await supabaseClient.rpc('increment_crawl_usage', {
-    p_user_id: user.id
-  });
+  const { error } = await supabaseClient.rpc('increment_crawl_usage', { p_user_id: user.id });
   if (error) throw error;
-  return data;
 }
 
 async function getCrawlCount() {
   const { data: { user } } = await supabaseClient.auth.getUser();
   if (!user) return 0;
-  
   const currentMonth = new Date().toISOString().slice(0,7) + '-01';
   const { data, error } = await supabaseClient
     .from('crawl_usage')
@@ -136,7 +131,6 @@ async function getCrawlCount() {
     .eq('user_id', user.id)
     .eq('month', currentMonth)
     .maybeSingle();
-  
   if (error && error.code !== 'PGRST116') throw error;
   return data?.count || 0;
 }
@@ -152,13 +146,11 @@ async function canCrawl() {
 async function loadSettings() {
   const { data: { user } } = await supabaseClient.auth.getUser();
   if (!user) return { aiProvider: 'anthropic', rss2jsonKey: '', proxyUrl: '', aiKeywords: true };
-  
   const { data, error } = await supabaseClient
     .from('user_settings')
     .select('*')
     .eq('user_id', user.id)
     .maybeSingle();
-  
   if (error && error.code !== 'PGRST116') throw error;
   if (!data) {
     const { data: newData, error: insertError } = await supabaseClient
@@ -184,7 +176,6 @@ function mapSettingsFromDB(db) {
 async function saveSettings(settings) {
   const { data: { user } } = await supabaseClient.auth.getUser();
   if (!user) return;
-  
   const { error } = await supabaseClient
     .from('user_settings')
     .upsert({
@@ -198,7 +189,7 @@ async function saveSettings(settings) {
   if (error) throw error;
 }
 
-// ========== AI CALL THROUGH EDGE FUNCTION ==========
+// ========== AI CALL ==========
 async function callAI({ prompt, maxTokens = 600, provider, useUserKey = false, userKey = '' }) {
   const { data, error } = await supabaseClient.functions.invoke('ai-proxy', {
     body: { provider, prompt, maxTokens, useUserKey, userKey }
@@ -226,9 +217,7 @@ async function callAIWithRetry({ prompt, maxTokens, provider, retries = 3, delay
   throw lastError;
 }
 
-// ========== MODAL FUNCTIONS ==========
-let modalOpenCallback = null;
-
+// ========== MODAL ==========
 function openModal(tab = 'login') {
   const modal = document.getElementById('authModal');
   if (!modal) return;
@@ -243,11 +232,10 @@ function openModal(tab = 'login') {
 function closeModal() {
   const modal = document.getElementById('authModal');
   if (modal) modal.classList.remove('open');
-  document.getElementById('loginEmail').value = '';
-  document.getElementById('loginPassword').value = '';
-  document.getElementById('regName').value = '';
-  document.getElementById('regEmail').value = '';
-  document.getElementById('regPassword').value = '';
+  ['loginEmail','loginPassword','regName','regEmail','regPassword'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
 }
 
 function switchModalTab(tab) {
@@ -255,7 +243,6 @@ function switchModalTab(tab) {
   const registerForm = document.getElementById('formRegister');
   const tabLogin = document.getElementById('tabLogin');
   const tabRegister = document.getElementById('tabRegister');
-  
   if (tab === 'login') {
     loginForm.style.display = 'block';
     registerForm.style.display = 'none';
@@ -267,7 +254,6 @@ function switchModalTab(tab) {
     tabRegister.classList.add('active');
     tabLogin.classList.remove('active');
   }
-  
   const loginError = document.getElementById('loginError');
   const registerError = document.getElementById('registerError');
   const registerSuccess = document.getElementById('registerSuccess');
@@ -281,7 +267,6 @@ async function doLogin() {
   const password = document.getElementById('loginPassword').value;
   const errorDiv = document.getElementById('loginError');
   const btn = event.target;
-  
   if (!email || !password) {
     if (errorDiv) {
       errorDiv.textContent = 'Please enter both email and password';
@@ -289,17 +274,15 @@ async function doLogin() {
     }
     return;
   }
-  
   btn.disabled = true;
   btn.textContent = 'Signing in...';
-  
   try {
     await login(email, password);
     closeModal();
     window.location.href = 'dashboard.html';
   } catch (err) {
     if (errorDiv) {
-      errorDiv.textContent = err.message || 'Failed to sign in. Please check your credentials.';
+      errorDiv.textContent = err.message || 'Failed to sign in.';
       errorDiv.style.display = 'block';
     }
   } finally {
@@ -315,7 +298,6 @@ async function doRegister() {
   const errorDiv = document.getElementById('registerError');
   const successDiv = document.getElementById('registerSuccess');
   const btn = event.target;
-  
   if (!name || !email || !password) {
     if (errorDiv) {
       errorDiv.textContent = 'Please fill in all fields';
@@ -323,7 +305,6 @@ async function doRegister() {
     }
     return;
   }
-  
   if (password.length < 8) {
     if (errorDiv) {
       errorDiv.textContent = 'Password must be at least 8 characters';
@@ -331,10 +312,8 @@ async function doRegister() {
     }
     return;
   }
-  
   btn.disabled = true;
   btn.textContent = 'Creating account...';
-  
   try {
     await register(name, email, password);
     if (successDiv) {
@@ -349,7 +328,7 @@ async function doRegister() {
     }, 2000);
   } catch (err) {
     if (errorDiv) {
-      errorDiv.textContent = err.message || 'Failed to create account. Please try again.';
+      errorDiv.textContent = err.message || 'Failed to create account.';
       errorDiv.style.display = 'block';
     }
   } finally {
@@ -362,9 +341,7 @@ async function doRegister() {
 async function initAccountDropdown() {
   const user = await getCurrentUser();
   const headerAuth = document.getElementById('siteHeaderAuth') || document.getElementById('headerAuth');
-  
   if (!user || !headerAuth) return;
-  
   const plan = await getCurrentPlan();
   const initials = (user.name || user.email)
     .split(' ')
@@ -372,9 +349,7 @@ async function initAccountDropdown() {
     .join('')
     .toUpperCase()
     .slice(0, 2);
-  
   const dropdownId = 'accountDropdown_' + Math.random().toString(36).substr(2, 9);
-  
   headerAuth.innerHTML = `
     <div class="account-menu-container">
       <button class="account-menu-btn" onclick="toggleAccountDropdown('${dropdownId}')">
@@ -403,7 +378,6 @@ async function initAccountDropdown() {
       </div>
     </div>
   `;
-  
   document.addEventListener('click', function(e) {
     const dropdown = document.getElementById(dropdownId);
     const btn = e.target.closest('.account-menu-btn');
@@ -425,7 +399,7 @@ function toggleAccountDropdown(dropdownId) {
   }
 }
 
-// ========== EXPORT ==========
+// ========== EXPORT GLOBALS ==========
 window.supabaseClient = supabaseClient;
 window.register = register;
 window.login = login;

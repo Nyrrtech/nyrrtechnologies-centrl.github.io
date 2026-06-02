@@ -8,22 +8,25 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="dashboard.css">
   <style>
-    /* Prevent flash of wrong content */
-    #dashboardWrap > .loading-spinner { display: block; text-align: center; padding: 100px 20px; color: var(--text-sec); }
-    #dashboardWrap > .auth-gate, #dashboardWrap > #dashboardContent { display: none; }
+    /* Hide everything initially, show only spinner */
+    #dashboardWrap > *:not(.initial-spinner) { display: none; }
+    .initial-spinner {
+      text-align: center;
+      padding: 100px 20px;
+      color: var(--text-sec);
+      font-size: 14px;
+    }
+    .initial-spinner .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid rgba(245,176,66,0.2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
-  <script>
-    // Immediately check for existing Supabase session to hide auth gate if logged in
-    (function() {
-      const hasSession = !!localStorage.getItem('supabase.auth.token');
-      if (hasSession) {
-        // We'll still run the full check later, but we hide the auth gate early
-        const style = document.createElement('style');
-        style.textContent = '#dashboardWrap > .auth-gate { display: none !important; } #dashboardWrap > .loading-spinner { display: block; }';
-        document.head.appendChild(style);
-      }
-    })();
-  </script>
 </head>
 <body>
   <header class="site-header">
@@ -34,9 +37,12 @@
   </header>
 
   <div class="dashboard-wrap" id="dashboardWrap">
-    <div class="loading-spinner" id="initialLoader">⟳ Loading dashboard...</div>
+    <div class="initial-spinner" id="initialSpinner">
+      <div class="spinner"></div>
+      <div>Loading dashboard...</div>
+    </div>
 
-    <!-- AUTH GATE (shown only if not logged in) -->
+    <!-- AUTH GATE (hidden initially) -->
     <div id="authGate" class="auth-gate">
       <div class="auth-gate-icon">🔐</div>
       <h2>Sign in to your dashboard</h2>
@@ -47,10 +53,10 @@
       </div>
     </div>
 
-    <!-- MAIN DASHBOARD CONTENT -->
+    <!-- MAIN DASHBOARD CONTENT (hidden initially) -->
     <div id="dashboardContent">
       <div id="dashboardError" class="error-msg" style="display:none"></div>
-      
+
       <!-- Usage Bar -->
       <div class="usage-bar" id="usageBar" style="display:none">
         <span class="usage-label">📊 Monthly crawls</span>

@@ -301,7 +301,7 @@ const RSS2JSON_URL = 'https://api.rss2json.com/v1/api.json';
 const FETCH_TIMEOUT = 15000;
 
 // ── Helpers ───────────────────────────────────────────────────
-function esc(s) { return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+// function esc(s) { return String(s||'').replace(/[&<>"']g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 function timeAgo(iso) {
   if (!iso) return '';
   const s = (Date.now() - new Date(iso)) / 1000;

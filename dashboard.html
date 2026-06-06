@@ -7,168 +7,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
-  <style>
-    /* ── Dashboard-specific tokens ── */
-    :root {
-      --surface2: #1A1A1E;
-      --surface3: #232328;
-      --border2: rgba(255,255,255,0.13);
-      --text: #F0F0F0;
-      --text-sec: #9A9A9A;
-      --text-hint: #5A5A5A;
-      --accent: #f5b042;
-      --gold-glow: rgba(245,176,66,0.15);
-      --radius: 10px;
-      --radius-lg: 16px;
-    }
-
-    /* ── Layout ── */
-    .dashboard-wrap { max-width: 1400px; margin: 0 auto; padding: 24px 28px; }
-    @media (max-width: 640px) { .dashboard-wrap { padding: 14px 16px; } }
-
-    /* ── Auth Gate (inside dashboard) ── */
-    .auth-gate { text-align: center; padding: 80px 20px; }
-    .auth-gate-icon { font-size: 3rem; margin-bottom: 16px; }
-    .auth-gate h2 { font-size: 1.5rem; margin-bottom: 10px; }
-    .auth-gate p { color: var(--text-sec); margin-bottom: 28px; max-width: 380px; margin-left: auto; margin-right: auto; }
-
-    /* ── Usage bar ── */
-    .usage-bar { background: #111317; border: 1px solid rgba(255,255,255,0.07); border-radius: var(--radius-lg); padding: 14px 18px; margin-bottom: 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-    .usage-label { font-size: 12px; color: var(--text-sec); flex-shrink: 0; }
-    .usage-track { flex: 1; min-width: 120px; height: 5px; background: var(--surface3); border-radius: 3px; overflow: hidden; }
-    .usage-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.4s; }
-    .usage-count { font-size: 12px; font-weight: 600; flex-shrink: 0; }
-    .usage-upgrade { font-size: 11px; color: var(--accent); cursor: pointer; flex-shrink: 0; text-decoration: none; }
-
-    /* ── Topbar ── */
-    .db-topbar { display: flex; align-items: center; gap: 10px; padding-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.07); margin-bottom: 0; }
-    .db-title { font-weight: 700; font-size: 17px; flex: 1; background: linear-gradient(135deg, #fff 40%, var(--accent) 80%); -webkit-background-clip: text; background-clip: text; color: transparent; }
-    .icon-btn { background: var(--surface2); border: 1px solid rgba(255,255,255,0.07); border-radius: 40px; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 17px; transition: all 0.18s; color: var(--text-sec); font-family: inherit; }
-    .icon-btn:hover { background: var(--surface3); border-color: var(--border2); color: var(--text); }
-
-    /* ── Tabs ── */
-    .db-tabs { display: flex; gap: 4px; padding: 10px 0 0; border-bottom: 1px solid rgba(255,255,255,0.07); flex-wrap: wrap; }
-    .db-tab { padding: 8px 18px; background: transparent; border: none; color: var(--text-hint); font-weight: 500; font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent; transition: 0.15s; font-family: inherit; }
-    .db-tab:hover { color: var(--text-sec); }
-    .db-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-    .tab-lock { font-size: 10px; opacity: 0.7; margin-left: 4px; }
-    .db-pane { display: none; padding: 20px 0; }
-    .db-pane.active { display: block; }
-
-    /* ── Controls ── */
-    .controls-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; align-items: center; }
-    .source-chip { background: transparent; border: 1px solid rgba(255,255,255,0.07); border-radius: 40px; padding: 5px 13px; font-size: 12px; color: var(--text-sec); cursor: pointer; transition: 0.1s; font-family: inherit; }
-    .source-chip.active { background: var(--surface2); border-color: var(--accent); color: var(--accent); }
-    .source-chip.locked { opacity: 0.35; cursor: not-allowed; }
-    .run-btn { margin-left: auto; background: var(--accent); color: #0a0c10; border: none; padding: 7px 20px; border-radius: 30px; font-weight: 700; display: flex; align-items: center; gap: 8px; cursor: pointer; font-family: inherit; font-size: 13px; transition: all 0.15s; }
-    .run-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
-    .run-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
-
-    /* ── Progress ── */
-    #progressMsg { font-size: 11px; color: #B0A07A; margin-bottom: 8px; min-height: 18px; }
-    .prog-bar-wrap { height: 3px; background: var(--surface2); border-radius: 2px; margin-bottom: 14px; overflow: hidden; }
-    .prog-bar-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.3s; border-radius: 2px; }
-
-    /* ── Stats ── */
-    .stats-strip { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 18px; }
-    @media (max-width: 640px) { .stats-strip { grid-template-columns: repeat(2,1fr); } }
-    .stat-box { background: #111317; border: 1px solid rgba(255,255,255,0.07); border-radius: var(--radius); padding: 12px; text-align: center; }
-    .stat-value { font-size: 24px; font-weight: 700; }
-    .stat-label { font-size: 10px; color: var(--text-hint); }
-
-    /* ── Filters ── */
-    .filter-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-    .filter-chip { background: #111317; border: 1px solid rgba(255,255,255,0.07); border-radius: 30px; padding: 4px 13px; font-size: 11px; cursor: pointer; font-family: inherit; color: var(--text-sec); }
-    .filter-chip.active { background: #2A2418; border-color: var(--accent); color: var(--accent); }
-
-    /* ── Story Cards ── */
-    .story-list { display: flex; flex-direction: column; gap: 12px; }
-    .story-card { background: #111317; border: 1px solid rgba(255,255,255,0.07); border-radius: var(--radius-lg); padding: 16px; transition: all 0.15s; }
-    .story-card:hover { border-color: rgba(245,176,66,0.3); }
-    .card-top { display: flex; gap: 12px; }
-    .emotion-dot { width: 38px; height: 38px; background: var(--gold-glow); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
-    .card-body { flex: 1; min-width: 0; }
-    .card-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; align-items: center; }
-    .badge { font-size: 10px; padding: 2px 9px; border-radius: 20px; background: var(--surface2); color: var(--text-sec); }
-    .badge-pos { background: #1C2E1A; color: #8BC97F; }
-    .badge-neg { background: #2E1A1A; color: #E07A5F; }
-    .badge-neutral { background: var(--surface3); color: var(--text-hint); }
-    .ts { font-size: 10px; color: var(--text-hint); margin-left: auto; }
-    .card-title { font-weight: 600; font-size: 14px; margin-bottom: 6px; }
-    .card-title a { color: inherit; text-decoration: none; }
-    .card-title a:hover { color: var(--accent); }
-    .card-explain { font-size: 11px; color: var(--text-sec); margin: 4px 0 6px; line-height: 1.5; }
-    .card-kw { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
-    .kw { background: var(--surface3); padding: 2px 8px; border-radius: 12px; font-size: 10px; color: var(--text-sec); }
-    .conf-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
-    .conf-track { flex: 1; height: 3px; background: var(--surface3); border-radius: 4px; overflow: hidden; }
-    .conf-fill { height: 100%; background: var(--accent); transition: width 0.4s; }
-    .card-actions { display: flex; gap: 8px; margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.07); padding-top: 10px; }
-    .act-btn { flex: 1; background: transparent; border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 5px; font-size: 11px; cursor: pointer; color: var(--text-sec); font-family: inherit; transition: all 0.1s; }
-    .act-btn:hover { background: var(--surface2); color: var(--text); }
-    .act-btn.locked-btn { opacity: 0.35; cursor: not-allowed; }
-
-    /* ── Keywords ── */
-    .section-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-hint); margin: 18px 0 10px; }
-    .kw-grid { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 6px; }
-    .kw-tag { background: var(--surface2); border: 1px solid rgba(255,255,255,0.07); border-radius: 30px; padding: 4px 12px; font-size: 12px; cursor: pointer; font-family: inherit; transition: 0.1s; color: var(--text-sec); }
-    .kw-tag:hover { border-color: var(--accent); color: var(--accent); }
-
-    /* ── Brief ── */
-    .brief-card { background: #111317; border: 1px solid rgba(255,255,255,0.07); border-radius: var(--radius-lg); padding: 18px; }
-    .brief-headline { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
-    .brief-angle { color: var(--text-sec); margin-bottom: 12px; font-size: 13px; line-height: 1.5; border-left: 3px solid var(--accent); padding-left: 10px; }
-    .brief-outline { margin-left: 18px; margin-bottom: 14px; }
-    .brief-outline li { color: var(--text-sec); font-size: 12px; margin-bottom: 5px; }
-
-    /* ── Draft / Humanizer ── */
-    .draft-output { background: var(--surface2); border-radius: var(--radius); padding: 18px; white-space: pre-wrap; font-size: 13px; line-height: 1.7; max-height: 520px; overflow-y: auto; color: var(--text-sec); }
-    .draft-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; align-items: center; }
-    .draft-actions .act-btn { flex: 0 0 auto; padding: 6px 14px; font-size: 12px; }
-    @media (max-width: 640px) { .draft-actions .act-btn { flex: 1; text-align: center; } }
-    .tone-selector { display: inline-flex; align-items: center; gap: 6px; background: var(--surface2); border: 1px solid rgba(255,255,255,0.07); border-radius: 30px; padding: 4px 10px; font-size: 11px; color: var(--text-sec); }
-    .tone-selector select { background: transparent; border: none; color: var(--text); font-size: 11px; font-family: inherit; outline: none; cursor: pointer; }
-
-    /* ── Settings ── */
-    .settings-card { background: #111317; border: 1px solid rgba(255,255,255,0.07); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 14px; }
-    .settings-section-title { font-size: 13px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
-    .settings-group { margin-bottom: 16px; }
-    .settings-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 7px; color: var(--text-hint); display: block; }
-    .settings-input { width: 100%; background: var(--surface2); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 10px 12px; color: var(--text); font-family: inherit; font-size: 13px; outline: none; transition: border-color 0.15s; }
-    .settings-input:focus { border-color: var(--accent); }
-    textarea.settings-input { resize: vertical; min-height: 72px; }
-    .provider-row { display: flex; gap: 10px; margin-bottom: 14px; }
-    .provider-btn { flex: 1; background: var(--surface2); border: 1px solid rgba(255,255,255,0.07); border-radius: 40px; padding: 9px; cursor: pointer; font-weight: 500; font-family: inherit; font-size: 13px; color: var(--text-sec); transition: all 0.15s; }
-    .provider-btn.active { background: #2A2318; border-color: var(--accent); color: var(--accent); }
-    .toggle { width: 40px; height: 20px; background: var(--surface3); border-radius: 40px; cursor: pointer; position: relative; flex-shrink: 0; border: none; transition: background 0.2s; }
-    .toggle.on { background: var(--accent); }
-    .toggle::after { content: ''; width: 14px; height: 14px; background: white; border-radius: 50%; position: absolute; top: 3px; left: 3px; transition: 0.2s; }
-    .toggle.on::after { left: 23px; }
-    .save-btn { background: var(--accent); color: #0a0c10; border: none; border-radius: 40px; padding: 11px; width: 100%; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 14px; transition: all 0.15s; margin-top: 4px; }
-    .save-btn:hover { filter: brightness(1.1); }
-
-    /* ── Account ── */
-    .account-card { background: #111317; border: 1px solid rgba(255,255,255,0.07); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 14px; }
-    .account-avatar { width: 52px; height: 52px; border-radius: 50%; background: var(--gold-glow); border: 2px solid rgba(245,176,66,0.3); display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 700; color: var(--accent); flex-shrink: 0; }
-    .account-row { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
-    .plan-badge { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
-    .plan-free { background: rgba(255,255,255,0.07); color: #888; }
-    .plan-pro { background: rgba(245,176,66,0.15); color: #f5b042; border: 1px solid rgba(245,176,66,0.28); }
-    .plan-enterprise { background: rgba(139,201,127,0.15); color: #8BC97F; border: 1px solid rgba(139,201,127,0.28); }
-
-    /* ── Misc ── */
-    .empty { text-align: center; padding: 48px 20px; color: var(--text-hint); }
-    .empty-icon { font-size: 2.4rem; margin-bottom: 12px; }
-    .spinner { width: 14px; height: 14px; border: 2px solid rgba(245,176,66,0.2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.65s linear infinite; display: inline-block; vertical-align: middle; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .error-msg { background: #2E1A1A; color: #E07A5F; padding: 9px 13px; border-radius: 10px; margin-bottom: 12px; font-size: 12px; }
-    .sh-btn { background: transparent; border: 1px solid var(--border2); border-radius: 30px; padding: 6px 14px; font-size: 11px; font-weight: 500; color: var(--text-sec); cursor: pointer; font-family: inherit; transition: all 0.15s; }
-    .sh-btn:hover { background: var(--surface2); color: var(--text); }
-  </style>
+  <!-- No inline <style> — everything lives in style.css -->
 </head>
 <body>
 
-<!-- ═══════════════════════════ HEADER ═══════════════════════════ -->
+<!-- ═══════════════════════ HEADER ═══════════════════════════ -->
 <header class="header">
   <div class="container header-inner">
     <a href="index.html" class="logo-text">News Sentiment <span style="color:#f5b042">Radar</span></a>
@@ -181,26 +24,29 @@
   </div>
 </header>
 
-<!-- ═══════════════════════════ MAIN ═══════════════════════════ -->
+<!-- ═══════════════════════ MAIN ════════════════════════════ -->
 <div class="dashboard-wrap">
 
-  <!-- Auth gate (shown when logged out) -->
+  <!-- Auth Gate (shown when logged out) -->
   <div id="authGate" class="auth-gate" style="display:none">
     <div class="auth-gate-icon">🔐</div>
     <h2>Sign in to access your dashboard</h2>
     <p>Please sign in or create a free account to start analysing news sentiment.</p>
-    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:8px">
+    <div class="auth-gate-btns">
       <button class="btn" id="signInPromptBtn">Sign in</button>
       <button class="btn btn-outline" id="registerPromptBtn">Create free account</button>
     </div>
   </div>
 
-  <!-- Full dashboard (shown when logged in) -->
+  <!-- Full Dashboard (shown when logged in) -->
   <div id="userDashboard" style="display:none">
 
-    <!-- Usage bar -->
+    <!-- Trial banner (shown to free users who haven't used trial) -->
+    <div id="trialBannerContainer"></div>
+
+    <!-- Usage Bar -->
     <div class="usage-bar" id="usageBar" style="display:none">
-      <span class="usage-label">Monthly crawls</span>
+      <span class="usage-label">📊 Monthly crawls</span>
       <div class="usage-track"><div class="usage-fill" id="usageFill"></div></div>
       <span class="usage-count" id="usageCount"></span>
       <a href="pricing.html" class="usage-upgrade">Upgrade for unlimited →</a>
@@ -209,22 +55,22 @@
     <!-- Topbar -->
     <div class="db-topbar">
       <div class="db-title">News Sentiment <span style="-webkit-background-clip:unset;background:none;color:var(--accent)">Radar</span></div>
-      <button class="icon-btn" id="refreshBtn" title="Re-crawl">↻</button>
+      <button class="icon-btn" id="refreshBtn" title="Re-crawl news">↻</button>
       <button class="icon-btn" id="settingsBtn" title="Settings">⚙</button>
     </div>
 
     <!-- Tabs -->
     <div class="db-tabs">
-      <button class="db-tab active" data-tab="news">News</button>
-      <button class="db-tab" data-tab="keywords">Keywords</button>
-      <button class="db-tab" data-tab="briefs">Briefs <span class="tab-lock" id="briefsTabLock"></span></button>
-      <button class="db-tab" data-tab="draft">Draft <span class="tab-lock" id="draftTabLock"></span></button>
+      <button class="db-tab active" data-tab="news">📰 News</button>
+      <button class="db-tab" data-tab="keywords">🔑 Keywords</button>
+      <button class="db-tab" data-tab="briefs">📝 Briefs <span class="tab-lock" id="briefsTabLock"></span></button>
+      <button class="db-tab" data-tab="draft">✍️ Draft <span class="tab-lock" id="draftTabLock"></span></button>
       <button class="db-tab" data-tab="humanizer">✨ Humanizer <span class="tab-lock" id="humanizerTabLock"></span></button>
-      <button class="db-tab" data-tab="settings">Settings</button>
-      <button class="db-tab" data-tab="account">Account</button>
+      <button class="db-tab" data-tab="settings">⚙️ Settings</button>
+      <button class="db-tab" data-tab="account">👤 Account</button>
     </div>
 
-    <!-- ── NEWS PANE ── -->
+    <!-- ── NEWS PANE ─────────────────────────────────── -->
     <div class="db-pane active" id="pane-news">
       <div class="controls-bar" id="sourceChipsRow"></div>
       <div class="controls-bar">
@@ -239,21 +85,21 @@
       </div>
     </div>
 
-    <!-- ── KEYWORDS PANE ── -->
+    <!-- ── KEYWORDS PANE ──────────────────────────────── -->
     <div class="db-pane" id="pane-keywords">
       <div id="kwContent" class="empty"><div class="empty-icon">🔑</div>Run a crawl first to see keyword intelligence.</div>
     </div>
 
-    <!-- ── BRIEFS PANE ── -->
+    <!-- ── BRIEFS PANE ────────────────────────────────── -->
     <div class="db-pane" id="pane-briefs">
-      <div style="background:#111317;border:1px solid rgba(255,255,255,0.07);border-radius:var(--radius-lg);padding:16px;margin-bottom:16px">
-        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-hint);margin-bottom:10px">✍️ Generate a brief manually</div>
+      <div class="settings-card">
+        <div class="settings-section-title">✍️ Generate a brief manually</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
           <div style="flex:1;min-width:200px">
-            <input id="briefTopicInput" class="settings-input" type="text" placeholder="Enter a topic, keyword, or headline…" style="width:100%">
+            <input id="briefTopicInput" class="settings-input" type="text" placeholder="Enter a topic, keyword, or headline…">
           </div>
-          <div style="min-width:120px">
-            <select id="briefToneInput" class="settings-input" style="width:100%">
+          <div style="min-width:140px">
+            <select id="briefToneInput" class="settings-input">
               <option value="">Any tone</option>
               <option value="investigative">Investigative</option>
               <option value="explainer">Explainer</option>
@@ -270,11 +116,11 @@
       <div id="briefsContent" class="empty"><div class="empty-icon">📝</div>Enter a topic above or click Brief on any story card.</div>
     </div>
 
-    <!-- ── DRAFT PANE ── -->
+    <!-- ── DRAFT PANE ─────────────────────────────────── -->
     <div class="db-pane" id="pane-draft">
-      <div style="background:#111317;border:1px solid rgba(255,255,255,0.07);border-radius:var(--radius-lg);padding:16px;margin-bottom:16px">
-        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-hint);margin-bottom:10px">✍️ Write a draft manually</div>
-        <textarea id="draftPromptInput" class="settings-input" rows="3" placeholder="Describe the article you want to write — topic, angle, key points, target audience, word count…" style="width:100%;resize:vertical;font-family:inherit;line-height:1.5"></textarea>
+      <div class="settings-card">
+        <div class="settings-section-title">✍️ Write a draft manually</div>
+        <textarea id="draftPromptInput" class="settings-input" rows="3" placeholder="Describe the article — topic, angle, key points, target audience, word count…" style="resize:vertical;line-height:1.5"></textarea>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px">
           <select id="draftWordCount" class="settings-input" style="width:140px">
             <option value="600">~600 words</option>
@@ -284,7 +130,7 @@
             <option value="1500">~1500 words</option>
             <option value="2000">~2000 words</option>
           </select>
-          <select id="draftStyleInput" class="settings-input" style="width:150px">
+          <select id="draftStyleInput" class="settings-input" style="width:155px">
             <option value="AP style">AP news style</option>
             <option value="conversational blog">Blog post</option>
             <option value="academic">Academic</option>
@@ -293,18 +139,18 @@
           </select>
           <button id="draftManualBtn" class="run-btn" style="margin-left:0;padding:7px 16px">✍️ Generate Draft</button>
         </div>
-        <div style="font-size:11px;color:var(--text-hint);margin-top:8px">Or generate a brief first in the Briefs tab, then click <strong>Generate Draft</strong> there.</div>
+        <div style="font-size:11px;color:var(--text-hint);margin-top:8px">Or generate a brief in the Briefs tab first, then click <strong>Generate Draft</strong>.</div>
       </div>
-      <div id="draftContent" class="empty"><div class="empty-icon">✍️</div>Describe your article above or generate a brief first in the Briefs tab.</div>
+      <div id="draftContent" class="empty"><div class="empty-icon">✍️</div>Describe your article above or generate a brief first.</div>
     </div>
 
-    <!-- ── HUMANIZER PANE ── -->
+    <!-- ── HUMANIZER PANE ─────────────────────────────── -->
     <div class="db-pane" id="pane-humanizer">
       <div class="settings-card" style="border-color:rgba(245,176,66,0.2)">
         <div class="settings-section-title">✨ Advanced AI Humanizer
           <span style="font-size:10px;background:rgba(245,176,66,0.12);color:var(--accent);padding:2px 8px;border-radius:20px;margin-left:6px;border:1px solid rgba(245,176,66,0.25)">Anti-Detection</span>
         </div>
-        <p style="font-size:12px;color:var(--text-sec);margin-bottom:18px;line-height:1.6">Rewrite AI-generated content to pass detection tools (GPTZero, Originality, Turnitin) while preserving all facts and SEO signals. Uses multi-pass rewriting to maximise burstiness and perplexity variation.</p>
+        <p style="font-size:12px;color:var(--text-sec);margin-bottom:18px;line-height:1.6">Rewrite AI-generated content to pass detection tools (GPTZero, Originality, Turnitin) while preserving all facts and SEO signals.</p>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
           <div>
             <span class="settings-label">Writing Persona</span>
@@ -346,12 +192,12 @@
           </div>
         </div>
         <div style="margin-bottom:14px">
-          <span class="settings-label">Focus Keyword (for SEO) <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></span>
-          <input id="hzKeyword" class="settings-input" type="text" placeholder="e.g. climate policy, AI regulation, crypto markets…">
+          <span class="settings-label">Focus Keyword <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></span>
+          <input id="hzKeyword" class="settings-input" type="text" placeholder="e.g. climate policy, AI regulation…">
         </div>
         <div style="margin-bottom:6px">
-          <span class="settings-label">Paste your article below</span>
-          <textarea id="hzInput" class="settings-input" rows="10" placeholder="Paste your AI-generated article here. It will be rewritten to sound naturally human, bypass AI detectors, and be SEO-friendly…" style="width:100%;resize:vertical;font-family:inherit;line-height:1.6"></textarea>
+          <span class="settings-label">Paste your article</span>
+          <textarea id="hzInput" class="settings-input" rows="10" placeholder="Paste your AI-generated article here…" style="resize:vertical;line-height:1.6"></textarea>
         </div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px">
           <button id="hzRunBtn" class="run-btn" style="margin-left:0">✨ Humanize Article</button>
@@ -374,8 +220,10 @@
       </div>
     </div>
 
-    <!-- ── SETTINGS PANE ── -->
+    <!-- ── SETTINGS PANE ──────────────────────────────── -->
     <div class="db-pane" id="pane-settings">
+      <div id="trialSettingsNote"></div>
+
       <div class="settings-card">
         <div class="settings-section-title">⚡ AI Provider</div>
         <div class="provider-row">
@@ -385,23 +233,29 @@
         <div class="settings-group" id="groupAnthropicKey">
           <span class="settings-label">Anthropic API Key</span>
           <input class="settings-input" type="password" id="anthropicKey" placeholder="sk-ant-…">
+          <div id="anthropicKeyStatus" class="key-set-indicator" style="display:none">✓ Key saved</div>
         </div>
         <div class="settings-group" id="groupMistralKey" style="display:none">
           <span class="settings-label">Mistral API Key</span>
           <input class="settings-input" type="password" id="mistralKey" placeholder="Your Mistral key">
+          <div id="mistralKeyStatus" class="key-set-indicator" style="display:none">✓ Key saved</div>
         </div>
+        <div style="font-size:11px;color:var(--text-hint);margin-top:6px">🔐 Keys are encrypted with AES-256 and stored securely in your account. Never stored in your browser.</div>
       </div>
+
       <div class="settings-card">
         <div class="settings-section-title">📡 RSS Proxy</div>
         <div class="settings-group">
           <span class="settings-label">RSS2JSON Key</span>
           <input class="settings-input" type="password" id="rss2jsonKey" placeholder="free at rss2json.com">
+          <div id="rss2jsonKeyStatus" class="key-set-indicator" style="display:none">✓ Key saved</div>
         </div>
         <div class="settings-group">
           <span class="settings-label">Custom Proxy URL</span>
           <input class="settings-input" type="text" id="proxyUrl" placeholder="https://your-worker.workers.dev">
         </div>
       </div>
+
       <div class="settings-card">
         <div class="settings-section-title">⚙ Preferences</div>
         <div class="settings-group" style="display:flex;align-items:center;gap:12px">
@@ -409,14 +263,19 @@
           <span style="font-size:12px;color:var(--text-sec)">AI keyword enrichment <span id="enrichPlanNote" style="color:var(--accent);font-size:11px"></span></span>
         </div>
       </div>
-      <button class="save-btn" id="saveSettingsBtn">Save settings</button>
+
+      <button class="save-btn" id="saveSettingsBtn">💾 Save settings</button>
       <div id="settingsMsg" style="margin-top:8px;text-align:center;font-size:12px;color:var(--accent)"></div>
     </div>
 
-    <!-- ── ACCOUNT PANE ── -->
+    <!-- ── ACCOUNT PANE ────────────────────────────────── -->
     <div class="db-pane" id="pane-account">
       <div class="account-card" id="accountCard"></div>
       <div class="settings-card" id="planCard"></div>
+      <div class="settings-card" id="sessionCard">
+        <div class="settings-section-title">🖥 Active Session</div>
+        <div id="sessionInfo" style="font-size:12px;color:var(--text-sec)">Loading device info…</div>
+      </div>
     </div>
 
   </div><!-- /userDashboard -->
@@ -428,122 +287,280 @@
   </div>
 </footer>
 
-<!-- ═══════════════════════════ SCRIPTS ═══════════════════════════ -->
+<!-- ═══════════════════════ SCRIPTS ════════════════════════ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="auth.js"></script>
 <script>
 // ════════════════════════════════════════════════════════════════
 //  NEWS SENTIMENT RADAR — Dashboard Logic
-//  Integrates with auth.js (Supabase). All user/auth state
-//  comes from window.supabase and window.onAuthStateChecked.
+//  Plan enforcement is 100% server-side via Supabase RLS +
+//  auth.js helper functions. No localStorage for auth/plan/keys.
 // ════════════════════════════════════════════════════════════════
 
 const RSS2JSON_URL = 'https://api.rss2json.com/v1/api.json';
 const FETCH_TIMEOUT = 15000;
 
-// ── Helpers ──────────────────────────────────────────────────────
-function esc(s) {
-  return String(s || '').replace(/[&<>"']/g, m => (
-    { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[m]
-  ));
-}
+// ── Helpers ───────────────────────────────────────────────────
+function esc(s) { return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 function timeAgo(iso) {
   if (!iso) return '';
   const s = (Date.now() - new Date(iso)) / 1000;
-  if (s < 3600) return Math.floor(s / 60) + 'm';
-  if (s < 86400) return Math.floor(s / 3600) + 'h';
-  return Math.floor(s / 86400) + 'd';
+  if (s < 3600) return Math.floor(s/60) + 'm';
+  if (s < 86400) return Math.floor(s/3600) + 'h';
+  return Math.floor(s/86400) + 'd';
 }
 
-// ── Plan / Quota helpers (localStorage-based, upgradeable via pricing.html) ──
-const PLAN_CONFIG = {
-  free:       { label:'Free',       badgeClass:'plan-free',       crawlLimit:50,       sources:['world','tech','hackernews'], briefs:false, drafts:false, aiKeywords:false, allSources:false },
-  pro:        { label:'Pro',        badgeClass:'plan-pro',        crawlLimit:Infinity, sources:Object.keys({world:1,us:1,tech:1,science:1,business:1,reddit:1,hackernews:1,climate:1}), briefs:true,  drafts:true,  aiKeywords:true,  allSources:true  },
-  enterprise: { label:'Enterprise', badgeClass:'plan-enterprise', crawlLimit:Infinity, sources:Object.keys({world:1,us:1,tech:1,science:1,business:1,reddit:1,hackernews:1,climate:1}), briefs:true,  drafts:true,  aiKeywords:true,  allSources:true  },
+// ── In-memory settings (loaded from Supabase, not localStorage) ──
+// Actual API keys entered by the user this session are kept here
+// temporarily for use in API calls, but are never written to localStorage.
+let settings = {
+  aiProvider: 'anthropic',
+  anthropicKey: '',
+  mistralKey: '',
+  rss2jsonKey: '',
+  proxyUrl: '',
+  aiKeywords: true,
 };
-function getCurrentPlan() {
-  const stored = localStorage.getItem('nsr_plan') || 'free';
-  return PLAN_CONFIG[stored] || PLAN_CONFIG.free;
-}
-function getCrawlCount() {
-  const key = 'nsr_crawls_' + new Date().toISOString().slice(0,7);
-  return parseInt(localStorage.getItem(key) || '0', 10);
-}
-function incrementCrawlCount() {
-  const key = 'nsr_crawls_' + new Date().toISOString().slice(0,7);
-  localStorage.setItem(key, getCrawlCount() + 1);
-}
-function canCrawl() {
-  const plan = getCurrentPlan();
-  if (plan.crawlLimit === Infinity) return { ok:true };
-  const count = getCrawlCount();
-  return count < plan.crawlLimit ? { ok:true } : { ok:false, reason:`Monthly limit of ${plan.crawlLimit} crawls reached.` };
-}
-function canUseBriefs() { return getCurrentPlan().briefs; }
-function canUseDrafts() { return getCurrentPlan().drafts; }
-function canUseExport() { return getCurrentPlan().drafts; }
+
+// ── Plan helpers (from server-side profile cache in auth.js) ──
+async function getProfile() { return await window.loadProfile(); }
+
+async function canUseBriefs()  { const p = await getProfile(); return p?.canUseBriefs  ?? false; }
+async function canUseDrafts()  { const p = await getProfile(); return p?.canUseDrafts  ?? false; }
+async function canUseExport()  { const p = await getProfile(); return p?.canUseDrafts  ?? false; }
 
 function renderUpsellBanner(containerId, feature) {
   const el = document.getElementById(containerId);
   if (!el) return;
   el.innerHTML = `<div style="background:#2A1E0A;border:1px solid rgba(245,176,66,0.25);border-radius:12px;padding:28px;text-align:center;margin-top:8px">
-    <div style="font-size:1.3rem;margin-bottom:8px">🔒 ${feature === 'briefs' ? 'Briefs & Drafts' : feature === 'crawl' ? 'Crawl limit reached' : 'Pro feature'}</div>
+    <div style="font-size:1.3rem;margin-bottom:8px">🔒 ${feature==='briefs'?'Briefs & Drafts':feature==='crawl'?'Crawl limit reached':'Pro feature'}</div>
     <div style="font-size:12px;color:var(--text-sec);margin-bottom:18px">Upgrade to Pro for unlimited crawls, AI briefs, drafts, and all 8 sources.</div>
     <a href="pricing.html"><button class="run-btn" style="margin:0 auto">⚡ Upgrade to Pro</button></a>
   </div>`;
 }
 
-// ── Safe JSON parser ──────────────────────────────────────────────
+// ── Safe JSON parser ──────────────────────────────────────────
 function safeJsonParse(str, fallback = {}) {
   if (!str) return fallback;
   try {
-    let c = str.replace(/```json\s*|```\s*$/g, '').trim();
+    let c = str.replace(/```json\s*|```\s*$/g,'').trim();
     const m = c.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
     if (m) c = m[0];
-    c = c.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']');
+    c = c.replace(/,\s*}/g,'}').replace(/,\s*]/g,']');
     return JSON.parse(c);
-  } catch (e) {
-    console.warn('JSON parse failed:', e.message);
-    return fallback;
-  }
+  } catch(e) { return fallback; }
 }
 
-// ── AI call with exponential-backoff retry ────────────────────────
-async function callAIWithRetry({ prompt, maxTokens=600, apiKey, provider, retries=3, delayMs=1000 }) {
-  let lastErr;
-  for (let i = 1; i <= retries; i++) {
-    try { return await callAI({ prompt, maxTokens, apiKey, provider }); }
-    catch (e) {
-      lastErr = e;
-      const retry = e.message.includes('429') || e.message.includes('5');
-      if (!retry || i === retries) throw e;
-      await new Promise(r => setTimeout(r, delayMs * Math.pow(2, i - 1) + Math.random() * 200));
-    }
-  }
-  throw lastErr;
-}
-
+// ── AI calls (keys come from in-memory settings, NOT localStorage) ──
 async function callAI({ prompt, maxTokens=600, apiKey, provider }) {
   if (provider === 'anthropic') {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type':'application/json', 'x-api-key':apiKey, 'anthropic-version':'2023-06-01' },
-      body: JSON.stringify({ model:'claude-3-haiku-20240307', max_tokens:maxTokens, messages:[{ role:'user', content:prompt }] })
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},
+      body:JSON.stringify({model:'claude-3-haiku-20240307',max_tokens:maxTokens,messages:[{role:'user',content:prompt}]})
     });
     if (!r.ok) { const e = await r.text(); throw new Error(`Anthropic ${r.status}: ${e.slice(0,100)}`); }
     const d = await r.json(); return d.content[0].text;
   } else {
     const r = await fetch('https://api.mistral.ai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${apiKey}` },
-      body: JSON.stringify({ model:'mistral-large-latest', max_tokens:maxTokens, messages:[{ role:'user', content:prompt }] })
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiKey}`},
+      body:JSON.stringify({model:'mistral-large-latest',max_tokens:maxTokens,messages:[{role:'user',content:prompt}]})
     });
     if (!r.ok) { const e = await r.text(); throw new Error(`Mistral ${r.status}: ${e.slice(0,100)}`); }
     const d = await r.json(); return d.choices[0].message.content;
   }
 }
 
-// ── Source definitions ────────────────────────────────────────────
+async function callAIWithRetry({ prompt, maxTokens=600, apiKey, provider, retries=3, delayMs=1000 }) {
+  let lastErr;
+  for (let i=1; i<=retries; i++) {
+    try { return await callAI({ prompt, maxTokens, apiKey, provider }); }
+    catch(e) {
+      lastErr = e;
+      const retry = e.message.includes('429') || e.message.includes('5');
+      if (!retry || i === retries) throw e;
+      await new Promise(r => setTimeout(r, delayMs * Math.pow(2, i-1) + Math.random()*200));
+    }
+  }
+  throw lastErr;
+}
+
+// ── Settings load/save (Supabase-backed) ──────────────────────
+async function loadSettingsUI() {
+  const remote = await window.loadSettings();
+  // Populate UI from remote settings
+  settings.aiProvider    = remote.aiProvider;
+  settings.proxyUrl      = remote.proxyUrl;
+  settings.aiKeywords    = remote.aiKeywordsEnabled;
+
+  const el = id => document.getElementById(id);
+  if (el('proxyUrl')) el('proxyUrl').value = settings.proxyUrl || '';
+
+  const et = el('aiEnrichToggle');
+  if (et) { et.classList.toggle('on', settings.aiKeywords); }
+
+  // Show "Key saved" indicators (keys are not filled in — only indicator)
+  if (remote.anthropicKeySet && el('anthropicKeyStatus')) el('anthropicKeyStatus').style.display = 'flex';
+  if (remote.mistralKeySet   && el('mistralKeyStatus'))   el('mistralKeyStatus').style.display   = 'flex';
+  if (remote.rss2jsonKeySet  && el('rss2jsonKeyStatus'))  el('rss2jsonKeyStatus').style.display  = 'flex';
+
+  if (settings.aiProvider === 'mistral') {
+    el('providerMistral')?.click();
+  } else {
+    el('providerAnthropic')?.click();
+  }
+}
+
+async function saveSettingsHandler() {
+  const el = id => document.getElementById(id);
+  const newAnthropicKey = el('anthropicKey')?.value.trim() || '';
+  const newMistralKey   = el('mistralKey')?.value.trim()   || '';
+  const newRss2jsonKey  = el('rss2jsonKey')?.value.trim()  || '';
+
+  // Update in-memory settings for use this session
+  if (newAnthropicKey) settings.anthropicKey = newAnthropicKey;
+  if (newMistralKey)   settings.mistralKey   = newMistralKey;
+  if (newRss2jsonKey)  settings.rss2jsonKey  = newRss2jsonKey;
+  settings.proxyUrl    = el('proxyUrl')?.value.trim()  || '';
+  settings.aiKeywords  = el('aiEnrichToggle')?.classList.contains('on') || false;
+
+  const saveBtn = el('saveSettingsBtn');
+  const msg     = el('settingsMsg');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; }
+
+  try {
+    await window.saveSettings({
+      aiProvider:        settings.aiProvider,
+      proxyUrl:          settings.proxyUrl,
+      aiKeywordsEnabled: settings.aiKeywords,
+      anthropicKey:      newAnthropicKey,
+      mistralKey:        newMistralKey,
+      rss2jsonKey:       newRss2jsonKey,
+    });
+    if (msg) { msg.textContent = '✓ Settings saved'; setTimeout(() => msg.textContent = '', 3000); }
+    // Clear the input fields (keys should not sit in the DOM long-term)
+    if (newAnthropicKey && el('anthropicKey')) { el('anthropicKey').value = ''; el('anthropicKeyStatus').style.display = 'flex'; }
+    if (newMistralKey   && el('mistralKey'))   { el('mistralKey').value   = ''; el('mistralKeyStatus').style.display   = 'flex'; }
+    if (newRss2jsonKey  && el('rss2jsonKey'))  { el('rss2jsonKey').value  = ''; el('rss2jsonKeyStatus').style.display  = 'flex'; }
+  } catch(err) {
+    if (msg) msg.textContent = '✗ ' + err.message;
+  } finally {
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '💾 Save settings'; }
+  }
+}
+
+// ── Usage bar ─────────────────────────────────────────────────
+async function renderUsageBar() {
+  const profile = await getProfile();
+  const bar = document.getElementById('usageBar');
+  if (!bar) return;
+  if (!profile || profile.crawlLimit === Infinity || profile.crawlLimit >= 2000000) {
+    bar.style.display = 'none'; return;
+  }
+  bar.style.display = 'flex';
+  const count = await window.getCrawlCount();
+  const pct   = Math.min((count / profile.crawlLimit) * 100, 100);
+  const fill  = document.getElementById('usageFill');
+  const cnt   = document.getElementById('usageCount');
+  if (fill) { fill.style.width = pct + '%'; fill.style.background = pct >= 90 ? 'var(--red)' : 'var(--accent)'; }
+  if (cnt)  cnt.textContent = `${count} / ${profile.crawlLimit}`;
+}
+
+// ── Tab locks (based on server-side plan) ─────────────────────
+async function renderTabLocks() {
+  const profile = await getProfile();
+  const hasBriefs = profile?.canUseBriefs ?? false;
+  const hasDrafts = profile?.canUseDrafts ?? false;
+  const el = id => document.getElementById(id);
+  if (el('briefsTabLock'))    el('briefsTabLock').textContent    = hasBriefs ? '' : '🔒';
+  if (el('draftTabLock'))     el('draftTabLock').textContent     = hasDrafts ? '' : '🔒';
+  if (el('humanizerTabLock')) el('humanizerTabLock').textContent = hasDrafts ? '' : '🔒';
+  if (el('enrichPlanNote'))   el('enrichPlanNote').textContent   = (profile?.allSources) ? '' : '(Pro)';
+}
+
+// ── Source chips ──────────────────────────────────────────────
+async function renderSourceChips() {
+  const profile = await getProfile();
+  const row = document.getElementById('sourceChipsRow');
+  if (!row) return;
+  const allowedSrcs = profile?.allSources
+    ? Object.keys(SOURCE_LABELS)
+    : ['world','tech','hackernews'];
+  row.innerHTML = Object.keys(SOURCE_LABELS).map(src => {
+    const allowed = allowedSrcs.includes(src);
+    return `<button class="source-chip${allowed?' active':' locked'}" data-src="${src}" ${!allowed?'disabled title="Upgrade to Pro"':''}>${SOURCE_LABELS[src]}${!allowed?' 🔒':''}</button>`;
+  }).join('');
+  row.querySelectorAll('.source-chip:not(.locked)').forEach(c => c.addEventListener('click', () => c.classList.toggle('active')));
+  row.querySelectorAll('.source-chip.locked').forEach(c => c.addEventListener('click', () => window.location.href = 'pricing.html'));
+}
+
+// ── Account pane ──────────────────────────────────────────────
+async function renderAccountPane(user) {
+  if (!user) return;
+  const profile  = await getProfile();
+  const planMeta = profile ? { label: profile.label, badgeClass: profile.badgeClass } : { label: 'Free', badgeClass: 'plan-free' };
+  const name     = profile?.name || user.user_metadata?.name || user.email.split('@')[0];
+  const initials = name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+  const email    = user.email;
+
+  const accountCard = document.getElementById('accountCard');
+  const planCard    = document.getElementById('planCard');
+  const sessionCard = document.getElementById('sessionInfo');
+
+  if (accountCard) {
+    accountCard.innerHTML = `
+      <div class="account-row">
+        <div class="account-avatar">${esc(initials)}</div>
+        <div>
+          <div style="font-weight:700;font-size:15px">${esc(name)}</div>
+          <div style="font-size:12px;color:var(--text-sec)">${esc(email)}</div>
+          <div style="margin-top:6px;display:flex;align-items:center;gap:8px">
+            <span class="plan-badge ${planMeta.badgeClass}">${planMeta.label}</span>
+            ${profile?.plan === 'trial' && profile.trialExpiresAt
+              ? `<span style="font-size:11px;color:var(--green)">Trial expires ${new Date(profile.trialExpiresAt).toLocaleDateString()}</span>`
+              : ''}
+          </div>
+        </div>
+      </div>
+      <button class="sh-btn" id="accountSignOutBtn">Sign out</button>`;
+    document.getElementById('accountSignOutBtn')?.addEventListener('click', () => window.logout());
+  }
+
+  if (planCard) {
+    const plan = profile;
+    planCard.innerHTML = `
+      <div class="settings-section-title">📋 Your plan: <span style="color:var(--accent)">${planMeta.label}</span></div>
+      <div style="font-size:12px;color:var(--text-sec);margin-bottom:16px">
+        ${(plan?.crawlLimit === Infinity || (plan?.crawlLimit??0) >= 2000000) ? 'Unlimited crawls' : (plan?.crawlLimit ?? 50) + ' crawls/month'} ·
+        ${plan?.canUseBriefs ? 'Briefs &amp; Drafts ✓' : 'No briefs or drafts'} ·
+        ${plan?.allSources  ? 'All sources ✓' : '3 sources only'}
+      </div>
+      ${(!plan || plan.plan === 'free') ? `<a href="pricing.html"><button class="save-btn" style="max-width:240px">⚡ Upgrade to Pro</button></a>` : ''}
+      ${plan?.plan === 'pro' ? `<a href="contact.html"><button class="sh-btn" style="padding:10px 20px;font-size:13px">Contact sales for Enterprise</button></a>` : ''}
+      ${plan?.plan === 'enterprise' ? `<div style="font-size:12px;color:var(--green)">✓ Enterprise plan active — unlimited devices &amp; features</div>` : ''}`;
+  }
+
+  if (sessionCard) {
+    sessionCard.innerHTML = `
+      <div style="margin-bottom:6px">Device: <span style="color:var(--text)">${navigator.userAgent.split(')')[0].split('(')[1] || 'Unknown'}</span></div>
+      <div>Session type: <span style="color:var(--accent)">${profile?.multiDevice ? 'Enterprise (multi-device)' : 'Single-device'}</span></div>
+      <div style="margin-top:8px;font-size:11px;color:var(--text-hint)">Free and Pro plans are limited to one active device. Upgrade to Enterprise for simultaneous access.</div>`;
+  }
+}
+
+// ── Trial settings note ───────────────────────────────────────
+async function renderSettingsTrialNote() {
+  const profile = await getProfile();
+  const el = document.getElementById('trialSettingsNote');
+  if (!el) return;
+  if (profile?.plan === 'trial' && profile.trialExpiresAt) {
+    const days = Math.max(0, Math.ceil((new Date(profile.trialExpiresAt) - Date.now()) / 86400000));
+    el.innerHTML = `<div class="trial-expiry-warning">⚡ Trial active — ${days} day${days!==1?'s':''} remaining. <a href="pricing.html" style="color:var(--accent);font-weight:600">Upgrade to keep Pro access →</a></div>`;
+  }
+}
+
+// ── Source definitions ─────────────────────────────────────────
 const ALL_SOURCES = {
   world: [
     {name:'BBC World',      url:'https://feeds.bbci.co.uk/news/world/rss.xml'},
@@ -569,7 +586,6 @@ const ALL_SOURCES = {
     {name:'Ars Technica',   url:'https://feeds.arstechnica.com/arstechnica/index'},
     {name:'Engadget',       url:'https://www.engadget.com/rss.xml'},
     {name:'MIT Tech Review',url:'https://www.technologyreview.com/feed/'},
-    {name:'VentureBeat',    url:'https://feeds.feedburner.com/venturebeat/SZYF'},
   ],
   science: [
     {name:'Science Daily',  url:'https://www.sciencedaily.com/rss/top.xml'},
@@ -599,128 +615,29 @@ const ALL_SOURCES = {
 };
 const SOURCE_LABELS = { world:'🌍 World', us:'🇺🇸 US', tech:'💻 Tech', science:'🔬 Science', business:'📈 Business', reddit:'👾 Reddit', hackernews:'🔶 HN', climate:'🌱 Climate' };
 
-// ── State ─────────────────────────────────────────────────────────
+// ── State ─────────────────────────────────────────────────────
 let stories = [], activeFilter = null, currentBrief = null;
-let settings = { aiProvider:'anthropic', anthropicKey:'', mistralKey:'', rss2jsonKey:'', proxyUrl:'', aiKeywords:true };
 
-// ── Settings persistence ──────────────────────────────────────────
-function loadSettings() {
-  try { settings = { ...settings, ...JSON.parse(localStorage.getItem('nsr_settings') || '{}') }; } catch(e) {}
-  const el = id => document.getElementById(id);
-  if (el('anthropicKey')) el('anthropicKey').value = settings.anthropicKey || '';
-  if (el('mistralKey'))   el('mistralKey').value   = settings.mistralKey   || '';
-  if (el('rss2jsonKey'))  el('rss2jsonKey').value  = settings.rss2jsonKey  || '';
-  if (el('proxyUrl'))     el('proxyUrl').value     = settings.proxyUrl     || '';
-  const et = el('aiEnrichToggle');
-  if (et && settings.aiKeywords) et.classList.add('on');
-  if (settings.aiProvider === 'mistral') el('providerMistral')?.click();
-  else el('providerAnthropic')?.click();
-}
-function saveSettings() {
-  settings.anthropicKey = document.getElementById('anthropicKey')?.value || '';
-  settings.mistralKey   = document.getElementById('mistralKey')?.value   || '';
-  settings.rss2jsonKey  = document.getElementById('rss2jsonKey')?.value  || '';
-  settings.proxyUrl     = document.getElementById('proxyUrl')?.value     || '';
-  settings.aiKeywords   = document.getElementById('aiEnrichToggle')?.classList.contains('on') || false;
-  localStorage.setItem('nsr_settings', JSON.stringify(settings));
-  const msg = document.getElementById('settingsMsg');
-  if (msg) { msg.textContent = '✓ Saved'; setTimeout(() => msg.textContent = '', 2000); }
-}
-
-// ── UI helpers ────────────────────────────────────────────────────
-function renderSourceChips() {
-  const plan = getCurrentPlan();
-  const row = document.getElementById('sourceChipsRow');
-  if (!row) return;
-  row.innerHTML = Object.keys(SOURCE_LABELS).map(src => {
-    const allowed = plan.sources.includes(src);
-    return `<button class="source-chip${allowed ? ' active' : ''}${!allowed ? ' locked' : ''}" data-src="${src}" ${!allowed ? 'disabled title="Upgrade to Pro to unlock this source"' : ''}>${SOURCE_LABELS[src]}${!allowed ? ' 🔒' : ''}</button>`;
-  }).join('');
-  row.querySelectorAll('.source-chip:not(.locked)').forEach(c => c.addEventListener('click', () => c.classList.toggle('active')));
-  row.querySelectorAll('.source-chip.locked').forEach(c => c.addEventListener('click', () => window.location.href = 'pricing.html'));
-}
-
-function renderUsageBar() {
-  const plan = getCurrentPlan();
-  const bar  = document.getElementById('usageBar');
-  if (!bar) return;
-  if (plan.crawlLimit === Infinity) { bar.style.display = 'none'; return; }
-  bar.style.display = 'flex';
-  const count = getCrawlCount();
-  const pct   = Math.min((count / plan.crawlLimit) * 100, 100);
-  const fill  = document.getElementById('usageFill');
-  const cnt   = document.getElementById('usageCount');
-  if (fill) { fill.style.width = pct + '%'; fill.style.background = pct >= 90 ? '#E07A5F' : '#f5b042'; }
-  if (cnt)  cnt.textContent = `${count} / ${plan.crawlLimit}`;
-}
-
-function renderTabLocks() {
-  const plan = getCurrentPlan();
-  const el = id => document.getElementById(id);
-  if (el('briefsTabLock'))    el('briefsTabLock').textContent    = plan.briefs      ? '' : '🔒';
-  if (el('draftTabLock'))     el('draftTabLock').textContent     = plan.drafts      ? '' : '🔒';
-  if (el('humanizerTabLock')) el('humanizerTabLock').textContent = plan.drafts      ? '' : '🔒';
-  if (el('enrichPlanNote'))   el('enrichPlanNote').textContent   = plan.aiKeywords  ? '' : '(Pro)';
-}
-
-function renderAccountPane(user) {
-  if (!user) return;
-  const plan = getCurrentPlan();
-  const accountCard = document.getElementById('accountCard');
-  const planCard    = document.getElementById('planCard');
-  const name  = user.user_metadata?.name || user.email.split('@')[0];
-  const email = user.email;
-  const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0,2);
-
-  if (accountCard) {
-    accountCard.innerHTML = `
-      <div class="account-row">
-        <div class="account-avatar">${esc(initials)}</div>
-        <div>
-          <div style="font-weight:700;font-size:15px">${esc(name)}</div>
-          <div style="font-size:12px;color:var(--text-sec)">${esc(email)}</div>
-          <div style="margin-top:6px"><span class="plan-badge ${plan.badgeClass}">${plan.label}</span></div>
-        </div>
-      </div>
-      <button class="sh-btn" id="accountSignOutBtn">Sign out</button>`;
-    document.getElementById('accountSignOutBtn')?.addEventListener('click', () => window.logout());
-  }
-
-  if (planCard) {
-    planCard.innerHTML = `
-      <div class="settings-section-title">📋 Your plan: <span style="color:var(--accent)">${plan.label}</span></div>
-      <div style="font-size:12px;color:var(--text-sec);margin-bottom:16px">
-        ${plan.crawlLimit === Infinity ? 'Unlimited crawls' : plan.crawlLimit + ' crawls/month'} ·
-        ${plan.briefs ? 'Briefs &amp; Drafts ✓' : 'No briefs or drafts'} ·
-        ${plan.allSources ? 'All sources ✓' : '3 sources only'}
-      </div>
-      ${plan.label === 'Free' ? `<a href="pricing.html"><button class="save-btn" style="max-width:240px">⚡ Upgrade to Pro</button></a>` : ''}
-      ${plan.label === 'Pro'  ? `<a href="contact.html"><button class="sh-btn" style="padding:10px 20px;font-size:13px">Contact sales for Enterprise</button></a>` : ''}`;
-  }
-}
-
-// ── Crawling ──────────────────────────────────────────────────────
+// ── Crawling helpers ──────────────────────────────────────────
 async function fetchTimeout(url, opts={}) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT);
-  try { return await fetch(url, { ...opts, signal:ctrl.signal }); } finally { clearTimeout(t); }
+  try { return await fetch(url, {...opts,signal:ctrl.signal}); } finally { clearTimeout(t); }
 }
-
 async function fetchReddit() {
   let out = [];
   for (const src of ALL_SOURCES.reddit) {
     try {
-      const r = await fetchTimeout(src.url, { headers:{ 'User-Agent':'Mozilla/5.0' } });
+      const r = await fetchTimeout(src.url, {headers:{'User-Agent':'Mozilla/5.0'}});
       const d = await r.json();
-      (d.data?.children || []).slice(0,5).forEach(c => {
-        const p = c.data;
-        if (!p.stickied && p.score > 50) out.push({ source:src.name, platform:'reddit', title:p.title, url:p.url, score:p.score, comments:p.num_comments, description:(p.selftext||'').slice(0,200), publishedAt:new Date(p.created_utc*1000).toISOString() });
+      (d.data?.children||[]).slice(0,5).forEach(c => {
+        const p=c.data;
+        if(!p.stickied&&p.score>50) out.push({source:src.name,platform:'reddit',title:p.title,url:p.url,score:p.score,comments:p.num_comments,description:(p.selftext||'').slice(0,200),publishedAt:new Date(p.created_utc*1000).toISOString()});
       });
     } catch(e) {}
   }
   return out;
 }
-
 async function fetchHN() {
   try {
     const ids = (await (await fetch('https://hacker-news.firebaseio.com/v0/topstories.json')).json()).slice(0,20);
@@ -728,590 +645,437 @@ async function fetchHN() {
     for (const id of ids) {
       try {
         const it = await (await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`)).json();
-        if (it?.title) items.push({ source:'Hacker News', platform:'hackernews', title:it.title, url:it.url||`https://news.ycombinator.com/item?id=${it.id}`, score:it.score||0, comments:it.descendants||0, publishedAt:new Date(it.time*1000).toISOString() });
+        if (it?.title) items.push({source:'Hacker News',platform:'hackernews',title:it.title,url:it.url||`https://news.ycombinator.com/item?id=${it.id}`,score:it.score||0,comments:it.descendants||0,publishedAt:new Date(it.time*1000).toISOString()});
       } catch(e) {}
     }
     return items;
   } catch(e) { return []; }
 }
-
 async function fetchRSSGroup(group) {
   let out = [];
-  const key   = settings.rss2jsonKey || '';
-  const proxy = settings.proxyUrl    || '';
+  const key=settings.rss2jsonKey||'', proxy=settings.proxyUrl||'';
   for (const src of group) {
     try {
       let items = null;
       if (proxy) {
         try {
           const r = await fetchTimeout(`${proxy}?url=${encodeURIComponent(src.url)}&count=6`);
-          if (r.ok) { const d = await r.json(); if (d.items?.length) items = d.items; }
+          if (r.ok) { const d=await r.json(); if(d.items?.length) items=d.items; }
         } catch(e) {}
       }
       if (!items) {
-        const params = new URLSearchParams({ rss_url:src.url, count:6 });
-        if (key) params.set('api_key', key);
+        const params = new URLSearchParams({rss_url:src.url,count:6});
+        if (key) params.set('api_key',key);
         const r = await fetchTimeout(`${RSS2JSON_URL}?${params}`);
-        if (r.ok) { const d = await r.json(); if (d.status === 'ok') items = d.items; }
+        if (r.ok) { const d=await r.json(); if(d.status==='ok') items=d.items; }
       }
-      if (items) {
-        items.forEach(item => out.push({ source:src.name, platform:'rss', title:(item.title||'').replace(/<[^>]+>/g,''), url:item.link, description:(item.description||'').replace(/<[^>]+>/g,'').slice(0,200), publishedAt:item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(), score:0, comments:0 }));
-      }
+      if (items) items.forEach(item=>out.push({source:src.name,platform:'rss',title:(item.title||'').replace(/<[^>]+>/g,''),url:item.link,description:(item.description||'').replace(/<[^>]+>/g,'').slice(0,200),publishedAt:item.pubDate?new Date(item.pubDate).toISOString():new Date().toISOString(),score:0,comments:0}));
     } catch(e) {}
   }
   return out;
 }
-
 async function crawlAllSources(selected) {
   let all = [];
   for (const src of selected) {
-    if (src === 'reddit')       all.push(...await fetchReddit());
-    else if (src === 'hackernews') all.push(...await fetchHN());
+    if (src==='reddit') all.push(...await fetchReddit());
+    else if (src==='hackernews') all.push(...await fetchHN());
     else if (Array.isArray(ALL_SOURCES[src])) all.push(...await fetchRSSGroup(ALL_SOURCES[src]));
   }
-  const map = new Map(); all.forEach(s => map.set(s.url, s)); return Array.from(map.values());
+  const map = new Map(); all.forEach(s=>map.set(s.url,s)); return Array.from(map.values());
 }
-
 function rankStories(arr) {
-  const now = Date.now();
-  return arr.map(s => { const age=(now-new Date(s.publishedAt))/3.6e6; const eng=(s.score||0)+(s.comments||0)*2; return { ...s, rankScore:(eng+1)/Math.pow(age+2,1.3) }; }).sort((a,b) => b.rankScore - a.rankScore);
+  const now=Date.now();
+  return arr.map(s=>{const age=(now-new Date(s.publishedAt))/3.6e6;const eng=(s.score||0)+(s.comments||0)*2;return{...s,rankScore:(eng+1)/Math.pow(age+2,1.3)};}).sort((a,b)=>b.rankScore-a.rankScore);
 }
-
-async function analyzeArticle(article, apiKey, provider) {
-  const prompt = `Analyze headline: "${article.title.replace(/"/g, '\\"')}". Return ONLY JSON: {"emotion":"fear|anger|joy|sadness|surprise|neutral","sentiment":"positive|negative|neutral","intonation":"informative|alarming|hopeful","confidence":0.0,"keywords":["w1","w2"],"explanation":"short"}`;
+async function analyzeArticle(article,apiKey,provider) {
+  const prompt=`Analyze headline: "${article.title.replace(/"/g,'\\"')}". Return ONLY JSON: {"emotion":"fear|anger|joy|sadness|surprise|neutral","sentiment":"positive|negative|neutral","intonation":"informative|alarming|hopeful","confidence":0.0,"keywords":["w1","w2"],"explanation":"short"}`;
   try {
-    const raw = await callAIWithRetry({ prompt, maxTokens:220, apiKey, provider, retries:3, delayMs:1000 });
-    return safeJsonParse(raw, { emotion:'neutral', sentiment:'neutral', intonation:'informative', confidence:0.5, keywords:[], explanation:'' });
+    const raw=await callAIWithRetry({prompt,maxTokens:220,apiKey,provider,retries:3,delayMs:1000});
+    return safeJsonParse(raw,{emotion:'neutral',sentiment:'neutral',intonation:'informative',confidence:0.5,keywords:[],explanation:''});
   } catch(e) {
-    return { emotion:'neutral', sentiment:'neutral', intonation:'informative', confidence:0.5, keywords:[], explanation:'' };
+    return {emotion:'neutral',sentiment:'neutral',intonation:'informative',confidence:0.5,keywords:[],explanation:''};
   }
 }
 
-// ── Render functions ──────────────────────────────────────────────
-const emojiMap = { fear:'😨', anger:'😠', sadness:'😢', joy:'😄', surprise:'😲', neutral:'😐' };
+// ── Render functions ──────────────────────────────────────────
+const emojiMap={fear:'😨',anger:'😠',sadness:'😢',joy:'😄',surprise:'😲',neutral:'😐'};
 
-function renderStories() {
-  const container = document.getElementById('storyList');
+async function renderStories() {
+  const container=document.getElementById('storyList');
   if (!container) return;
-  const filtered = activeFilter ? stories.filter(s => s.emotion === activeFilter) : stories;
-  if (!filtered.length) { container.innerHTML = '<div class="empty"><div class="empty-icon">📭</div>No stories match this filter.</div>'; return; }
-  const hasBriefs = canUseBriefs();
-  container.innerHTML = filtered.map(s => {
-    const emoji   = emojiMap[s.emotion] || '😐';
-    const sentCls = s.sentiment === 'positive' ? 'badge-pos' : s.sentiment === 'negative' ? 'badge-neg' : 'badge-neutral';
+  const hasBriefs=await canUseBriefs();
+  const filtered=activeFilter?stories.filter(s=>s.emotion===activeFilter):stories;
+  if (!filtered.length){container.innerHTML='<div class="empty"><div class="empty-icon">📭</div>No stories match this filter.</div>';return;}
+  container.innerHTML=filtered.map(s=>{
+    const emoji=emojiMap[s.emotion]||'😐';
+    const sentCls=s.sentiment==='positive'?'badge-pos':s.sentiment==='negative'?'badge-neg':'badge-neutral';
     return `<div class="story-card">
       <div class="card-top"><div class="emotion-dot">${emoji}</div><div class="card-body">
         <div class="card-meta"><span class="badge">${esc(s.source)}</span><span class="badge ${sentCls}">${esc(s.sentiment)||'neutral'}</span><span class="ts">${timeAgo(s.publishedAt)}</span></div>
         <div class="card-title"><a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a></div>
-        ${s.explanation ? `<div class="card-explain">${esc(s.explanation)}</div>` : ''}
+        ${s.explanation?`<div class="card-explain">${esc(s.explanation)}</div>`:''}
         <div class="card-kw">${(s.keywords||[]).slice(0,3).map(k=>`<span class="kw">${esc(k)}</span>`).join('')}</div>
         <div class="conf-row"><span style="font-size:10px;color:var(--text-hint)">${Math.round((s.confidence||0.5)*100)}%</span><div class="conf-track"><div class="conf-fill" style="width:${Math.round((s.confidence||0.5)*100)}%"></div></div></div>
       </div></div>
       <div class="card-actions">
         <button class="act-btn brief-btn ${hasBriefs?'':'locked-btn'}" data-url="${esc(s.url)}">📝 Brief${hasBriefs?'':' 🔒'}</button>
         <button class="act-btn open-btn" data-url="${esc(s.url)}">↗ Open</button>
-      </div>
-    </div>`;
+      </div></div>`;
   }).join('');
-
-  container.querySelectorAll('.brief-btn').forEach(btn => btn.addEventListener('click', () => {
-    if (!canUseBriefs()) { renderUpsellBanner('briefsContent','briefs'); document.querySelector('.db-tab[data-tab="briefs"]').click(); return; }
-    const story = stories.find(s => s.url === btn.dataset.url);
-    if (story) generateBrief(story);
+  container.querySelectorAll('.brief-btn').forEach(btn=>btn.addEventListener('click',async()=>{
+    if(!await canUseBriefs()){renderUpsellBanner('briefsContent','briefs');document.querySelector('.db-tab[data-tab="briefs"]').click();return;}
+    const story=stories.find(s=>s.url===btn.dataset.url);
+    if(story) generateBrief(story);
   }));
-  container.querySelectorAll('.open-btn').forEach(btn => btn.addEventListener('click', () => window.open(btn.dataset.url, '_blank', 'noopener')));
+  container.querySelectorAll('.open-btn').forEach(btn=>btn.addEventListener('click',()=>window.open(btn.dataset.url,'_blank','noopener')));
 }
 
 function renderStats() {
-  const strip = document.getElementById('statsStrip');
-  if (!strip) return;
-  if (!stories.length) { strip.style.display = 'none'; return; }
-  const pos = stories.filter(s => s.sentiment === 'positive').length;
-  const neg = stories.filter(s => s.sentiment === 'negative').length;
-  strip.style.display = 'grid';
-  strip.innerHTML = `
-    <div class="stat-box"><div class="stat-value">${stories.length}</div><div class="stat-label">Total</div></div>
-    <div class="stat-box"><div class="stat-value" style="color:#8BC97F">${pos}</div><div class="stat-label">Positive</div></div>
-    <div class="stat-box"><div class="stat-value" style="color:#E07A5F">${neg}</div><div class="stat-label">Negative</div></div>
-    <div class="stat-box"><div class="stat-value">✦</div><div class="stat-label">AI Analyzed</div></div>`;
+  const strip=document.getElementById('statsStrip');
+  if(!strip||!stories.length){if(strip) strip.style.display='none';return;}
+  strip.style.display='grid';
+  const counts={positive:0,negative:0,neutral:0};
+  const emotions={};
+  stories.forEach(s=>{counts[s.sentiment]=(counts[s.sentiment]||0)+1;emotions[s.emotion]=(emotions[s.emotion]||0)+1;});
+  const topE=Object.entries(emotions).sort((a,b)=>b[1]-a[1])[0];
+  strip.innerHTML=`
+    <div class="stat-box"><div class="stat-value" style="color:var(--green)">${counts.positive}</div><div class="stat-label">Positive</div></div>
+    <div class="stat-box"><div class="stat-value" style="color:var(--red)">${counts.negative}</div><div class="stat-label">Negative</div></div>
+    <div class="stat-box"><div class="stat-value" style="color:var(--text-hint)">${counts.neutral}</div><div class="stat-label">Neutral</div></div>
+    <div class="stat-box"><div class="stat-value">${topE?emojiMap[topE[0]]||'😐':'—'}</div><div class="stat-label">Top emotion</div></div>`;
 }
 
 function renderFilterRow() {
-  const row = document.getElementById('filterRow');
-  if (!row) return;
-  if (!stories.length) { row.style.display = 'none'; return; }
-  const emotions = [...new Set(stories.map(s => s.emotion))];
-  row.innerHTML = `<button class="filter-chip active" data-em="">All</button>` +
-    emotions.map(em => `<button class="filter-chip" data-em="${esc(em)}">${esc(em)}</button>`).join('');
-  row.style.display = 'flex';
-  row.querySelectorAll('.filter-chip').forEach(chip => chip.addEventListener('click', () => {
-    activeFilter = chip.dataset.em || null;
-    row.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
-    chip.classList.add('active');
+  const row=document.getElementById('filterRow');
+  if(!row||!stories.length){if(row) row.style.display='none';return;}
+  const emotions=[...new Set(stories.map(s=>s.emotion))];
+  row.style.display='flex';
+  row.innerHTML=`<button class="filter-chip${!activeFilter?' active':''}" data-filter="">All</button>`+
+    emotions.map(e=>`<button class="filter-chip${activeFilter===e?' active':''}" data-filter="${esc(e)}">${emojiMap[e]||''} ${esc(e)}</button>`).join('');
+  row.querySelectorAll('.filter-chip').forEach(chip=>chip.addEventListener('click',()=>{
+    activeFilter=chip.dataset.filter||null;
+    row.querySelectorAll('.filter-chip').forEach(c=>c.classList.toggle('active',c===chip));
     renderStories();
   }));
 }
 
 async function renderKeywords() {
-  if (!stories.length) return;
-  const plan = getCurrentPlan();
-  const container = document.getElementById('kwContent');
-  if (!container) return;
-
-  // Build frequency map
-  const kwMap = {};
-  stories.forEach(s => (s.keywords||[]).forEach(k => { kwMap[k] = (kwMap[k]||0) + 1; }));
-  const topKw = Object.entries(kwMap).sort((a,b) => b[1]-a[1]).slice(0,30);
-
-  if (!plan.aiKeywords) {
-    container.innerHTML = `
-      <div class="section-label">🔥 Trending keywords</div>
-      <div class="kw-grid">${topKw.map(([k,c]) => `<span class="kw-tag">${esc(k)} <span style="opacity:0.5">${c}</span></span>`).join('')}</div>
-      <div style="background:#2A1E0A;border:1px solid rgba(245,176,66,0.25);border-radius:12px;padding:18px;margin-top:20px;text-align:center">
-        <div style="font-size:1.1rem;margin-bottom:8px">⚡ Upgrade to Pro for full keyword intelligence</div>
-        <div style="font-size:12px;color:var(--text-sec);margin-bottom:14px">AI keyword clusters · content gap analysis · question keywords · topic briefs</div>
+  const container=document.getElementById('kwContent');
+  if(!container) return;
+  if(!stories.length){container.innerHTML='<div class="empty"><div class="empty-icon">🔑</div>Run a crawl first.</div>';return;}
+  const hasBriefs=await canUseBriefs();
+  const wordMap={};
+  stories.forEach(s=>{(s.keywords||[]).forEach(k=>{if(k&&k.length>2) wordMap[k]=(wordMap[k]||0)+1;});});
+  const topKw=Object.entries(wordMap).filter(([,c])=>c>1).sort((a,b)=>b[1]-a[1]).slice(0,30);
+  if(!topKw.length){container.innerHTML='<div class="empty">Not enough keywords yet.</div>';return;}
+  if(!hasBriefs){
+    container.innerHTML=`<div class="section-label">🔥 Trending keywords</div><div class="kw-grid">${topKw.map(([k,c])=>`<span class="kw-tag">${esc(k)} <span style="opacity:0.5">${c}</span></span>`).join('')}</div>
+      <div style="background:#2A1E0A;border:1px solid rgba(245,176,66,0.25);border-radius:12px;padding:24px;text-align:center;margin-top:16px">
+        <div style="font-size:1rem;margin-bottom:8px">🔒 AI keyword intelligence is a Pro feature</div>
+        <div style="font-size:12px;color:var(--text-sec);margin-bottom:16px">Upgrade for AI-powered keyword clusters, content gaps and topic briefs.</div>
         <a href="pricing.html"><button class="run-btn" style="margin:0 auto">View Pro Plan →</button></a>
       </div>`;
     return;
   }
-
-  container.innerHTML = `
-    <div class="section-label">🔥 Trending keywords</div>
-    <div class="kw-grid">${topKw.map(([k,c]) => `<span class="kw-tag" data-term="${esc(k)}">${esc(k)} <span style="opacity:0.5">${c}</span></span>`).join('')}</div>
+  container.innerHTML=`<div class="section-label">🔥 Trending keywords</div>
+    <div class="kw-grid">${topKw.map(([k,c])=>`<span class="kw-tag" data-term="${esc(k)}">${esc(k)} <span style="opacity:0.5">${c}</span></span>`).join('')}</div>
     <div class="section-label" style="margin-top:16px">🧠 Click any keyword to generate a topic brief</div>
-    <div id="kwAiSection" style="margin-top:20px">
-      <div style="text-align:center;padding:24px;color:var(--text-hint)"><span class="spinner"></span> Loading AI keyword intelligence…</div>
-    </div>`;
-
-  container.querySelectorAll('.kw-tag').forEach(el => el.addEventListener('click', () => generateBriefFromTopic(el.dataset.term)));
-
-  const apiKey = settings.aiProvider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
-  if (!apiKey) {
-    document.getElementById('kwAiSection').innerHTML = `<div style="color:var(--text-hint);font-size:12px;text-align:center;padding:16px">Add an API key in Settings to enable AI keyword enrichment.</div>`;
+    <div id="kwAiSection" style="margin-top:20px"><div style="text-align:center;padding:24px;color:var(--text-hint)"><span class="spinner"></span> Loading AI keyword intelligence…</div></div>`;
+  container.querySelectorAll('.kw-tag').forEach(el=>el.addEventListener('click',()=>generateBriefFromTopic(el.dataset.term)));
+  const apiKey=settings.aiProvider==='anthropic'?settings.anthropicKey:settings.mistralKey;
+  if(!apiKey){
+    document.getElementById('kwAiSection').innerHTML=`<div style="color:var(--text-hint);font-size:12px;text-align:center;padding:16px">Add an API key in Settings to enable AI keyword enrichment.</div>`;
     return;
   }
-
-  // Phrase extraction
-  const phraseMap = {};
-  stories.forEach(s => {
-    const words = s.title.toLowerCase().replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(w => w.length >= 4 && !['this','that','with','from','have','been','will','were','they','their','what','when','which','about','after','before'].includes(w));
-    for (let i=0; i<words.length-1; i++) { const b=`${words[i]} ${words[i+1]}`; phraseMap[b]=(phraseMap[b]||0)+1; }
+  const phraseMap={};
+  stories.forEach(s=>{
+    const words=s.title.toLowerCase().replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(w=>w.length>=4&&!['this','that','with','from','have','been','will','were','they','their','what','when','which','about','after','before'].includes(w));
+    for(let i=0;i<words.length-1;i++){const b=`${words[i]} ${words[i+1]}`;phraseMap[b]=(phraseMap[b]||0)+1;}
   });
-  const topPhrases = Object.entries(phraseMap).filter(([,c]) => c >= 2).sort((a,b) => b[1]-a[1]).slice(0,15);
-  const qWords = ['how','why','what','when','who','which','will','can','should'];
-  const questions = stories.filter(s => qWords.some(q => s.title.toLowerCase().startsWith(q))).slice(0,8);
-
-  const prompt = `You are a senior SEO content strategist. Analyze these trending keywords from live news data.\n\nTOP KEYWORDS:\n${topKw.slice(0,20).map(([k,c])=>`- "${k}" (${c})`).join('\n')}\n\nTRENDING PHRASES:\n${topPhrases.slice(0,12).map(([p,c])=>`- "${p}" (${c})`).join('\n')}\n\nQUESTION HEADLINES:\n${questions.map(s=>`- ${s.title}`).join('\n')}\n\nReturn ONLY valid JSON:\n{"clusters":[{"theme":"","intent":"informational|news|opinion","urgency":"breaking|trending|evergreen","keywords":["k1"],"competition":"low|medium|high","potential":"low|medium|high","summary":""}],"gaps":[{"keyword":"","reason":"","angle":""}],"questions":[{"question":"","why":""}],"avoid":[{"keyword":"","reason":""}]}`;
-
+  const topPhrases=Object.entries(phraseMap).filter(([,c])=>c>=2).sort((a,b)=>b[1]-a[1]).slice(0,15);
+  const qWords=['how','why','what','when','who','which','will','can','should'];
+  const questions=stories.filter(s=>qWords.some(q=>s.title.toLowerCase().startsWith(q))).slice(0,8);
+  const prompt=`You are a senior SEO content strategist. Analyze these trending keywords.\nTOP KEYWORDS:\n${topKw.slice(0,20).map(([k,c])=>`- "${k}" (${c})`).join('\n')}\nReturn ONLY JSON:\n{"clusters":[{"theme":"","intent":"informational|news|opinion","urgency":"breaking|trending|evergreen","keywords":["k1"],"competition":"low|medium|high","potential":"low|medium|high","summary":""}],"gaps":[{"keyword":"","reason":"","angle":""}],"questions":[{"question":"","why":""}],"avoid":[{"keyword":"","reason":""}]}`;
   try {
-    const raw = await callAIWithRetry({ prompt, maxTokens:2000, apiKey, provider:settings.aiProvider, retries:3, delayMs:2000 });
-    const data = safeJsonParse(raw, { clusters:[], gaps:[], questions:[], avoid:[] });
-    renderAiKeywordSection(data, topPhrases, questions);
+    const raw=await callAIWithRetry({prompt,maxTokens:2000,apiKey,provider:settings.aiProvider,retries:3,delayMs:2000});
+    const data=safeJsonParse(raw,{clusters:[],gaps:[],questions:[],avoid:[]});
+    renderAiKeywordSection(data,topPhrases,questions);
   } catch(e) {
-    const kwAiSection = document.getElementById('kwAiSection');
-    if (kwAiSection) kwAiSection.innerHTML = `<div class="error-msg">AI keyword enrichment failed: ${esc(e.message)}</div>`;
+    const kwAi=document.getElementById('kwAiSection');
+    if(kwAi) kwAi.innerHTML=`<div class="error-msg">AI keyword enrichment failed: ${esc(e.message)}</div>`;
   }
 }
 
-function renderAiKeywordSection(data, phrases, questions) {
-  const sec = document.getElementById('kwAiSection');
-  if (!sec) return;
-  let h = '';
-  if (phrases.length) {
-    h += `<div class="section-label">📌 Trending phrases</div><div class="kw-grid">` +
-      phrases.map(([p]) => `<button class="kw-tag" data-term="${esc(p)}" style="color:var(--accent);border-color:rgba(245,176,66,0.3)">${esc(p)}</button>`).join('') + `</div>`;
-  }
-  if (data.questions?.length) {
-    h += `<div class="section-label" style="margin-top:18px">❓ People are asking</div>`;
-    data.questions.forEach(q => {
-      h += `<div class="kw-tag" data-term="${esc(q.question)}" style="display:block;padding:8px 14px;margin-bottom:6px;border-radius:10px;cursor:pointer"><span style="color:var(--accent);font-weight:600;margin-right:6px">→</span>${esc(q.question)}${q.why?`<span style="color:var(--text-hint);font-size:11px;margin-left:8px">${esc(q.why)}</span>`:''}</div>`;
-    });
-  }
-  if (data.clusters?.length) {
-    h += `<div class="section-label" style="margin-top:18px">🤖 AI keyword clusters</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:6px">`;
-    data.clusters.forEach(c => {
-      const urgencyColor = {breaking:'#E07A5F',trending:'#f5b042',evergreen:'#8BC97F'}[c.urgency]||'#f5b042';
-      h += `<div style="background:#111317;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-          <span style="font-weight:700;font-size:13px;flex:1">${esc(c.theme)}</span>
-          <span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(0,0,0,0.3);color:${urgencyColor};border:1px solid ${urgencyColor}33">${esc(c.urgency)}</span>
-        </div>
-        <div style="font-size:12px;color:var(--text-sec);margin-bottom:10px;line-height:1.5">${esc(c.summary)}</div>
-        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">${(c.keywords||[]).map(k=>`<button class="kw-tag" data-term="${esc(k)}" style="padding:2px 9px;font-size:11px">${esc(k)}</button>`).join('')}</div>
-        <div style="font-size:11px;color:var(--text-hint)">Competition: ${esc(c.competition)} · Potential: ${esc(c.potential)}</div>
-      </div>`;
-    });
-    h += `</div>`;
-  }
-  if (data.gaps?.length) {
-    h += `<div class="section-label" style="margin-top:18px">🎯 Content gap opportunities</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:6px">`;
-    data.gaps.forEach(g => {
-      h += `<div style="background:#111317;border:1px solid rgba(245,176,66,0.15);border-radius:12px;padding:14px">
-        <div style="font-weight:700;font-size:13px;margin-bottom:6px;color:var(--accent)">${esc(g.keyword)}</div>
-        <div style="font-size:12px;color:var(--text-sec);margin-bottom:8px;line-height:1.5">${esc(g.reason)}</div>
-        <div style="font-size:11px;color:var(--text-hint);font-style:italic;margin-bottom:10px">${esc(g.angle)}</div>
-        <button class="kw-tag" data-term="${esc(g.keyword)}" style="font-size:11px;padding:4px 12px;color:var(--accent);border-color:rgba(245,176,66,0.3)">📝 Generate brief →</button>
-      </div>`;
-    });
-    h += `</div>`;
-  }
-  if (data.avoid?.length) {
-    h += `<div class="section-label" style="margin-top:18px">🚫 Keywords to avoid</div><div class="kw-grid">`;
-    data.avoid.forEach(a => { h += `<span title="${esc(a.reason)}" style="padding:4px 12px;border:1px solid rgba(255,255,255,0.07);border-radius:20px;font-size:11px;color:var(--text-hint);text-decoration:line-through;opacity:0.5">${esc(a.keyword)}</span>`; });
-    h += `</div>`;
-  }
-  sec.innerHTML = h;
-  sec.querySelectorAll('[data-term]').forEach(el => el.addEventListener('click', () => generateBriefFromTopic(el.dataset.term)));
+function renderAiKeywordSection(data,phrases,questions) {
+  const sec=document.getElementById('kwAiSection');
+  if(!sec) return;
+  let h='';
+  if(phrases.length) h+=`<div class="section-label">📌 Trending phrases</div><div class="kw-grid">`+phrases.map(([p])=>`<button class="kw-tag" data-term="${esc(p)}" style="color:var(--accent);border-color:rgba(245,176,66,0.3)">${esc(p)}</button>`).join('')+`</div>`;
+  if(data.clusters?.length){h+=`<div class="section-label" style="margin-top:18px">🤖 AI keyword clusters</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:6px">`;
+    data.clusters.forEach(c=>{const uc={breaking:'#E07A5F',trending:'#f5b042',evergreen:'#8BC97F'}[c.urgency]||'#f5b042';h+=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-weight:700;font-size:13px;flex:1">${esc(c.theme)}</span><span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(0,0,0,0.3);color:${uc};border:1px solid ${uc}33">${esc(c.urgency)}</span></div><div style="font-size:12px;color:var(--text-sec);margin-bottom:10px;line-height:1.5">${esc(c.summary)}</div><div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">${(c.keywords||[]).map(k=>`<button class="kw-tag" data-term="${esc(k)}" style="padding:2px 9px;font-size:11px">${esc(k)}</button>`).join('')}</div><div style="font-size:11px;color:var(--text-hint)">Competition: ${esc(c.competition)} · Potential: ${esc(c.potential)}</div></div>`;});
+    h+=`</div>`;}
+  if(data.gaps?.length){h+=`<div class="section-label" style="margin-top:18px">🎯 Content gap opportunities</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:6px">`;
+    data.gaps.forEach(g=>{h+=`<div style="background:var(--surface);border:1px solid rgba(245,176,66,0.15);border-radius:12px;padding:14px"><div style="font-weight:700;font-size:13px;margin-bottom:6px;color:var(--accent)">${esc(g.keyword)}</div><div style="font-size:12px;color:var(--text-sec);margin-bottom:8px;line-height:1.5">${esc(g.reason)}</div><div style="font-size:11px;color:var(--text-hint);font-style:italic;margin-bottom:10px">${esc(g.angle)}</div><button class="kw-tag" data-term="${esc(g.keyword)}" style="font-size:11px;padding:4px 12px;color:var(--accent);border-color:rgba(245,176,66,0.3)">📝 Generate brief →</button></div>`;});
+    h+=`</div>`;}
+  sec.innerHTML=h;
+  sec.querySelectorAll('[data-term]').forEach(el=>el.addEventListener('click',()=>generateBriefFromTopic(el.dataset.term)));
 }
 
-// ── Brief generation ──────────────────────────────────────────────
+// ── Brief generation ──────────────────────────────────────────
 async function generateBrief(story) {
-  if (!canUseBriefs()) { renderUpsellBanner('briefsContent','briefs'); document.querySelector('.db-tab[data-tab="briefs"]').click(); return; }
-  const apiKey = settings.aiProvider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
-  const briefsDiv = document.getElementById('briefsContent');
-  if (briefsDiv) briefsDiv.innerHTML = '<div class="empty"><span class="spinner"></span> Creating brief…</div>';
+  if(!await canUseBriefs()){renderUpsellBanner('briefsContent','briefs');document.querySelector('.db-tab[data-tab="briefs"]').click();return;}
+  const apiKey=settings.aiProvider==='anthropic'?settings.anthropicKey:settings.mistralKey;
+  const briefsDiv=document.getElementById('briefsContent');
+  if(briefsDiv) briefsDiv.innerHTML='<div class="empty"><span class="spinner"></span> Creating brief…</div>';
   document.querySelector('.db-tab[data-tab="briefs"]').click();
-
-  const prompt = `Story: "${story.title.replace(/"/g,'\\"')}". Return ONLY JSON: {"headline":"","primaryKeyword":"","secondaryKeywords":[],"angle":"","outline":["s1","s2","s3","s4"],"audience":"","wordCount":1200,"keyPoints":[],"callToAction":""}`;
+  const prompt=`Story: "${story.title.replace(/"/g,'\\"')}". Return ONLY JSON: {"headline":"","primaryKeyword":"","secondaryKeywords":[],"angle":"","outline":["s1","s2","s3","s4"],"audience":"","wordCount":1200,"keyPoints":[],"callToAction":""}`;
   try {
-    const raw   = await callAIWithRetry({ prompt, maxTokens:700, apiKey, provider:settings.aiProvider, retries:2, delayMs:1000 });
-    const brief = safeJsonParse(raw, {});
-    currentBrief = Object.keys(brief).length > 2 ? brief : {
-      headline: story.title.slice(0,120),
-      angle: `Analysis of "${story.title}" from ${story.source}`,
-      primaryKeyword: story.keywords?.[0] || 'news',
-      secondaryKeywords: story.keywords?.slice(1,4) || [],
-      outline: ['Introduction','Main developments','Expert opinions','Conclusion'],
-      audience: 'News readers', wordCount:1000, keyPoints:[], callToAction:'Read more'
-    };
+    const raw=await callAIWithRetry({prompt,maxTokens:700,apiKey,provider:settings.aiProvider,retries:2,delayMs:1000});
+    const brief=safeJsonParse(raw,{});
+    currentBrief=Object.keys(brief).length>2?brief:{headline:story.title.slice(0,120),angle:`Analysis of "${story.title}"`,primaryKeyword:story.keywords?.[0]||'news',secondaryKeywords:story.keywords?.slice(1,4)||[],outline:['Introduction','Main developments','Expert opinions','Conclusion'],audience:'News readers',wordCount:1000,keyPoints:[],callToAction:'Read more'};
     renderBrief(currentBrief);
-  } catch(e) { if (briefsDiv) briefsDiv.innerHTML = `<div class="error-msg">Brief error: ${esc(e.message)}</div>`; }
+  } catch(e){if(briefsDiv) briefsDiv.innerHTML=`<div class="error-msg">Brief error: ${esc(e.message)}</div>`;}
 }
 
 async function generateBriefFromTopic(topic) {
-  const apiKey = settings.aiProvider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
-  const briefsDiv = document.getElementById('briefsContent');
-  if (!apiKey) {
-    if (briefsDiv) briefsDiv.innerHTML = '<div class="error-msg">⚠️ Add your API key in Settings first.</div>';
-    document.querySelector('.db-tab[data-tab="settings"]').click(); return;
-  }
-  if (briefsDiv) briefsDiv.innerHTML = `<div class="empty"><span class="spinner"></span> Generating brief for "${esc(topic)}"…</div>`;
+  const apiKey=settings.aiProvider==='anthropic'?settings.anthropicKey:settings.mistralKey;
+  const briefsDiv=document.getElementById('briefsContent');
+  if(!apiKey){if(briefsDiv) briefsDiv.innerHTML='<div class="error-msg">⚠️ Add your API key in Settings first.</div>';document.querySelector('.db-tab[data-tab="settings"]').click();return;}
+  if(briefsDiv) briefsDiv.innerHTML=`<div class="empty"><span class="spinner"></span> Generating brief for "${esc(topic)}"…</div>`;
   document.querySelector('.db-tab[data-tab="briefs"]').click();
-
-  const escapedTopic = topic.replace(/"/g, '\\"');
-  const prompt = `Content brief for topic "${escapedTopic}". Return ONLY JSON: {"headline":"","primaryKeyword":"${escapedTopic}","secondaryKeywords":[],"angle":"","outline":["s1","s2","s3","s4"],"audience":"professionals","wordCount":1000,"keyPoints":[],"callToAction":""}`;
+  const escaped=topic.replace(/"/g,'\\"');
+  const prompt=`Content brief for topic "${escaped}". Return ONLY JSON: {"headline":"","primaryKeyword":"${escaped}","secondaryKeywords":[],"angle":"","outline":["s1","s2","s3","s4"],"audience":"professionals","wordCount":1000,"keyPoints":[],"callToAction":""}`;
   try {
-    const raw   = await callAIWithRetry({ prompt, maxTokens:600, apiKey, provider:settings.aiProvider, retries:2, delayMs:1000 });
-    const brief = safeJsonParse(raw, {});
-    if (!brief.headline || !brief.angle) throw new Error('Incomplete response');
-    currentBrief = brief; renderBrief(brief);
+    const raw=await callAIWithRetry({prompt,maxTokens:600,apiKey,provider:settings.aiProvider,retries:2,delayMs:1000});
+    const brief=safeJsonParse(raw,{});
+    if(!brief.headline||!brief.angle) throw new Error('Incomplete response');
+    currentBrief=brief; renderBrief(brief);
   } catch(e) {
-    const fallback = { headline:`${topic} – Analysis`, angle:`Deep dive into ${topic}.`, primaryKeyword:topic, secondaryKeywords:[], outline:['Introduction','Key facts','Developments','Conclusion'], audience:'General readers', wordCount:1000, keyPoints:[], callToAction:'Learn more' };
-    currentBrief = fallback; renderBrief(fallback);
-    const briefCard = document.querySelector('#briefsContent .brief-card');
-    if (briefCard) {
-      const w = document.createElement('div'); w.className='error-msg'; w.style.marginTop='12px'; w.style.fontSize='11px';
-      w.textContent = `⚠️ AI brief failed (${e.message}). Using template. Check your API key.`;
-      briefCard.prepend(w); setTimeout(() => w.remove(), 5000);
-    }
+    const fallback={headline:`${topic} – Analysis`,angle:`Deep dive into ${topic}.`,primaryKeyword:topic,secondaryKeywords:[],outline:['Introduction','Key facts','Developments','Conclusion'],audience:'General readers',wordCount:1000,keyPoints:[],callToAction:'Learn more'};
+    currentBrief=fallback; renderBrief(fallback);
   }
 }
 
-async function generateBriefFromTopicWithTone(topic, tone) {
-  const apiKey = settings.aiProvider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
-  const briefsDiv = document.getElementById('briefsContent');
-  if (!apiKey) {
-    if (briefsDiv) briefsDiv.innerHTML = '<div class="error-msg">⚠️ Add your API key in Settings first.</div>';
-    document.querySelector('.db-tab[data-tab="settings"]').click(); return;
-  }
-  if (briefsDiv) briefsDiv.innerHTML = `<div class="empty"><span class="spinner"></span> Generating brief for "${esc(topic)}"…</div>`;
+async function generateBriefFromTopicWithTone(topic,tone) {
+  const apiKey=settings.aiProvider==='anthropic'?settings.anthropicKey:settings.mistralKey;
+  const briefsDiv=document.getElementById('briefsContent');
+  if(!apiKey){if(briefsDiv) briefsDiv.innerHTML='<div class="error-msg">⚠️ Add your API key in Settings first.</div>';document.querySelector('.db-tab[data-tab="settings"]').click();return;}
+  if(briefsDiv) briefsDiv.innerHTML=`<div class="empty"><span class="spinner"></span> Generating brief for "${esc(topic)}"…</div>`;
   document.querySelector('.db-tab[data-tab="briefs"]').click();
-
-  const ctxStories = stories.filter(s => `${s.title} ${s.description}`.toLowerCase().includes(topic.toLowerCase())).slice(0,4);
-  const context  = ctxStories.length ? '\nRelated stories:\n' + ctxStories.map(s=>`- ${s.title} (${s.source})`).join('\n') : '';
-  const toneNote = tone ? ` The article should have a ${tone} tone.` : '';
-  const escapedTopic = topic.replace(/"/g, '\\"');
-  const prompt = `You are an expert content strategist. Create a detailed article brief for: "${escapedTopic}".${toneNote}${context}\n\nReturn ONLY valid JSON:\n{"headline":"","primaryKeyword":"${escapedTopic}","secondaryKeywords":[],"angle":"","outline":["s1","s2","s3","s4","s5"],"audience":"","wordCount":1200,"keyPoints":[],"callToAction":"","tone":"${tone||'neutral'}"}`;
-
+  const ctxStories=stories.filter(s=>`${s.title} ${s.description}`.toLowerCase().includes(topic.toLowerCase())).slice(0,4);
+  const context=ctxStories.length?'\nRelated:\n'+ctxStories.map(s=>`- ${s.title} (${s.source})`).join('\n'):'';
+  const toneNote=tone?` ${tone} tone.`:'';
+  const escaped=topic.replace(/"/g,'\\"');
+  const prompt=`You are an expert content strategist. Create a detailed article brief for: "${escaped}".${toneNote}${context}\nReturn ONLY valid JSON:\n{"headline":"","primaryKeyword":"${escaped}","secondaryKeywords":[],"angle":"","outline":["s1","s2","s3","s4","s5"],"audience":"","wordCount":1200,"keyPoints":[],"callToAction":"","tone":"${tone||'neutral'}"}`;
   try {
-    const raw   = await callAIWithRetry({ prompt, maxTokens:700, apiKey, provider:settings.aiProvider, retries:2, delayMs:1000 });
-    const brief = safeJsonParse(raw, {});
-    if (!brief.headline || !brief.angle) throw new Error('Incomplete response');
-    currentBrief = brief; renderBrief(brief);
+    const raw=await callAIWithRetry({prompt,maxTokens:700,apiKey,provider:settings.aiProvider,retries:2,delayMs:1000});
+    const brief=safeJsonParse(raw,{});
+    if(!brief.headline||!brief.angle) throw new Error('Incomplete response');
+    currentBrief=brief; renderBrief(brief);
   } catch(e) {
-    const fallback = { headline:`${topic} – ${tone?tone.toUpperCase()+' ':''}Analysis`, angle:`A ${tone||'balanced'} look at ${topic}.`, primaryKeyword:topic, secondaryKeywords:[], outline:['Introduction','Background','Developments','Implications','Conclusion'], audience:'General readers', wordCount:1100, keyPoints:[], callToAction:'Share your thoughts' };
-    currentBrief = fallback; renderBrief(fallback);
-    const briefCard = document.querySelector('#briefsContent .brief-card');
-    if (briefCard) {
-      const w = document.createElement('div'); w.className='error-msg'; w.style.marginTop='12px'; w.style.fontSize='11px';
-      w.textContent = `⚠️ AI brief failed (${e.message}). Using template. Check your API key.`;
-      briefCard.prepend(w); setTimeout(() => w.remove(), 5000);
-    }
+    const fallback={headline:`${topic} – ${tone?tone.toUpperCase()+' ':''}Analysis`,angle:`A ${tone||'balanced'} look at ${topic}.`,primaryKeyword:topic,secondaryKeywords:[],outline:['Introduction','Background','Developments','Implications','Conclusion'],audience:'General readers',wordCount:1100,keyPoints:[],callToAction:'Share your thoughts'};
+    currentBrief=fallback; renderBrief(fallback);
   }
 }
 
-function renderBrief(brief) {
-  const briefsDiv = document.getElementById('briefsContent');
-  if (!briefsDiv) return;
-  briefsDiv.innerHTML = `<div class="brief-card">
+async function renderBrief(brief) {
+  const briefsDiv=document.getElementById('briefsContent');
+  if(!briefsDiv) return;
+  const hasDrafts=await canUseDrafts();
+  briefsDiv.innerHTML=`<div class="brief-card">
     <div class="brief-headline">${esc(brief.headline)}</div>
     <div class="brief-angle">🎯 ${esc(brief.angle)}</div>
     <div style="font-size:12px;margin-bottom:8px"><strong>Primary keyword:</strong> ${esc(brief.primaryKeyword)}</div>
     <div style="font-size:12px;margin-bottom:6px"><strong>Outline:</strong></div>
     <ol class="brief-outline">${(brief.outline||[]).map(o=>`<li>${esc(o)}</li>`).join('')}</ol>
     <div class="card-actions">
-      <button id="genDraftBtn" class="act-btn ${canUseDrafts()?'':'locked-btn'}">✍️ Generate Draft${canUseDrafts()?'':' 🔒'}</button>
+      <button id="genDraftBtn" class="act-btn ${hasDrafts?'':'locked-btn'}">✍️ Generate Draft${hasDrafts?'':' 🔒'}</button>
       <button id="copyBriefBtn" class="act-btn">⎘ Copy</button>
-    </div>
-  </div>`;
-  document.getElementById('genDraftBtn')?.addEventListener('click', () => {
-    if (!canUseDrafts()) { renderUpsellBanner('draftContent','drafts'); document.querySelector('.db-tab[data-tab="draft"]').click(); return; }
+    </div></div>`;
+  document.getElementById('genDraftBtn')?.addEventListener('click',async()=>{
+    if(!await canUseDrafts()){renderUpsellBanner('draftContent','drafts');document.querySelector('.db-tab[data-tab="draft"]').click();return;}
     generateDraft(brief);
   });
-  document.getElementById('copyBriefBtn')?.addEventListener('click', () => navigator.clipboard?.writeText(JSON.stringify(brief, null, 2)));
+  document.getElementById('copyBriefBtn')?.addEventListener('click',()=>navigator.clipboard?.writeText(JSON.stringify(brief,null,2)));
 }
 
-// ── Draft generation ──────────────────────────────────────────────
-function makeDraftActions(text, filename) {
+// ── Draft generation ──────────────────────────────────────────
+async function generateDraft(brief) {
+  if(!await canUseDrafts()){renderUpsellBanner('draftContent','drafts');document.querySelector('.db-tab[data-tab="draft"]').click();return;}
+  const apiKey=settings.aiProvider==='anthropic'?settings.anthropicKey:settings.mistralKey;
+  if(!apiKey){document.getElementById('draftContent').innerHTML='<div class="error-msg">Add an API key in Settings first.</div>';return;}
+  const draftDiv=document.getElementById('draftContent');
+  if(draftDiv) draftDiv.innerHTML='<div class="empty"><span class="spinner"></span> Writing draft (30–60s)…</div>';
+  document.querySelector('.db-tab[data-tab="draft"]').click();
+  const prompt=`Write a ${brief.wordCount||1000}-word AP-style article.\nHeadline: ${brief.headline}.\nKeyword: ${brief.primaryKeyword}.\nOutline: ${(brief.outline||[]).join(', ')}.\nAngle: ${brief.angle}.\nAudience: ${brief.audience||'general readers'}.\nUse engaging lede, short paragraphs, subheadings. No fabricated quotes.`;
+  try {
+    const draft=await callAIWithRetry({prompt,maxTokens:2500,apiKey,provider:settings.aiProvider,retries:2,delayMs:1500});
+    const fname=`${(brief.primaryKeyword||'draft').replace(/\s+/g,'-')}.md`;
+    if(draftDiv){draftDiv.innerHTML=`<div class="draft-output">${esc(draft)}</div>${makeDraftActions(draft,fname)}`;bindDraftActions(draft,fname);}
+  } catch(e){if(draftDiv) draftDiv.innerHTML=`<div class="error-msg">Draft error: ${esc(e.message)}</div>`;}
+}
+
+async function generateDraftFromPrompt(userPrompt,wordCount,style) {
+  const apiKey=settings.aiProvider==='anthropic'?settings.anthropicKey:settings.mistralKey;
+  if(!apiKey){document.getElementById('draftContent').innerHTML='<div class="error-msg">Add an API key in Settings first.</div>';return;}
+  const draftDiv=document.getElementById('draftContent');
+  if(draftDiv) draftDiv.innerHTML='<div class="empty"><span class="spinner"></span> Writing draft (30–60s)…</div>';
+  document.querySelector('.db-tab[data-tab="draft"]').click();
+  const prompt=`Write a ${wordCount}-word article in ${style}.\nUser brief: ${userPrompt}\nRequirements:\n- Follow the brief exactly\n- Engaging lede/opening\n- Short paragraphs\n- Clear subheadings\n- Do NOT fabricate quotes or statistics\n- End with a strong conclusion`;
+  try {
+    const draft=await callAIWithRetry({prompt,maxTokens:2500,apiKey,provider:settings.aiProvider,retries:2,delayMs:1500});
+    if(draftDiv){draftDiv.innerHTML=`<div class="draft-output">${esc(draft)}</div>${makeDraftActions(draft,'draft-'+Date.now()+'.md')}`;bindDraftActions(draft,'draft-'+Date.now()+'.md');}
+  } catch(e){if(draftDiv) draftDiv.innerHTML=`<div class="error-msg">Draft error: ${esc(e.message)}</div>`;}
+}
+
+function makeDraftActions(text,filename) {
   return `<div class="draft-actions">
     <button id="copyDraftBtn" class="act-btn">📋 Copy Draft</button>
-    <div class="tone-selector">🎭 Tone
-      <select id="humanizerToneSelect">
-        <option value="casual">Casual</option>
-        <option value="professional">Professional</option>
-        <option value="witty">Witty</option>
-        <option value="empathetic">Empathetic</option>
-        <option value="simple">Simple &amp; Clear</option>
-      </select>
-    </div>
+    <div class="tone-selector">🎭 Tone<select id="humanizerToneSelect"><option value="casual">Casual</option><option value="professional">Professional</option><option value="witty">Witty</option><option value="empathetic">Empathetic</option><option value="simple">Simple &amp; Clear</option></select></div>
     <button id="humanizeDraftBtn" class="act-btn">✨ Humanize</button>
-    ${canUseExport() ? `<button id="exportMdBtn" class="act-btn">⬇ Export MD</button>` : ''}
+    <button id="exportMdBtn" class="act-btn">⬇ Export MD</button>
   </div>`;
 }
 
-function bindDraftActions(text, filename) {
-  document.getElementById('copyDraftBtn')?.addEventListener('click', () => navigator.clipboard?.writeText(text));
-  if (canUseExport()) {
-    document.getElementById('exportMdBtn')?.addEventListener('click', () => {
-      const blob = new Blob([text], { type:'text/markdown' });
-      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-      a.download = filename || `draft-${Date.now()}.md`; a.click();
-    });
-  }
-  document.getElementById('humanizeDraftBtn')?.addEventListener('click', () => {
-    const tone = document.getElementById('humanizerToneSelect')?.value || 'casual';
-    humanizeDraft(text, tone);
+function bindDraftActions(text,filename) {
+  document.getElementById('copyDraftBtn')?.addEventListener('click',()=>navigator.clipboard?.writeText(text));
+  document.getElementById('exportMdBtn')?.addEventListener('click',()=>{
+    const blob=new Blob([text],{type:'text/markdown'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename||`draft-${Date.now()}.md`;a.click();
+  });
+  document.getElementById('humanizeDraftBtn')?.addEventListener('click',()=>{
+    const tone=document.getElementById('humanizerToneSelect')?.value||'casual';
+    humanizeDraft(text,tone);
   });
 }
 
-async function generateDraftFromPrompt(userPrompt, wordCount, style) {
-  const apiKey = settings.aiProvider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
-  if (!apiKey) { document.getElementById('draftContent').innerHTML = '<div class="error-msg">Add an API key in Settings first.</div>'; return; }
-  const draftDiv = document.getElementById('draftContent');
-  if (draftDiv) draftDiv.innerHTML = '<div class="empty"><span class="spinner"></span> Writing draft (30–60s)…</div>';
-  document.querySelector('.db-tab[data-tab="draft"]').click();
-  const prompt = `Write a ${wordCount}-word article in ${style}.\nUser brief: ${userPrompt}\nRequirements:\n- Follow the brief exactly\n- Engaging lede/opening\n- Short paragraphs (2–3 sentences)\n- Clear subheadings\n- Do NOT fabricate quotes or statistics\n- End with a strong conclusion`;
+// ── Humanizer (preserved from original) ──────────────────────
+const HUMANIZER_BANNED=['delve','leverage','revolutionize','groundbreaking','unprecedented','game-changer','transformative','cutting-edge','holistic','synergy','paradigm','disruptive','innovative','robust','seamless','unlock','empower','streamline','optimize','utilize','harness','realm','moreover','furthermore','notably','consequently','accordingly','in conclusion','to summarize','it is important to note','needless to say','in today\'s fast-paced world','in the digital age','moving forward','going forward','dive deep'];
+const HUMANIZER_PERSONAS={journalist:{voice:'seasoned investigative journalist with 15+ years experience',traits:['Lead with the most surprising fact','Use inverted pyramid','Name real people specifically','Insert short punchy paragraphs','Challenge assumptions','Use em-dashes for asides','Occasionally address the reader']},blogger:{voice:'enthusiastic personal blogger with deep knowledge',traits:['Start with a personal anecdote','Use "I" occasionally','Ask rhetorical questions','Use casual connectors','Break into short paragraphs','Use parenthetical asides','Use "you" frequently']},expert:{voice:'authoritative subject-matter expert',traits:['Use precise terminology','Reference historical context','Acknowledge nuance','Use hedging language','Be willing to say what others get wrong','Short declarative sentences after complex ones']},storyteller:{voice:'narrative journalist who makes dry topics compelling',traits:['Open with a scene','Use sensory language','Build tension through sequencing','Vary sentence length dramatically','End paragraphs with a turn']},analyst:{voice:'sharp business/policy analyst',traits:['Lead with the key takeaway','Use numbered breakdowns','Contrast expectation vs reality','Reference real-world implications','Keep sentences tight','Be direct about uncertainty']}};
+const BYPASS_INSTRS={light:'Make moderate changes: replace AI buzzwords, add contractions, vary sentence length. Target: ~30% reduction.',medium:'Significantly rewrite while keeping all facts. Restructure 40%+ of sentences, add 3-5 natural human quirks. Target: ~65% reduction.',aggressive:'Deeply transform — keep ONLY facts, data, named entities. Rewrite every sentence. Target: ~85% reduction.'};
+const SEO_INSTRS={none:'',basic:'\n\nSEO (Basic): Use focus keyword naturally in first paragraph and 2+ other places. Active voice.',full:'\n\nSEO (Full): Keyword in first 100 words, a heading, and final paragraph. Include 3-5 LSI terms.'};
+
+async function runAdvancedHumanizer({text,persona,tone,bypassLevel,seoMode,focusKeyword,targetDiv,onComplete}){
+  const apiKey=settings.aiProvider==='anthropic'?settings.anthropicKey:settings.mistralKey;
+  if(!apiKey){if(targetDiv) targetDiv.innerHTML='<div class="error-msg">⚠️ Add your API key in Settings first.</div>';return null;}
+  const personaData=HUMANIZER_PERSONAS[persona]||HUMANIZER_PERSONAS.journalist;
+  const bypassInstr=BYPASS_INSTRS[bypassLevel]||BYPASS_INSTRS.medium;
+  const seoInstr=SEO_INSTRS[seoMode]||'';
+  const bannedList=HUMANIZER_BANNED.join('", "');
+  const keywordLine=focusKeyword?`\nFOCUS KEYWORD: "${focusKeyword}"`:'' ;
+  const toneGuide={casual:'warm, conversational — contractions, short paragraphs',professional:'polished, authoritative, active voice',witty:'sharp, clever, light humour',empathetic:'warm, use "we" and "you", compassionate',simple:'plain English, max 15-word sentences'};
+  const passes=bypassLevel==='light'?1:bypassLevel==='medium'?2:3;
+  const setProgress=(msg,pct)=>{const p=document.getElementById('hzProgressMsg');const f=document.getElementById('hzProgFill');if(p) p.innerHTML=msg;if(f) f.style.width=pct+'%';};
+  const addBadge=(label,color)=>{const badges=document.getElementById('hzPassBadges');if(!badges) return;const b=document.createElement('span');b.style.cssText=`font-size:10px;padding:2px 9px;border-radius:20px;background:${color}22;color:${color};border:1px solid ${color}44`;b.textContent=label;badges.appendChild(b);};
+  const passBadges=document.getElementById('hzPassBadges');
+  if(passBadges) passBadges.innerHTML='';
+  let current=text;
   try {
-    const draft = await callAIWithRetry({ prompt, maxTokens:2500, apiKey, provider:settings.aiProvider, retries:2, delayMs:1500 });
-    if (draftDiv) {
-      draftDiv.innerHTML = `<div class="draft-output">${esc(draft)}</div>${makeDraftActions(draft, 'draft-' + Date.now() + '.md')}`;
-      bindDraftActions(draft, 'draft-' + Date.now() + '.md');
+    setProgress('<span class="spinner"></span> Pass 1/'+passes+': Restructuring & voice…',10);addBadge('Pass 1: Structure','#f5b042');
+    const p1=`You are a ${personaData.voice}. Rewrite with a completely new structure and voice.\nPERSONA TRAITS:\n${personaData.traits.map((t,i)=>`${i+1}. ${t}`).join('\n')}\nTONE: ${toneGuide[tone]||toneGuide.casual}\nBYPASS LEVEL: ${bypassInstr}${keywordLine}\nABSOLUTE RULES:\n1. NEVER use: "${bannedList}"\n2. Keep ALL facts accurate\n3. Vary sentence length dramatically\n4. Return ONLY the rewritten article.\n\nARTICLE:\n${current}`;
+    current=await callAIWithRetry({prompt:p1,maxTokens:3200,apiKey,provider:settings.aiProvider,retries:2,delayMs:1500});
+    setProgress('<span class="spinner"></span> Pass 1 complete.',30);
+    if(passes>=2){
+      await new Promise(r=>setTimeout(r,800));setProgress('<span class="spinner"></span> Pass 2/'+passes+': Maximising burstiness…',35);addBadge('Pass 2: Burstiness','#8BC97F');
+      const p2=`Expert editor specialising in making AI-written text undetectable.\nEDITING TASKS:\n1. Restructure at least 3 of the 5 longest sentences\n2. Replace predictable word choices\n3. Remove: "moreover","furthermore","however","therefore","thus","additionally"\n4. Add 2-3 natural imperfections: comma splice, sentence starting with "And"/"But"\n5. No two consecutive sentences similar length${seoInstr}\nReturn ONLY the edited article.\n\nARTICLE:\n${current}`;
+      current=await callAIWithRetry({prompt:p2,maxTokens:3200,apiKey,provider:settings.aiProvider,retries:2,delayMs:1500});
+      setProgress('<span class="spinner"></span> Pass 2 complete.',65);
     }
-  } catch(e) { if (draftDiv) draftDiv.innerHTML = `<div class="error-msg">Draft error: ${esc(e.message)}</div>`; }
-}
-
-async function generateDraft(brief) {
-  if (!canUseDrafts()) { renderUpsellBanner('draftContent','drafts'); document.querySelector('.db-tab[data-tab="draft"]').click(); return; }
-  const apiKey = settings.aiProvider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
-  if (!apiKey) { document.getElementById('draftContent').innerHTML = '<div class="error-msg">Add an API key in Settings first.</div>'; return; }
-  const draftDiv = document.getElementById('draftContent');
-  if (draftDiv) draftDiv.innerHTML = '<div class="empty"><span class="spinner"></span> Writing draft (30–60s)…</div>';
-  document.querySelector('.db-tab[data-tab="draft"]').click();
-  const prompt = `Write a ${brief.wordCount||1000}-word AP-style article.\nHeadline: ${brief.headline}.\nKeyword: ${brief.primaryKeyword}.\nOutline: ${(brief.outline||[]).join(', ')}.\nAngle: ${brief.angle}.\nAudience: ${brief.audience||'general readers'}.\nUse engaging lede, short paragraphs, subheadings. No fabricated quotes.`;
-  try {
-    const draft = await callAIWithRetry({ prompt, maxTokens:2500, apiKey, provider:settings.aiProvider, retries:2, delayMs:1500 });
-    const fname = `${(brief.primaryKeyword||'draft').replace(/\s+/g,'-')}.md`;
-    if (draftDiv) {
-      draftDiv.innerHTML = `<div class="draft-output">${esc(draft)}</div>${makeDraftActions(draft, fname)}`;
-      bindDraftActions(draft, fname);
-    }
-  } catch(e) { if (draftDiv) draftDiv.innerHTML = `<div class="error-msg">Draft error: ${esc(e.message)}</div>`; }
-}
-
-// ── Humanizer ─────────────────────────────────────────────────────
-const HUMANIZER_BANNED = ['delve','leverage','revolutionize','groundbreaking','unprecedented','game-changer','transformative','cutting-edge','holistic','synergy','paradigm','disruptive','innovative','robust','seamless','unlock','empower','streamline','optimize','utilize','harness','realm','moreover','furthermore','notably','consequently','accordingly','in conclusion','to summarize','it is important to note','needless to say','in today\'s fast-paced world','in the digital age','moving forward','going forward','dive deep','take a deep dive','unpack','explore','navigate','landscape','ecosystem','journey','pivotal','crucial','vital','significant','substantial','comprehensive','facilitate','implement'];
-const HUMANIZER_PERSONAS = {
-  journalist: { voice:'seasoned investigative journalist with 15+ years experience', traits:['Lead with the most surprising fact','Use inverted pyramid','Name real people specifically','Insert short punchy paragraphs','Challenge assumptions','Use em-dashes for asides','Occasionally address the reader'] },
-  blogger:    { voice:'enthusiastic personal blogger with deep knowledge', traits:['Start with a personal anecdote','Use "I" occasionally','Ask rhetorical questions','Use casual connectors','Break into short paragraphs','Use parenthetical asides','Use "you" frequently'] },
-  expert:     { voice:'authoritative subject-matter expert', traits:['Use precise terminology','Reference historical context','Acknowledge nuance','Use hedging language','Be willing to say what others get wrong','Short declarative sentences after complex ones'] },
-  storyteller:{ voice:'narrative journalist who makes dry topics compelling', traits:['Open with a scene','Use sensory language','Build tension through sequencing','Vary sentence length dramatically','End paragraphs with a turn'] },
-  analyst:    { voice:'sharp business/policy analyst', traits:['Lead with the key takeaway','Use numbered breakdowns','Contrast expectation vs reality','Reference real-world implications','Keep sentences tight','Be direct about uncertainty'] },
-};
-const BYPASS_INSTRS = {
-  light:      'Make moderate changes: replace AI buzzwords, add contractions, vary sentence length. Target: ~30% reduction in AI-detection probability.',
-  medium:     'Significantly rewrite while keeping all facts. Restructure 40%+ of sentences, add 3-5 natural human quirks, vary length dramatically. Target: ~65% reduction.',
-  aggressive: 'Deeply transform — keep ONLY facts, data, named entities. Rewrite every sentence in persona voice. Add natural imperfections. Introduce burstiness. Target: ~85% reduction.',
-};
-const SEO_INSTRS = {
-  none:  '',
-  basic: '\n\nSEO (Basic): Use focus keyword naturally in first paragraph and 2+ other places. Active voice.',
-  full:  '\n\nSEO (Full): Keyword in first 100 words, a heading, and final paragraph. Include 3-5 LSI terms. Named entities for topical authority. Structure for featured snippets.',
-};
-
-async function runAdvancedHumanizer({ text, persona, tone, bypassLevel, seoMode, focusKeyword, targetDiv, onComplete }) {
-  const apiKey = settings.aiProvider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
-  if (!apiKey) { if (targetDiv) targetDiv.innerHTML = '<div class="error-msg">⚠️ Add your API key in Settings first.</div>'; return null; }
-
-  const personaData  = HUMANIZER_PERSONAS[persona] || HUMANIZER_PERSONAS.journalist;
-  const bypassInstr  = BYPASS_INSTRS[bypassLevel] || BYPASS_INSTRS.medium;
-  const seoInstr     = SEO_INSTRS[seoMode] || '';
-  const bannedList   = HUMANIZER_BANNED.join('", "');
-  const keywordLine  = focusKeyword ? `\nFOCUS KEYWORD: "${focusKeyword}" — use naturally, never force it.` : '';
-  const toneGuide    = { casual:'warm, conversational — contractions, short paragraphs', professional:'polished, authoritative, active voice', witty:'sharp, clever, light humour', empathetic:'warm, use "we" and "you", compassionate', simple:'plain English, max 15-word sentences' };
-  const passes       = bypassLevel === 'light' ? 1 : bypassLevel === 'medium' ? 2 : 3;
-
-  const setProgress = (msg, pct) => {
-    const p = document.getElementById('hzProgressMsg');
-    const f = document.getElementById('hzProgFill');
-    if (p) p.innerHTML = msg;
-    if (f) f.style.width = pct + '%';
-  };
-  const addBadge = (label, color) => {
-    const badges = document.getElementById('hzPassBadges');
-    if (!badges) return;
-    const b = document.createElement('span');
-    b.style.cssText = `font-size:10px;padding:2px 9px;border-radius:20px;background:${color}22;color:${color};border:1px solid ${color}44`;
-    b.textContent = label; badges.appendChild(b);
-  };
-  const passBadges = document.getElementById('hzPassBadges');
-  if (passBadges) passBadges.innerHTML = '';
-
-  let current = text;
-  try {
-    // Pass 1 — Structure & Voice
-    setProgress('<span class="spinner"></span> Pass 1/' + passes + ': Restructuring & voice…', 10);
-    addBadge('Pass 1: Structure', '#f5b042');
-    const p1 = `You are a ${personaData.voice}. Rewrite the article below with a completely new structure and voice.\n\nPERSONA TRAITS — apply all:\n${personaData.traits.map((t,i)=>`${i+1}. ${t}`).join('\n')}\n\nTONE: ${toneGuide[tone]||toneGuide.casual}\n\nBYPASS LEVEL: ${bypassInstr}${keywordLine}\n\nABSOLUTE RULES:\n1. NEVER use: "${bannedList}"\n2. Keep ALL facts, statistics, names, quotes accurate\n3. Do NOT add invented facts\n4. Vary sentence length dramatically\n5. 20%+ sentences should start with something other than subject-verb\n6. Add at least one parenthetical aside\n7. Include the writer's perspective once\n\nReturn ONLY the rewritten article.\n\nARTICLE:\n${current}`;
-    current = await callAIWithRetry({ prompt:p1, maxTokens:3200, apiKey, provider:settings.aiProvider, retries:2, delayMs:1500 });
-    setProgress('<span class="spinner"></span> Pass 1 complete.', 30);
-
-    if (passes >= 2) {
-      await new Promise(r => setTimeout(r, 800));
-      setProgress('<span class="spinner"></span> Pass 2/' + passes + ': Maximising burstiness…', 35);
-      addBadge('Pass 2: Burstiness', '#8BC97F');
-      const p2 = `You are an expert editor specialising in making AI-written text undetectable.\n\nEDITING TASKS:\n1. Restructure at least 3 of the 5 longest sentences\n2. Replace predictable word choices with vivid unexpected alternatives\n3. Remove: "moreover","furthermore","however","therefore","thus","consequently","additionally"\n4. Add 2-3 natural imperfections: comma splice, sentence starting with "And"/"But", em-dash interruption\n5. No two consecutive sentences should have similar structure or length${seoInstr}\n\nKEEP all facts, names, data unchanged.\nReturn ONLY the edited article.\n\nARTICLE:\n${current}`;
-      current = await callAIWithRetry({ prompt:p2, maxTokens:3200, apiKey, provider:settings.aiProvider, retries:2, delayMs:1500 });
-      setProgress('<span class="spinner"></span> Pass 2 complete.', 65);
-    }
-
-    if (passes >= 3) {
-      await new Promise(r => setTimeout(r, 800));
-      setProgress('<span class="spinner"></span> Pass 3/' + passes + ': Scrubbing AI fingerprints…', 70);
-      addBadge('Pass 3: Fingerprint Scrub', '#9B7EDE');
-      const p3 = `Final AI fingerprint scrub.\n\nFINAL CHECKS:\n1. Any word used 3+ times? Vary with synonyms.\n2. 3+ consecutive sentences starting the same way? Fix.\n3. No two consecutive paragraphs the same length.\n4. Add if missing: mild surprise, mild opinion, short standalone sentence, rhetorical question.\n5. Remove: Wikipedia-intro phrasing, perfectly balanced "on one hand/other hand", "It is" + passive voice, triple parallel claims.${focusKeyword?`\n6. Confirm keyword "${focusKeyword}" appears in first 150 words and at least once more.`:''}\n\nReturn ONLY the final article. No commentary.\n\nARTICLE:\n${current}`;
-      current = await callAIWithRetry({ prompt:p3, maxTokens:3200, apiKey, provider:settings.aiProvider, retries:2, delayMs:1500 });
-      setProgress('✅ All passes complete.', 100);
-      addBadge('✓ Done', '#f5b042');
-    } else {
-      setProgress('✅ Humanization complete.', 100);
-    }
-
-    setTimeout(() => { const p=document.getElementById('hzProgressMsg'); const f=document.getElementById('hzProgFill'); if(p) p.textContent=''; if(f) f.style.width='0%'; }, 3000);
-    if (onComplete) onComplete(current);
+    if(passes>=3){
+      await new Promise(r=>setTimeout(r,800));setProgress('<span class="spinner"></span> Pass 3/'+passes+': Scrubbing AI fingerprints…',70);addBadge('Pass 3: Fingerprint Scrub','#9B7EDE');
+      const p3=`Final AI fingerprint scrub.\nFINAL CHECKS:\n1. Any word used 3+ times? Vary with synonyms.\n2. 3+ consecutive sentences starting the same way? Fix.\n3. No two consecutive paragraphs the same length.\n4. Add if missing: mild surprise, mild opinion, short standalone sentence, rhetorical question.${focusKeyword?`\n5. Confirm keyword "${focusKeyword}" appears in first 150 words.`:''}\nReturn ONLY the final article.\n\nARTICLE:\n${current}`;
+      current=await callAIWithRetry({prompt:p3,maxTokens:3200,apiKey,provider:settings.aiProvider,retries:2,delayMs:1500});
+      setProgress('✅ All passes complete.',100);addBadge('✓ Done','#f5b042');
+    } else {setProgress('✅ Humanization complete.',100);}
+    setTimeout(()=>{const p=document.getElementById('hzProgressMsg');const f=document.getElementById('hzProgFill');if(p) p.textContent='';if(f) f.style.width='0%';},3000);
+    if(onComplete) onComplete(current);
     return current;
-  } catch(e) {
-    setProgress('', 0);
-    if (targetDiv) targetDiv.innerHTML = `<div class="error-msg">Humanizer error (${esc(e.message)}). Check your API key.</div>`;
+  } catch(e){
+    setProgress('',0);
+    if(targetDiv) targetDiv.innerHTML=`<div class="error-msg">Humanizer error (${esc(e.message)}). Check your API key.</div>`;
     return null;
   }
 }
 
-async function humanizeDraft(text, tone='casual') {
-  const draftDiv = document.getElementById('draftContent');
-  if (draftDiv) draftDiv.innerHTML = '<div class="empty"><span class="spinner"></span> Humanizing draft…</div>';
-  const result = await runAdvancedHumanizer({ text, persona:'journalist', tone, bypassLevel:'medium', seoMode:'basic', focusKeyword:'', targetDiv:draftDiv, onComplete:null });
-  if (!result) return;
-  if (draftDiv) {
-    const fname = `humanized-${Date.now()}.md`;
-    draftDiv.innerHTML = `<div class="draft-output">${esc(result)}</div>${makeDraftActions(result, fname)}`;
-    bindDraftActions(result, fname);
-  }
+async function humanizeDraft(text,tone='casual'){
+  const draftDiv=document.getElementById('draftContent');
+  if(draftDiv) draftDiv.innerHTML='<div class="empty"><span class="spinner"></span> Humanizing draft…</div>';
+  const result=await runAdvancedHumanizer({text,persona:'journalist',tone,bypassLevel:'medium',seoMode:'basic',focusKeyword:'',targetDiv:draftDiv,onComplete:null});
+  if(!result) return;
+  if(draftDiv){const fname=`humanized-${Date.now()}.md`;draftDiv.innerHTML=`<div class="draft-output">${esc(result)}</div>${makeDraftActions(result,fname)}`;bindDraftActions(result,fname);}
 }
 
-// ── Main crawl pipeline ───────────────────────────────────────────
+// ── Main crawl pipeline ───────────────────────────────────────
 async function runPipeline() {
-  const crawlCheck = canCrawl();
+  const crawlCheck = await window.canCrawl();
   if (!crawlCheck.ok) { renderUpsellBanner('storyList','crawl'); return; }
 
-  const provider = settings.aiProvider;
-  const apiKey   = provider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
-  if (!apiKey) {
-    const storyDiv = document.getElementById('storyList');
-    if (storyDiv) storyDiv.innerHTML = `<div class="error-msg">⚠ Please enter your ${provider === 'anthropic' ? 'Anthropic' : 'Mistral'} API key in Settings.</div>`;
-    document.querySelector('.db-tab[data-tab="settings"]').click(); return;
+  const provider=settings.aiProvider;
+  const apiKey=provider==='anthropic'?settings.anthropicKey:settings.mistralKey;
+  if(!apiKey){
+    const storyDiv=document.getElementById('storyList');
+    if(storyDiv) storyDiv.innerHTML=`<div class="error-msg">⚠ Please enter your ${provider==='anthropic'?'Anthropic':'Mistral'} API key in Settings.</div>`;
+    document.querySelector('.db-tab[data-tab="settings"]').click();return;
   }
 
-  const selected = [...document.querySelectorAll('.source-chip.active:not(.locked)')].map(c => c.dataset.src);
-  if (!selected.length) {
-    const storyDiv = document.getElementById('storyList');
-    if (storyDiv) storyDiv.innerHTML = '<div class="error-msg">Select at least one source category.</div>'; return;
+  const selected=[...document.querySelectorAll('.source-chip.active:not(.locked)')].map(c=>c.dataset.src);
+  if(!selected.length){
+    const storyDiv=document.getElementById('storyList');
+    if(storyDiv) storyDiv.innerHTML='<div class="error-msg">Select at least one source category.</div>';return;
   }
 
-  const crawlBtn   = document.getElementById('crawlBtn');
-  const progressDiv= document.getElementById('progressMsg');
-  const progFill   = document.getElementById('progFill');
+  const crawlBtn=document.getElementById('crawlBtn');
+  const progressDiv=document.getElementById('progressMsg');
+  const progFill=document.getElementById('progFill');
+  if(crawlBtn) crawlBtn.disabled=true;
+  if(progressDiv) progressDiv.innerHTML='<span class="spinner"></span> Crawling sources…';
+  if(progFill) progFill.style.width='5%';
 
-  if (crawlBtn)    crawlBtn.disabled = true;
-  if (progressDiv) progressDiv.innerHTML = '<span class="spinner"></span> Crawling sources…';
-  if (progFill)    progFill.style.width  = '5%';
+  // Increment crawl count server-side
+  try { await window.incrementCrawlCount(); } catch(e) {}
+  await renderUsageBar();
 
-  incrementCrawlCount();
-  renderUsageBar();
+  let raw=await crawlAllSources(selected);
+  raw=rankStories(raw).slice(0,35);
+  if(progressDiv) progressDiv.innerHTML=`<span class="spinner"></span> Analyzing ${raw.length} stories…`;
+  if(progFill) progFill.style.width='30%';
 
-  let raw = await crawlAllSources(selected);
-  raw = rankStories(raw).slice(0, 35);
-
-  if (progressDiv) progressDiv.innerHTML = `<span class="spinner"></span> Analyzing ${raw.length} stories…`;
-  if (progFill)    progFill.style.width  = '30%';
-
-  const analyzed = [];
-  for (let i=0; i<raw.length; i++) {
-    try {
-      const a = await analyzeArticle(raw[i], apiKey, provider);
-      analyzed.push({ ...raw[i], ...a, analyzed:true });
-    } catch(e) {
-      analyzed.push({ ...raw[i], emotion:'neutral', sentiment:'neutral', intonation:'informative', confidence:0.5, keywords:[], explanation:'' });
-    }
-    const pct = 30 + Math.round(((i+1)/raw.length)*65);
-    if (progFill)    progFill.style.width    = pct + '%';
-    if (progressDiv) progressDiv.textContent = `Analyzed ${i+1} / ${raw.length}…`;
-    if (i < raw.length - 1) await new Promise(r => setTimeout(r, 1100));
+  const analyzed=[];
+  for(let i=0;i<raw.length;i++){
+    try {const a=await analyzeArticle(raw[i],apiKey,provider);analyzed.push({...raw[i],...a,analyzed:true});}
+    catch(e){analyzed.push({...raw[i],emotion:'neutral',sentiment:'neutral',intonation:'informative',confidence:0.5,keywords:[],explanation:''});}
+    const pct=30+Math.round(((i+1)/raw.length)*65);
+    if(progFill) progFill.style.width=pct+'%';
+    if(progressDiv) progressDiv.textContent=`Analyzed ${i+1} / ${raw.length}…`;
+    if(i<raw.length-1) await new Promise(r=>setTimeout(r,1100));
   }
 
-  stories = analyzed;
-  renderStories(); renderStats(); renderFilterRow(); renderKeywords();
-  if (progFill)    progFill.style.width    = '100%';
-  if (progressDiv) progressDiv.textContent = '✅ Done';
-  setTimeout(() => { if(progressDiv) progressDiv.textContent=''; if(progFill) progFill.style.width='0%'; }, 2500);
-  if (crawlBtn) crawlBtn.disabled = false;
+  stories=analyzed;
+  await renderStories(); renderStats(); renderFilterRow();
+  if(settings.aiKeywords) await renderKeywords();
+  if(progFill) progFill.style.width='100%';
+  if(progressDiv) progressDiv.textContent='✅ Done';
+  setTimeout(()=>{if(progressDiv) progressDiv.textContent='';if(progFill) progFill.style.width='0%';},2500);
+  if(crawlBtn) crawlBtn.disabled=false;
 }
 
-// ── Dashboard initialization (called once after auth confirmed) ───
-function initDashboard(user) {
-  loadSettings();
-  renderSourceChips();
-  renderUsageBar();
-  renderTabLocks();
-  renderAccountPane(user);
+// ── Dashboard init ─────────────────────────────────────────────
+async function initDashboard(user) {
+  await loadSettingsUI();
+  await renderSourceChips();
+  await renderUsageBar();
+  await renderTabLocks();
+  await renderAccountPane(user);
+  await renderSettingsTrialNote();
+  await window.renderTrialBanner('trialBannerContainer');
 
   // Tab switching
-  document.querySelectorAll('.db-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.db-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.db-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.db-tab').forEach(tab=>{
+    tab.addEventListener('click',()=>{
+      document.querySelectorAll('.db-tab').forEach(t=>t.classList.remove('active'));
+      document.querySelectorAll('.db-pane').forEach(p=>p.classList.remove('active'));
       tab.classList.add('active');
-      const pane = document.getElementById(`pane-${tab.dataset.tab}`);
-      if (pane) pane.classList.add('active');
+      document.getElementById(`pane-${tab.dataset.tab}`)?.classList.add('active');
     });
   });
 
@@ -1319,132 +1083,107 @@ function initDashboard(user) {
   document.getElementById('crawlBtn')?.addEventListener('click', runPipeline);
   document.getElementById('refreshBtn')?.addEventListener('click', runPipeline);
   document.getElementById('settingsBtn')?.addEventListener('click', () => document.querySelector('.db-tab[data-tab="settings"]').click());
-  document.getElementById('saveSettingsBtn')?.addEventListener('click', saveSettings);
+  document.getElementById('saveSettingsBtn')?.addEventListener('click', saveSettingsHandler);
   document.getElementById('aiEnrichToggle')?.addEventListener('click', e => e.currentTarget.classList.toggle('on'));
 
-  // Brief manual button
-  document.getElementById('briefManualBtn')?.addEventListener('click', () => {
-    if (!canUseBriefs()) { renderUpsellBanner('briefsContent','briefs'); return; }
-    const topic = document.getElementById('briefTopicInput')?.value.trim();
-    const tone  = document.getElementById('briefToneInput')?.value || '';
-    if (!topic) { document.getElementById('briefsContent').innerHTML = '<div class="error-msg">Please enter a topic or keyword.</div>'; return; }
-    generateBriefFromTopicWithTone(topic, tone);
+  // Brief manual
+  document.getElementById('briefManualBtn')?.addEventListener('click', async () => {
+    if(!await canUseBriefs()){renderUpsellBanner('briefsContent','briefs');return;}
+    const topic=document.getElementById('briefTopicInput')?.value.trim();
+    const tone=document.getElementById('briefToneInput')?.value||'';
+    if(!topic){document.getElementById('briefsContent').innerHTML='<div class="error-msg">Please enter a topic or keyword.</div>';return;}
+    generateBriefFromTopicWithTone(topic,tone);
   });
-  document.getElementById('briefTopicInput')?.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('briefManualBtn')?.click(); });
+  document.getElementById('briefTopicInput')?.addEventListener('keydown',e=>{if(e.key==='Enter') document.getElementById('briefManualBtn')?.click();});
 
-  // Draft manual button
-  document.getElementById('draftManualBtn')?.addEventListener('click', () => {
-    if (!canUseDrafts()) { renderUpsellBanner('draftContent','drafts'); document.querySelector('.db-tab[data-tab="draft"]').click(); return; }
-    const prompt    = document.getElementById('draftPromptInput')?.value.trim();
-    const wordCount = document.getElementById('draftWordCount')?.value || '1000';
-    const style     = document.getElementById('draftStyleInput')?.value || 'AP style';
-    if (!prompt) { document.getElementById('draftContent').innerHTML = '<div class="error-msg">Please describe the article you want to write.</div>'; return; }
-    generateDraftFromPrompt(prompt, wordCount, style);
+  // Draft manual
+  document.getElementById('draftManualBtn')?.addEventListener('click', async () => {
+    if(!await canUseDrafts()){renderUpsellBanner('draftContent','drafts');document.querySelector('.db-tab[data-tab="draft"]').click();return;}
+    const prompt=document.getElementById('draftPromptInput')?.value.trim();
+    const wordCount=document.getElementById('draftWordCount')?.value||'1000';
+    const style=document.getElementById('draftStyleInput')?.value||'AP style';
+    if(!prompt){document.getElementById('draftContent').innerHTML='<div class="error-msg">Please describe the article you want to write.</div>';return;}
+    generateDraftFromPrompt(prompt,wordCount,style);
   });
 
   // Provider switching
-  const providerAnth = document.getElementById('providerAnthropic');
-  const providerMist = document.getElementById('providerMistral');
-  const groupAnth    = document.getElementById('groupAnthropicKey');
-  const groupMist    = document.getElementById('groupMistralKey');
-  providerAnth?.addEventListener('click', () => {
-    settings.aiProvider = 'anthropic';
-    providerAnth.classList.add('active'); providerMist?.classList.remove('active');
-    if (groupAnth) groupAnth.style.display = 'block';
-    if (groupMist) groupMist.style.display = 'none';
+  const pAnth=document.getElementById('providerAnthropic');
+  const pMist=document.getElementById('providerMistral');
+  pAnth?.addEventListener('click',()=>{
+    settings.aiProvider='anthropic';
+    pAnth.classList.add('active');pMist?.classList.remove('active');
+    document.getElementById('groupAnthropicKey').style.display='block';
+    document.getElementById('groupMistralKey').style.display='none';
   });
-  providerMist?.addEventListener('click', () => {
-    settings.aiProvider = 'mistral';
-    providerMist.classList.add('active'); providerAnth?.classList.remove('active');
-    if (groupMist) groupMist.style.display = 'block';
-    if (groupAnth) groupAnth.style.display = 'none';
+  pMist?.addEventListener('click',()=>{
+    settings.aiProvider='mistral';
+    pMist.classList.add('active');pAnth?.classList.remove('active');
+    document.getElementById('groupMistralKey').style.display='block';
+    document.getElementById('groupAnthropicKey').style.display='none';
   });
 
-  // Humanizer tab
-  let lastHumanizedText = '';
+  // Humanizer
+  let lastHumanizedText='';
   document.getElementById('hzRunBtn')?.addEventListener('click', async () => {
-    if (!canUseDrafts()) { renderUpsellBanner('hzOutput','drafts'); document.getElementById('hzOutput').style.display = 'block'; return; }
-    const text = document.getElementById('hzInput')?.value.trim();
-    if (!text || text.length < 50) { document.getElementById('hzProgressMsg').textContent = '⚠️ Please paste an article (min 50 chars).'; return; }
-    const persona      = document.getElementById('hzPersona')?.value     || 'journalist';
-    const tone         = document.getElementById('hzTone')?.value        || 'casual';
-    const bypassLevel  = document.getElementById('hzBypassLevel')?.value || 'medium';
-    const seoMode      = document.getElementById('hzSeoMode')?.value     || 'basic';
-    const focusKeyword = document.getElementById('hzKeyword')?.value.trim() || '';
-    const hzRunBtn     = document.getElementById('hzRunBtn');
-    const hzOutput     = document.getElementById('hzOutput');
-
-    if (hzRunBtn) hzRunBtn.disabled = true;
-    if (hzOutput) hzOutput.style.display = 'none';
-
-    const result = await runAdvancedHumanizer({ text, persona, tone, bypassLevel, seoMode, focusKeyword, targetDiv:hzOutput, onComplete:null });
-    if (hzRunBtn) hzRunBtn.disabled = false;
-
-    if (result) {
-      lastHumanizedText = result;
-      const outputText = document.getElementById('hzOutputText');
-      if (outputText) outputText.textContent = result;
-      if (hzOutput) hzOutput.style.display = 'block';
-
-      // Burstiness / humanness heuristic
-      const sentences   = result.match(/[^.!?]+[.!?]+/g) || [];
-      const lens        = sentences.map(s => s.trim().split(/\s+/).length);
-      const avg         = lens.reduce((a,b) => a+b, 0) / (lens.length || 1);
-      const variance    = lens.reduce((a,b) => a+Math.pow(b-avg,2), 0) / (lens.length || 1);
-      const burstScore  = Math.min(Math.round(Math.sqrt(variance)*5), 99);
-      const boosts      = { aggressive:20, medium:10, light:5 };
-      const passScore   = Math.min(burstScore + (boosts[bypassLevel]||10), 99);
-      const passCount   = { light:'1', medium:'2', aggressive:'3' }[bypassLevel] || '2';
-
-      const scoreBadges = document.getElementById('hzScoreBadges');
-      if (scoreBadges) {
-        scoreBadges.innerHTML = `
-          <span style="font-size:11px;padding:3px 10px;border-radius:20px;background:rgba(139,201,127,0.15);color:#8BC97F;border:1px solid rgba(139,201,127,0.3)">Burstiness: ${burstScore}%</span>
-          <span style="font-size:11px;padding:3px 10px;border-radius:20px;background:rgba(245,176,66,0.15);color:var(--accent);border:1px solid rgba(245,176,66,0.3)">Human Score: ~${passScore}%</span>
-          <span style="font-size:11px;padding:3px 10px;border-radius:20px;background:rgba(155,126,222,0.15);color:#9B7EDE;border:1px solid rgba(155,126,222,0.3)">${passCount}-pass</span>`;
-      }
-
-      // Bind output action buttons (re-bind each time to avoid stale closures)
+    if(!await canUseDrafts()){renderUpsellBanner('hzOutput','drafts');document.getElementById('hzOutput').style.display='block';return;}
+    const text=document.getElementById('hzInput')?.value.trim();
+    if(!text||text.length<50){document.getElementById('hzProgressMsg').textContent='⚠️ Please paste an article (min 50 chars).';return;}
+    const persona=document.getElementById('hzPersona')?.value||'journalist';
+    const tone=document.getElementById('hzTone')?.value||'casual';
+    const bypassLevel=document.getElementById('hzBypassLevel')?.value||'medium';
+    const seoMode=document.getElementById('hzSeoMode')?.value||'basic';
+    const focusKeyword=document.getElementById('hzKeyword')?.value.trim()||'';
+    const hzRunBtn=document.getElementById('hzRunBtn');
+    const hzOutput=document.getElementById('hzOutput');
+    if(hzRunBtn) hzRunBtn.disabled=true;
+    if(hzOutput) hzOutput.style.display='none';
+    const result=await runAdvancedHumanizer({text,persona,tone,bypassLevel,seoMode,focusKeyword,targetDiv:hzOutput,onComplete:null});
+    if(hzRunBtn) hzRunBtn.disabled=false;
+    if(result){
+      lastHumanizedText=result;
+      const outputText=document.getElementById('hzOutputText');
+      if(outputText) outputText.textContent=result;
+      if(hzOutput) hzOutput.style.display='block';
+      const sentences=result.match(/[^.!?]+[.!?]+/g)||[];
+      const lens=sentences.map(s=>s.trim().split(/\s+/).length);
+      const avg=lens.reduce((a,b)=>a+b,0)/(lens.length||1);
+      const variance=lens.reduce((a,b)=>a+Math.pow(b-avg,2),0)/(lens.length||1);
+      const burstScore=Math.min(Math.round(Math.sqrt(variance)*5),99);
+      const boosts={aggressive:20,medium:10,light:5};
+      const passScore=Math.min(burstScore+(boosts[bypassLevel]||10),99);
+      const passCount={light:'1',medium:'2',aggressive:'3'}[bypassLevel]||'2';
+      const scoreBadges=document.getElementById('hzScoreBadges');
+      if(scoreBadges) scoreBadges.innerHTML=`<span style="font-size:11px;padding:3px 10px;border-radius:20px;background:rgba(139,201,127,0.15);color:#8BC97F;border:1px solid rgba(139,201,127,0.3)">Burstiness: ${burstScore}%</span><span style="font-size:11px;padding:3px 10px;border-radius:20px;background:rgba(245,176,66,0.15);color:var(--accent);border:1px solid rgba(245,176,66,0.3)">Human Score: ~${passScore}%</span><span style="font-size:11px;padding:3px 10px;border-radius:20px;background:rgba(155,126,222,0.15);color:#9B7EDE;border:1px solid rgba(155,126,222,0.3)">${passCount}-pass</span>`;
       document.getElementById('hzCopyBtn')?.replaceWith(document.getElementById('hzCopyBtn').cloneNode(true));
       document.getElementById('hzExportBtn')?.replaceWith(document.getElementById('hzExportBtn').cloneNode(true));
       document.getElementById('hzRehumanizeBtn')?.replaceWith(document.getElementById('hzRehumanizeBtn').cloneNode(true));
-
-      document.getElementById('hzCopyBtn')?.addEventListener('click', () => navigator.clipboard?.writeText(result));
-      document.getElementById('hzExportBtn')?.addEventListener('click', () => {
-        const blob = new Blob([result], { type:'text/markdown' });
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-        a.download = `humanized-${Date.now()}.md`; a.click();
-      });
-      document.getElementById('hzRehumanizeBtn')?.addEventListener('click', () => {
-        const input = document.getElementById('hzInput');
-        if (input) input.value = result;
-        document.getElementById('hzRunBtn')?.click();
-      });
+      document.getElementById('hzCopyBtn')?.addEventListener('click',()=>navigator.clipboard?.writeText(result));
+      document.getElementById('hzExportBtn')?.addEventListener('click',()=>{const blob=new Blob([result],{type:'text/markdown'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`humanized-${Date.now()}.md`;a.click();});
+      document.getElementById('hzRehumanizeBtn')?.addEventListener('click',()=>{const input=document.getElementById('hzInput');if(input) input.value=result;document.getElementById('hzRunBtn')?.click();});
     }
   });
 }
 
-// ── Auth hook — called by auth.js after Supabase session check ────
-window.onAuthStateChecked = (user) => {
-  const authGate     = document.getElementById('authGate');
-  const userDashboard= document.getElementById('userDashboard');
-
+// ── Auth hook — called by auth.js after Supabase session check ─
+window.onAuthStateChecked = (user, profile) => {
+  const authGate    = document.getElementById('authGate');
+  const userDash    = document.getElementById('userDashboard');
   if (user) {
-    if (authGate)      authGate.style.display      = 'none';
-    if (userDashboard) userDashboard.style.display  = 'block';
+    if (authGate) authGate.style.display = 'none';
+    if (userDash) userDash.style.display = 'block';
     if (!window._dashboardInitialized) {
       window._dashboardInitialized = true;
       initDashboard(user);
     }
   } else {
-    if (authGate)      authGate.style.display      = 'block';
-    if (userDashboard) userDashboard.style.display  = 'none';
+    if (authGate) authGate.style.display = 'block';
+    if (userDash) userDash.style.display = 'none';
   }
 };
 
-// ── Auth gate buttons ─────────────────────────────────────────────
+// ── Auth gate buttons ──────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('signInPromptBtn')?.addEventListener('click', () => window.showAuthModal('login'));
+  document.getElementById('signInPromptBtn')?.addEventListener('click',  () => window.showAuthModal('login'));
   document.getElementById('registerPromptBtn')?.addEventListener('click', () => window.showAuthModal('register'));
 });
 </script>

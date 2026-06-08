@@ -364,6 +364,43 @@ function safeJsonParse(str, fallback = {}) {
   } catch(e) { return fallback; }
 }
 
+// ── Rate limiter — keeps Mistral (and Anthropic) within per-minute limits ──
+// Mistral free tier: ~5 req/min. Paid: 60 req/min. We default to a safe 5 req/min
+// token bucket that refills every 60 s. Adjust MISTRAL_RPM for your tier.
+const MISTRAL_RPM = 5;   // requests per minute — raise to 60 on a paid key
+const _rlState = { tokens: MISTRAL_RPM, lastRefill: Date.now(), queue: [] };
+
+function _refillBucket() {
+  const now = Date.now();
+  const elapsed = (now - _rlState.lastRefill) / 1000;
+  if (elapsed >= 60) {
+    _rlState.tokens = MISTRAL_RPM;
+    _rlState.lastRefill = now;
+  }
+}
+
+// Returns a Promise that resolves when a token is available.
+function _acquireToken() {
+  return new Promise(resolve => {
+    function attempt() {
+      _refillBucket();
+      if (_rlState.tokens > 0) {
+        _rlState.tokens--;
+        resolve();
+      } else {
+        // Wait until the bucket refills (remaining ms in the current window + small buffer)
+        const waitMs = Math.max(0, 60000 - (Date.now() - _rlState.lastRefill)) + 500;
+        setTimeout(attempt, waitMs);
+      }
+    }
+    attempt();
+  });
+}
+
+// Per-pipeline cooldown: prevent re-runs more often than once every 60 s
+let _lastPipelineRun = 0;
+const PIPELINE_COOLDOWN_MS = 60_000; // 1 minute
+
 // ── AI calls (keys come from in-memory settings, NOT localStorage) ──
 async function callAI({ prompt, maxTokens=600, apiKey, provider }) {
   if (provider === 'anthropic') {
@@ -375,25 +412,38 @@ async function callAI({ prompt, maxTokens=600, apiKey, provider }) {
     if (!r.ok) { const e = await r.text(); throw new Error(`Anthropic ${r.status}: ${e.slice(0,100)}`); }
     const d = await r.json(); return d.content[0].text;
   } else {
+    // Acquire a rate-limit token before every Mistral call
+    await _acquireToken();
     const r = await fetch('https://api.mistral.ai/v1/chat/completions', {
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiKey}`},
       body:JSON.stringify({model:'mistral-large-latest',max_tokens:maxTokens,messages:[{role:'user',content:prompt}]})
     });
-    if (!r.ok) { const e = await r.text(); throw new Error(`Mistral ${r.status}: ${e.slice(0,100)}`); }
+    if (!r.ok) {
+      const e = await r.text();
+      // On a real 429 the bucket is already empty; drain it fully so the next
+      // _acquireToken() call will wait for a fresh refill automatically.
+      if (r.status === 429) _rlState.tokens = 0;
+      throw new Error(`Mistral ${r.status}: ${e.slice(0,120)}`);
+    }
     const d = await r.json(); return d.choices[0].message.content;
   }
 }
 
-async function callAIWithRetry({ prompt, maxTokens=600, apiKey, provider, retries=3, delayMs=1000 }) {
+async function callAIWithRetry({ prompt, maxTokens=600, apiKey, provider, retries=3, delayMs=1200 }) {
   let lastErr;
   for (let i=1; i<=retries; i++) {
     try { return await callAI({ prompt, maxTokens, apiKey, provider }); }
     catch(e) {
       lastErr = e;
-      const retry = e.message.includes('429') || e.message.includes('5');
-      if (!retry || i === retries) throw e;
-      await new Promise(r => setTimeout(r, delayMs * Math.pow(2, i-1) + Math.random()*200));
+      const is429  = e.message.includes('429');
+      const is5xx  = /\b5\d{2}\b/.test(e.message);
+      if ((!is429 && !is5xx) || i === retries) throw e;
+      // On 429: wait for the full remaining window; on 5xx: exponential back-off
+      const wait = is429
+        ? Math.max(0, 60000 - (Date.now() - _rlState.lastRefill)) + 1000
+        : delayMs * Math.pow(2, i - 1) + Math.random() * 300;
+      await new Promise(r => setTimeout(r, wait));
     }
   }
   throw lastErr;
@@ -777,10 +827,27 @@ async function renderKeywords() {
   if(!container) return;
   if(!stories.length){container.innerHTML='<div class="empty"><div class="empty-icon">🔑</div>Run a crawl first.</div>';return;}
   const hasBriefs=await canUseBriefs();
+
+  // ── Build keyword map: prefer AI-extracted keywords; always supplement
+  //    with title-derived words so the tab is never empty ──────────────
+  const STOP=new Set(['this','that','with','from','have','been','will','were','they','their','what','when','which','about','after','before','into','over','under','just','more','also','then','than','like','some','most','time','year','news','says','said','using','make','made','gets','its','are','was','has','had','can','the','and','for','not','but']);
   const wordMap={};
-  stories.forEach(s=>{(s.keywords||[]).forEach(k=>{if(k&&k.length>2) wordMap[k]=(wordMap[k]||0)+1;});});
-  const topKw=Object.entries(wordMap).filter(([,c])=>c>1).sort((a,b)=>b[1]-a[1]).slice(0,30);
-  if(!topKw.length){container.innerHTML='<div class="empty">Not enough keywords yet.</div>';return;}
+  stories.forEach(s=>{
+    // Prefer AI-extracted keywords (may be empty on first run)
+    const aiKw=(s.keywords||[]).filter(k=>k&&k.length>2);
+    if(aiKw.length){
+      aiKw.forEach(k=>{const kl=k.toLowerCase().trim();if(kl) wordMap[kl]=(wordMap[kl]||0)+2;});
+    }
+    // Always also extract from the raw title for robustness
+    const titleWords=s.title.toLowerCase().replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(w=>w.length>=4&&!STOP.has(w));
+    titleWords.forEach(w=>{wordMap[w]=(wordMap[w]||0)+1;});
+  });
+
+  // Lower threshold to 1 (show all unique) when fewer than 15 stories, else ≥2
+  const minCount = stories.length < 15 ? 1 : 2;
+  const topKw=Object.entries(wordMap).filter(([,c])=>c>=minCount).sort((a,b)=>b[1]-a[1]).slice(0,40);
+
+  if(!topKw.length){container.innerHTML='<div class="empty">Not enough data yet — try crawling more sources.</div>';return;}
   if(!hasBriefs){
     container.innerHTML=`<div class="section-label">🔥 Trending keywords</div><div class="kw-grid">${topKw.map(([k,c])=>`<span class="kw-tag">${esc(k)} <span style="opacity:0.5">${c}</span></span>`).join('')}</div>
       <div style="background:#2A1E0A;border:1px solid rgba(245,176,66,0.25);border-radius:12px;padding:24px;text-align:center;margin-top:16px">
@@ -962,11 +1029,7 @@ function bindDraftActions(text,filename) {
   });
 }
 
-// ── Humanizer (preserved from original) ──────────────────────
-const HUMANIZER_BANNED=['delve','leverage','revolutionize','groundbreaking','unprecedented','game-changer','transformative','cutting-edge','holistic','synergy','paradigm','disruptive','innovative','robust','seamless','unlock','empower','streamline','optimize','utilize','harness','realm','moreover','furthermore','notably','consequently','accordingly','in conclusion','to summarize','it is important to note','needless to say','in today\'s fast-paced world','in the digital age','moving forward','going forward','dive deep'];
-const HUMANIZER_PERSONAS={journalist:{voice:'seasoned investigative journalist with 15+ years experience',traits:['Lead with the most surprising fact','Use inverted pyramid','Name real people specifically','Insert short punchy paragraphs','Challenge assumptions','Use em-dashes for asides','Occasionally address the reader']},blogger:{voice:'enthusiastic personal blogger with deep knowledge',traits:['Start with a personal anecdote','Use "I" occasionally','Ask rhetorical questions','Use casual connectors','Break into short paragraphs','Use parenthetical asides','Use "you" frequently']},expert:{voice:'authoritative subject-matter expert',traits:['Use precise terminology','Reference historical context','Acknowledge nuance','Use hedging language','Be willing to say what others get wrong','Short declarative sentences after complex ones']},storyteller:{voice:'narrative journalist who makes dry topics compelling',traits:['Open with a scene','Use sensory language','Build tension through sequencing','Vary sentence length dramatically','End paragraphs with a turn']},analyst:{voice:'sharp business/policy analyst',traits:['Lead with the key takeaway','Use numbered breakdowns','Contrast expectation vs reality','Reference real-world implications','Keep sentences tight','Be direct about uncertainty']}};
-const BYPASS_INSTRS={light:'Make moderate changes: replace AI buzzwords, add contractions, vary sentence length. Target: ~30% reduction.',medium:'Significantly rewrite while keeping all facts. Restructure 40%+ of sentences, add 3-5 natural human quirks. Target: ~65% reduction.',aggressive:'Deeply transform — keep ONLY facts, data, named entities. Rewrite every sentence. Target: ~85% reduction.'};
-const SEO_INSTRS={none:'',basic:'\n\nSEO (Basic): Use focus keyword naturally in first paragraph and 2+ other places. Active voice.',full:'\n\nSEO (Full): Keyword in first 100 words, a heading, and final paragraph. Include 3-5 LSI terms.'};
+// ── Markdown stripper ─────────────────────────────────────────
 /**
  * Removes common markdown syntax from a string, leaving plain text.
  * Handles: bold, italic, headings, lists, inline code, links, images, horizontal rules.
@@ -974,38 +1037,33 @@ const SEO_INSTRS={none:'',basic:'\n\nSEO (Basic): Use focus keyword naturally in
 function stripMarkdown(text) {
   if (!text) return '';
   let result = text;
-
   // Remove code blocks (``` ... ```)
   result = result.replace(/```[\s\S]*?```/g, '');
-  
   // Remove inline code (`code`)
   result = result.replace(/`([^`]+)`/g, '$1');
-  
   // Remove images ![alt](url)
   result = result.replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1');
-  
   // Convert links [text](url) -> text
   result = result.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
-  
   // Remove bold/italic markers **text**, __text__, *text*, _text_
-  result = result.replace(/(\*\*|__)(.*?)\1/g, '$2');   // **bold** or __bold__
-  result = result.replace(/(\*|_)(.*?)\1/g, '$2');      // *italic* or _italic_
-  
+  result = result.replace(/(\*\*|__)(.*?)\1/g, '$2');
+  result = result.replace(/(\*|_)(.*?)\1/g, '$2');
   // Remove horizontal rules ---, ***, ___
   result = result.replace(/^[-\*_]{3,}\s*$/gm, '');
-  
   // Remove headings (lines starting with #)
   result = result.replace(/^#{1,6}\s+/gm, '');
-  
   // Remove list markers at line start: -, *, +, 1., 2., etc.
-  result = result.replace(/^\s*[-*+]\s+/gm, '');       // unordered
-  result = result.replace(/^\s*\d+\.\s+/gm, '');       // ordered
-  
+  result = result.replace(/^\s*[-*+]\s+/gm, '');
+  result = result.replace(/^\s*\d+\.\s+/gm, '');
   // Remove extra spaces and clean up multiple newlines
   result = result.replace(/\n{3,}/g, '\n\n');
-  
   return result.trim();
 }
+
+// ── Advanced Humanizer ────────────────────────────────────────=['delve','leverage','revolutionize','groundbreaking','unprecedented','game-changer','transformative','cutting-edge','holistic','synergy','paradigm','disruptive','innovative','robust','seamless','unlock','empower','streamline','optimize','utilize','harness','realm','moreover','furthermore','notably','consequently','accordingly','in conclusion','to summarize','it is important to note','needless to say','in today\'s fast-paced world','in the digital age','moving forward','going forward','dive deep'];
+const HUMANIZER_PERSONAS={journalist:{voice:'seasoned investigative journalist with 15+ years experience',traits:['Lead with the most surprising fact','Use inverted pyramid','Name real people specifically','Insert short punchy paragraphs','Challenge assumptions','Use em-dashes for asides','Occasionally address the reader']},blogger:{voice:'enthusiastic personal blogger with deep knowledge',traits:['Start with a personal anecdote','Use "I" occasionally','Ask rhetorical questions','Use casual connectors','Break into short paragraphs','Use parenthetical asides','Use "you" frequently']},expert:{voice:'authoritative subject-matter expert',traits:['Use precise terminology','Reference historical context','Acknowledge nuance','Use hedging language','Be willing to say what others get wrong','Short declarative sentences after complex ones']},storyteller:{voice:'narrative journalist who makes dry topics compelling',traits:['Open with a scene','Use sensory language','Build tension through sequencing','Vary sentence length dramatically','End paragraphs with a turn']},analyst:{voice:'sharp business/policy analyst',traits:['Lead with the key takeaway','Use numbered breakdowns','Contrast expectation vs reality','Reference real-world implications','Keep sentences tight','Be direct about uncertainty']}};
+const BYPASS_INSTRS={light:'Make moderate changes: replace AI buzzwords, add contractions, vary sentence length. Target: ~30% reduction.',medium:'Significantly rewrite while keeping all facts. Restructure 40%+ of sentences, add 3-5 natural human quirks. Target: ~65% reduction.',aggressive:'Deeply transform — keep ONLY facts, data, named entities. Rewrite every sentence. Target: ~85% reduction.'};
+const SEO_INSTRS={none:'',basic:'\n\nSEO (Basic): Use focus keyword naturally in first paragraph and 2+ other places. Active voice.',full:'\n\nSEO (Full): Keyword in first 100 words, a heading, and final paragraph. Include 3-5 LSI terms.'};
 async function runAdvancedHumanizer({text,persona,tone,bypassLevel,seoMode,focusKeyword,targetDiv,onComplete}){
   const apiKey=settings.aiProvider==='anthropic'?settings.anthropicKey:settings.mistralKey;
   if(!apiKey){if(targetDiv) targetDiv.innerHTML='<div class="error-msg">⚠️ Add your API key in Settings first.</div>';return null;}
@@ -1047,20 +1105,6 @@ async function runAdvancedHumanizer({text,persona,tone,bypassLevel,seoMode,focus
     return null;
   }
 }
-document.getElementById('hzStripMarkdownBtn')?.addEventListener('click', () => {
-  const outputDiv = document.getElementById('hzOutputText');
-  if (!outputDiv) return;
-  const originalText = outputDiv.textContent;
-  const cleanedText = stripMarkdown(originalText);
-  outputDiv.textContent = cleanedText;
-  // Optional: show a temporary success message
-  const msg = document.getElementById('hzProgressMsg');
-  if (msg) {
-    const oldMsg = msg.textContent;
-    msg.textContent = '✓ Markdown removed';
-    setTimeout(() => { msg.textContent = oldMsg; }, 2000);
-  }
-});
 async function humanizeDraft(text, tone = 'casual') {
   // humanizeDraft is triggered from the Draft pane, so we show results there.
   // runAdvancedHumanizer looks for #hzProgressMsg and #hzProgFill (humanizer pane)
@@ -1089,6 +1133,25 @@ async function humanizeDraft(text, tone = 'casual') {
 
 // ── Main crawl pipeline ───────────────────────────────────────
 async function runPipeline() {
+  // ── 0. Per-minute cooldown guard ─────────────────────────────
+  const now = Date.now();
+  const sinceLast = now - _lastPipelineRun;
+  if (sinceLast < PIPELINE_COOLDOWN_MS) {
+    const secsLeft = Math.ceil((PIPELINE_COOLDOWN_MS - sinceLast) / 1000);
+    const storyDiv = document.getElementById('storyList');
+    if (storyDiv) storyDiv.innerHTML = `<div class="error-msg">⏳ Please wait <strong>${secsLeft}s</strong> before re-crawling (rate limit). The button will re-enable automatically.</div>`;
+    // Re-enable the button and clear the message after the remainder expires
+    const crawlBtn2 = document.getElementById('crawlBtn');
+    if (crawlBtn2) crawlBtn2.disabled = true;
+    setTimeout(() => {
+      if (crawlBtn2) crawlBtn2.disabled = false;
+      const sd = document.getElementById('storyList');
+      if (sd && sd.querySelector('.error-msg')?.textContent.includes('rate limit'))
+        sd.innerHTML = '<div class="empty"><div class="empty-icon">📡</div>Ready — click Crawl to fetch stories.</div>';
+    }, PIPELINE_COOLDOWN_MS - sinceLast);
+    return;
+  }
+
   // ── 1. Gate: check server-side crawl allowance FIRST ─────────
   const crawlCheck = await window.canCrawl();
   if (!crawlCheck.ok) { renderUpsellBanner('storyList','crawl'); return; }
@@ -1117,26 +1180,26 @@ async function runPipeline() {
   if (progFill) progFill.style.width = '5%';
 
   // ── 2. Increment crawl count server-side BEFORE crawling ──────
-  // This prevents a race condition where multiple rapid clicks could
-  // each pass the canCrawl() check before any increment is written.
-  // The server RPC should also enforce the limit atomically via RLS.
   try {
     await window.incrementCrawlCount();
   } catch (e) {
-    // If the server rejects the increment (limit already hit server-side),
-    // surface it to the user rather than silently proceeding.
     if (crawlBtn) crawlBtn.disabled = false;
     if (progressDiv) progressDiv.textContent = '';
     if (progFill) progFill.style.width = '0%';
     renderUpsellBanner('storyList', 'crawl');
     return;
   }
+  _lastPipelineRun = Date.now(); // stamp only after successful gate checks
   await renderUsageBar();
 
   let raw = await crawlAllSources(selected);
   raw = rankStories(raw).slice(0, 35);
   if (progressDiv) progressDiv.innerHTML = `<span class="spinner"></span> Analyzing ${raw.length} stories…`;
   if (progFill) progFill.style.width = '30%';
+
+  // For Mistral (5 RPM free tier) we space calls out to ~13 s each.
+  // For Anthropic we keep the original 1.1 s delay (higher rate limits).
+  const interDelay = provider === 'mistral' ? 13000 : 1100;
 
   const analyzed = [];
   for (let i = 0; i < raw.length; i++) {
@@ -1149,7 +1212,7 @@ async function runPipeline() {
     const pct = 30 + Math.round(((i + 1) / raw.length) * 65);
     if (progFill) progFill.style.width = pct + '%';
     if (progressDiv) progressDiv.textContent = `Analyzed ${i + 1} / ${raw.length}…`;
-    if (i < raw.length - 1) await new Promise(r => setTimeout(r, 1100));
+    if (i < raw.length - 1) await new Promise(r => setTimeout(r, interDelay));
   }
 
   stories = analyzed;
@@ -1290,6 +1353,14 @@ window.onAuthStateChecked = (user, profile) => {
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('signInPromptBtn')?.addEventListener('click',  () => window.showAuthModal('login'));
   document.getElementById('registerPromptBtn')?.addEventListener('click', () => window.showAuthModal('register'));
+  // Strip Markdown button (hzStripMarkdownBtn wired here; stripMarkdown defined above)
+  document.getElementById('hzStripMarkdownBtn')?.addEventListener('click', () => {
+    const outputDiv = document.getElementById('hzOutputText');
+    if (!outputDiv) return;
+    outputDiv.textContent = stripMarkdown(outputDiv.textContent);
+    const msg = document.getElementById('hzProgressMsg');
+    if (msg) { const old = msg.textContent; msg.textContent = '✓ Markdown removed'; setTimeout(() => { msg.textContent = old; }, 2000); }
+  });
 });
 </script>
 </body>

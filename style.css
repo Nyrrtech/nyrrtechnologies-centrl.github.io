@@ -551,7 +551,11 @@ textarea.settings-input { resize: vertical; min-height: 72px; }
 .sh-btn:hover { background: var(--surface2); color: var(--text); }
 
 /* ── Key set indicator ── */
-.key-set-indicator { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--green); margin-top: 5px; }
+.key-set-indicator {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; color: var(--green);
+  margin-top: 6px; transition: color 0.2s;
+}
 
 /* ── Trial expiry warning inside settings ── */
 .trial-expiry-warning { background: rgba(245,176,66,0.08); border: 1px solid rgba(245,176,66,0.2); border-radius: 12px; padding: 10px 14px; font-size: 12px; color: var(--accent); margin-bottom: 14px; }

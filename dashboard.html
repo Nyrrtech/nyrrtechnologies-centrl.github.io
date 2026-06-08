@@ -256,12 +256,18 @@
         <div class="settings-group" id="groupAnthropicKey">
           <span class="settings-label">Anthropic API Key</span>
           <input class="settings-input" type="password" id="anthropicKey" placeholder="sk-ant-…">
-          <div id="anthropicKeyStatus" class="key-set-indicator" style="display:none">✓ Key saved</div>
+          <div id="anthropicKeyStatus" class="key-set-indicator" style="display:none">
+            <span id="anthropicKeyStatusIcon">✓</span>
+            <span id="anthropicKeyStatusText">Key saved</span>
+          </div>
         </div>
         <div class="settings-group" id="groupMistralKey" style="display:none">
           <span class="settings-label">Mistral API Key</span>
           <input class="settings-input" type="password" id="mistralKey" placeholder="Your Mistral key">
-          <div id="mistralKeyStatus" class="key-set-indicator" style="display:none">✓ Key saved</div>
+          <div id="mistralKeyStatus" class="key-set-indicator" style="display:none">
+            <span id="mistralKeyStatusIcon">✓</span>
+            <span id="mistralKeyStatusText">Key saved</span>
+          </div>
         </div>
         <div style="font-size:11px;color:var(--text-hint);margin-top:6px">🔐 Keys are encrypted with AES-256 and stored securely in your account. Never stored in your browser.</div>
       </div>
@@ -271,7 +277,10 @@
         <div class="settings-group">
           <span class="settings-label">RSS2JSON Key</span>
           <input class="settings-input" type="password" id="rss2jsonKey" placeholder="free at rss2json.com">
-          <div id="rss2jsonKeyStatus" class="key-set-indicator" style="display:none">✓ Key saved</div>
+          <div id="rss2jsonKeyStatus" class="key-set-indicator" style="display:none">
+            <span id="rss2jsonKeyStatusIcon">✓</span>
+            <span id="rss2jsonKeyStatusText">Key saved</span>
+          </div>
         </div>
         <div class="settings-group">
           <span class="settings-label">Custom Proxy URL</span>
@@ -464,29 +473,100 @@ async function callAIWithRetry({ prompt, maxTokens=600, apiKey, provider, retrie
 }
 
 // ── Settings load/save (Supabase-backed) ──────────────────────
+
+/**
+ * Update a key status indicator element.
+ * state: 'loading' | 'loaded' | 'error' | 'saved'
+ */
+function _setKeyStatus(baseId, state, detail = '') {
+  const el   = document.getElementById(baseId);
+  const icon = document.getElementById(baseId + 'Icon');
+  const text = document.getElementById(baseId + 'Text');
+  if (!el) return;
+  el.style.display = 'flex';
+  const states = {
+    loading: { iconHtml: '<span class="spinner" style="width:10px;height:10px;border-width:1.5px"></span>', label: 'Loading key…',   color: 'var(--text-hint)' },
+    loaded:  { iconHtml: '✓',  label: 'Key loaded & ready', color: 'var(--green)'     },
+    saved:   { iconHtml: '✓',  label: 'Key saved',          color: 'var(--green)'     },
+    error:   { iconHtml: '⚠', label: detail || 'Could not load key — re-enter it below', color: 'var(--red)' },
+  };
+  const s = states[state] || states.saved;
+  if (icon) icon.innerHTML = s.iconHtml;
+  if (text) text.textContent = s.label;
+  el.style.color = s.color;
+}
+
+/**
+ * Fetch a saved key from Supabase (server-side decryption via RPC),
+ * store it in the in-memory settings object, and update the UI indicator.
+ * Returns the decrypted key string, or '' on failure.
+ */
+async function _fetchAndCacheKey(keyType, settingsField, statusId) {
+  _setKeyStatus(statusId, 'loading');
+  try {
+    const key = await window.getApiKey(keyType);
+    if (key) {
+      settings[settingsField] = key;
+      _setKeyStatus(statusId, 'loaded');
+      return key;
+    } else {
+      // RPC returned empty — key may have been deleted server-side
+      _setKeyStatus(statusId, 'error', 'Key not found — please re-enter');
+      return '';
+    }
+  } catch (e) {
+    _setKeyStatus(statusId, 'error');
+    return '';
+  }
+}
+
 async function loadSettingsUI() {
   const remote = await window.loadSettings();
-  // Populate UI from remote settings
-  settings.aiProvider    = remote.aiProvider;
-  settings.proxyUrl      = remote.proxyUrl;
-  settings.aiKeywords    = remote.aiKeywordsEnabled;
+
+  // Populate base settings from Supabase
+  settings.aiProvider = remote.aiProvider;
+  settings.proxyUrl   = remote.proxyUrl;
+  settings.aiKeywords = remote.aiKeywordsEnabled;
 
   const el = id => document.getElementById(id);
   if (el('proxyUrl')) el('proxyUrl').value = settings.proxyUrl || '';
 
   const et = el('aiEnrichToggle');
-  if (et) { et.classList.toggle('on', settings.aiKeywords); }
+  if (et) et.classList.toggle('on', settings.aiKeywords);
 
-  // Show "Key saved" indicators (keys are not filled in — only indicator)
-  if (remote.anthropicKeySet && el('anthropicKeyStatus')) el('anthropicKeyStatus').style.display = 'flex';
-  if (remote.mistralKeySet   && el('mistralKeyStatus'))   el('mistralKeyStatus').style.display   = 'flex';
-  if (remote.rss2jsonKeySet  && el('rss2jsonKeyStatus'))  el('rss2jsonKeyStatus').style.display  = 'flex';
-
+  // Set the correct provider tab first (so correct key group is visible)
   if (settings.aiProvider === 'mistral') {
     el('providerMistral')?.click();
   } else {
     el('providerAnthropic')?.click();
   }
+
+  // ── Auto-fetch saved API keys from Supabase ──────────────────
+  // Keys are decrypted server-side via `get_user_key` RPC and stored
+  // only in the in-memory `settings` object — never in the DOM or storage.
+  // We fire all three fetches in parallel; each updates its own indicator.
+  const fetchPromises = [];
+
+  if (remote.anthropicKeySet) {
+    fetchPromises.push(_fetchAndCacheKey('anthropic', 'anthropicKey', 'anthropicKeyStatus'));
+  }
+  if (remote.mistralKeySet) {
+    fetchPromises.push(_fetchAndCacheKey('mistral', 'mistralKey', 'mistralKeyStatus'));
+  }
+  if (remote.rss2jsonKeySet) {
+    fetchPromises.push(_fetchAndCacheKey('rss2json', 'rss2jsonKey', 'rss2jsonKeyStatus'));
+  }
+
+  // Run all fetches concurrently — don't block the rest of the UI
+  Promise.allSettled(fetchPromises).then(() => {
+    // Once keys are loaded, show the crawl button tooltip if no key is active
+    const provider = settings.aiProvider;
+    const activeKey = provider === 'mistral' ? settings.mistralKey : settings.anthropicKey;
+    if (!activeKey) {
+      const crawlBtn = document.getElementById('crawlBtn');
+      if (crawlBtn) crawlBtn.title = '⚠ API key could not be loaded — go to Settings to re-enter it';
+    }
+  });
 }
 
 async function saveSettingsHandler() {
@@ -495,12 +575,12 @@ async function saveSettingsHandler() {
   const newMistralKey   = el('mistralKey')?.value.trim()   || '';
   const newRss2jsonKey  = el('rss2jsonKey')?.value.trim()  || '';
 
-  // Update in-memory settings for use this session
+  // Update in-memory settings immediately — keys just typed are already decrypted
   if (newAnthropicKey) settings.anthropicKey = newAnthropicKey;
   if (newMistralKey)   settings.mistralKey   = newMistralKey;
   if (newRss2jsonKey)  settings.rss2jsonKey  = newRss2jsonKey;
-  settings.proxyUrl    = el('proxyUrl')?.value.trim()  || '';
-  settings.aiKeywords  = el('aiEnrichToggle')?.classList.contains('on') || false;
+  settings.proxyUrl   = el('proxyUrl')?.value.trim()  || '';
+  settings.aiKeywords = el('aiEnrichToggle')?.classList.contains('on') || false;
 
   const saveBtn = el('saveSettingsBtn');
   const msg     = el('settingsMsg');
@@ -516,10 +596,24 @@ async function saveSettingsHandler() {
       rss2jsonKey:       newRss2jsonKey,
     });
     if (msg) { msg.textContent = '✓ Settings saved'; setTimeout(() => msg.textContent = '', 3000); }
-    // Clear the input fields (keys should not sit in the DOM long-term)
-    if (newAnthropicKey && el('anthropicKey')) { el('anthropicKey').value = ''; el('anthropicKeyStatus').style.display = 'flex'; }
-    if (newMistralKey   && el('mistralKey'))   { el('mistralKey').value   = ''; el('mistralKeyStatus').style.display   = 'flex'; }
-    if (newRss2jsonKey  && el('rss2jsonKey'))  { el('rss2jsonKey').value  = ''; el('rss2jsonKeyStatus').style.display  = 'flex'; }
+
+    // Clear the input fields and update status indicators to 'loaded'
+    // (key is already live in memory — no re-fetch needed this session)
+    if (newAnthropicKey && el('anthropicKey')) {
+      el('anthropicKey').value = '';
+      _setKeyStatus('anthropicKeyStatus', 'loaded');
+    }
+    if (newMistralKey && el('mistralKey')) {
+      el('mistralKey').value = '';
+      _setKeyStatus('mistralKeyStatus', 'loaded');
+    }
+    if (newRss2jsonKey && el('rss2jsonKey')) {
+      el('rss2jsonKey').value = '';
+      _setKeyStatus('rss2jsonKeyStatus', 'loaded');
+    }
+    // Clear the crawl button warning tooltip now that we have a key
+    const crawlBtn = document.getElementById('crawlBtn');
+    if (crawlBtn) crawlBtn.title = '';
   } catch(err) {
     if (msg) msg.textContent = '✗ ' + err.message;
   } finally {
@@ -1272,9 +1366,36 @@ async function runPipeline() {
   const apiKey   = provider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
   if (!apiKey) {
     const storyDiv = document.getElementById('storyList');
-    if (storyDiv) storyDiv.innerHTML = `<div class="error-msg">⚠ Please enter your ${provider === 'anthropic' ? 'Anthropic' : 'Mistral'} API key in Settings.</div>`;
-    document.querySelector('.db-tab[data-tab="settings"]').click();
+    // Check whether the key is flagged as saved but just not loaded yet
+    const remote = await window.loadSettings();
+    const keyIsSaved = provider === 'anthropic' ? remote.anthropicKeySet : remote.mistralKeySet;
+    if (keyIsSaved) {
+      // Try one more time — the background fetch may still be in flight
+      if (storyDiv) storyDiv.innerHTML = '<div class="error-msg"><span class="spinner" style="width:11px;height:11px;border-width:1.5px;vertical-align:middle;margin-right:6px"></span> Loading your API key… please click Crawl again in a moment.</div>';
+      // Kick off a fresh fetch so the next click will succeed
+      _fetchAndCacheKey(
+        provider === 'anthropic' ? 'anthropic' : 'mistral',
+        provider === 'anthropic' ? 'anthropicKey' : 'mistralKey',
+        provider === 'anthropic' ? 'anthropicKeyStatus' : 'mistralKeyStatus',
+      );
+    } else {
+      if (storyDiv) storyDiv.innerHTML = `<div class="error-msg">⚠ Please enter your ${provider === 'anthropic' ? 'Anthropic' : 'Mistral'} API key in Settings.</div>`;
+      document.querySelector('.db-tab[data-tab="settings"]').click();
+    }
     return;
+  }
+
+  // ── Ensure rss2json key is in memory if saved but not yet fetched ──
+  if (!settings.rss2jsonKey) {
+    const remote2 = await window.loadSettings();
+    if (remote2.rss2jsonKeySet) {
+      // Fetch synchronously here since we need it before crawling RSS feeds
+      const rssKey = await window.getApiKey('rss2json').catch(() => '');
+      if (rssKey) {
+        settings.rss2jsonKey = rssKey;
+        _setKeyStatus('rss2jsonKeyStatus', 'loaded');
+      }
+    }
   }
 
   const selected = [...document.querySelectorAll('.source-chip.active:not(.locked)')].map(c => c.dataset.src);

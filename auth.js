@@ -138,6 +138,10 @@ window.loadProfile = async function(force = false) {
   const { data: { user } } = await _sb.auth.getUser();
   if (!user) { _cachedProfile = null; return null; }
 
+  // Self-healing: ensure profile + settings rows exist.
+  // No-op if the signup trigger already created them; recovers if it failed.
+  try { await _sb.rpc('ensure_profile_exists'); } catch (e) {}
+
   // Trigger server-side trial expiry check (idempotent RPC)
   try { await _sb.rpc('maybe_expire_trial', { p_user_id: user.id }); } catch (e) {}
 

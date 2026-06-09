@@ -97,16 +97,22 @@ window.register = async function(name, email, password) {
 };
 
 window.logout = async function() {
-  try {
-    const fp = await getDeviceFingerprint();
-    // Deactivate device session server-side before signing out (best-effort)
-    await _sb.rpc('deactivate_session', { p_device_fingerprint: fp });
-  } catch (e) { /* best-effort — continue logout regardless */ }
-
-  // Clear all in-memory caches before signing out
+  // Clear in-memory caches immediately
   _cachedProfile  = null;
   _cachedSettings = null;
-  _deviceFp       = null;
+
+  try {
+    // Deactivate ALL sessions for this user — not just the current fingerprint.
+    // This is critical: fingerprints can drift between sessions (e.g. after a
+    // browser update), so a fingerprint-scoped deactivation may silently match
+    // 0 rows and leave the old row as is_active=true, which then blocks
+    // re-login with "already active on another device".
+    await _sb.rpc('deactivate_all_sessions');
+  } catch (e) {
+    console.warn('[auth] deactivate_all_sessions failed:', e?.message);
+  }
+
+  _deviceFp = null;  // clear fingerprint cache after RPC
 
   await _sb.auth.signOut();
   window.location.href = 'index.html';
@@ -137,10 +143,6 @@ window.loadProfile = async function(force = false) {
 
   const { data: { user } } = await _sb.auth.getUser();
   if (!user) { _cachedProfile = null; return null; }
-
-  // Self-healing: ensure profile + settings rows exist.
-  // No-op if the signup trigger already created them; recovers if it failed.
-  try { await _sb.rpc('ensure_profile_exists'); } catch (e) {}
 
   // Trigger server-side trial expiry check (idempotent RPC)
   try { await _sb.rpc('maybe_expire_trial', { p_user_id: user.id }); } catch (e) {}

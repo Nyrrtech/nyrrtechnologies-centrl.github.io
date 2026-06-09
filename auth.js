@@ -319,23 +319,17 @@ window.loadSettings = async function(force = false) {
     return _cachedSettings;
   }
 
-  // Only retrieve whether a key EXISTS — never the plaintext value.
-  // Actual keys are decrypted server-side only when an AI call is made.
-  const { data: keyMeta } = await _sb
-    .from('user_settings')
-    .select('anthropic_key_enc, mistral_key_enc, rss2json_key_enc')
-    .eq('user_id', user.id)
-    .maybeSingle();
+  // bytea columns always come back as null from PostgREST regardless of
+  // their actual value — we must ask the server whether each key exists.
+  const { data: keyFlags } = await _sb.rpc('get_user_key_flags');
 
   _cachedSettings = {
     aiProvider:        data.ai_provider         || 'anthropic',
     proxyUrl:          data.proxy_url           || '',
     aiKeywordsEnabled: data.ai_keywords_enabled !== false,
-    anthropicKeySet:   !!(keyMeta?.anthropic_key_enc),
-    mistralKeySet:     !!(keyMeta?.mistral_key_enc),
-    rss2jsonKeySet:    !!(keyMeta?.rss2json_key_enc),
-    // Plaintext key values are NEVER cached here — they live only in
-    // the dashboard's in-memory `settings` object for the current session.
+    anthropicKeySet:   !!(keyFlags?.anthropic_set),
+    mistralKeySet:     !!(keyFlags?.mistral_set),
+    rss2jsonKeySet:    !!(keyFlags?.rss2json_set),
     anthropicKey: '',
     mistralKey:   '',
     rss2jsonKey:  '',

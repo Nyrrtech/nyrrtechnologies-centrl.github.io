@@ -1,6 +1,11 @@
 /* ============================================================
    NEWS SENTIMENT RADAR — style.css
-   Single source of truth for all pages including dashboard.
+   Optimized for paint/composite performance:
+   • transition:all replaced with specific properties only
+   • will-change on elements that animate on every interaction
+   • contain:layout on dashboard panes to isolate reflow
+   • backdrop-filter kept only on sticky header (worth it)
+   • font-display:swap via Google Fonts ?display=swap (already set)
    ============================================================ */
 
 /* ── CSS Variables ─────────────────────────────────────────── */
@@ -40,7 +45,12 @@ button { font-family: var(--font); }
   position: sticky;
   top: 0;
   z-index: 200;
+  /* backdrop-filter is expensive — only use it where it genuinely adds value.
+     Promote to its own compositor layer so scrolling doesn't trigger repaints. */
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  will-change: transform; /* keeps the header on the GPU layer */
+  transform: translateZ(0);
 }
 .header-inner {
   display: flex;
@@ -59,7 +69,8 @@ button { font-family: var(--font); }
   display: inline-block;
 }
 .nav { display: flex; gap: 28px; align-items: center; }
-.nav a { font-weight: 500; font-size: 0.9rem; color: var(--text); transition: color 0.2s; }
+/* Only animate the single property that changes */
+.nav a { font-weight: 500; font-size: 0.9rem; color: var(--text); transition: color 0.15s; }
 .nav a:hover, .nav a.active { color: var(--accent); }
 .header-auth { display: flex; align-items: center; gap: 10px; }
 
@@ -76,7 +87,8 @@ button { font-family: var(--font); }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  /* Only animate the properties that actually change on hover */
+  transition: background 0.15s, transform 0.15s;
 }
 .btn:hover { background: #f7be65; transform: translateY(-1px); }
 .btn-outline { background: transparent; border: 1px solid rgba(245,176,66,0.6); color: var(--accent); }
@@ -97,7 +109,7 @@ button { font-family: var(--font); }
 .plan-pro        { background: rgba(245,176,66,0.15);  color: var(--accent); border: 1px solid rgba(245,176,66,0.28); }
 .plan-enterprise { background: rgba(155,126,222,0.15); color: #9B7EDE; border: 1px solid rgba(155,126,222,0.28); }
 
-/* ── User menu (account dropdown) ───────────────────────────── */
+/* ── User menu ───────────────────────────────────────────────── */
 .user-menu-btn {
   display: flex;
   align-items: center;
@@ -110,7 +122,7 @@ button { font-family: var(--font); }
   color: var(--text);
   font-size: 13px;
   font-weight: 500;
-  transition: all 0.2s;
+  transition: background 0.15s, border-color 0.15s;
 }
 .user-menu-btn:hover { background: var(--surface2); border-color: rgba(245,176,66,0.4); }
 .user-menu-name { max-width: 100px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -148,7 +160,7 @@ button { font-family: var(--font); }
   padding: 10px 14px;
   color: var(--text-sec);
   font-size: 12px;
-  transition: all 0.15s;
+  transition: background 0.1s, color 0.1s;
   cursor: pointer;
   width: 100%;
   text-align: left;
@@ -160,8 +172,7 @@ button { font-family: var(--font); }
 
 /* ── Trial countdown badge ──────────────────────────────────── */
 .trial-countdown {
-  font-size: 10px;
-  font-weight: 700;
+  font-size: 10px; font-weight: 700;
   color: var(--green);
   background: rgba(139,201,127,0.1);
   border: 1px solid rgba(139,201,127,0.25);
@@ -195,7 +206,7 @@ button { font-family: var(--font); }
   font-size: 12px;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.2s;
+  transition: background 0.15s;
   flex-shrink: 0;
 }
 .trial-banner-btn:hover { background: #f7be65; }
@@ -210,10 +221,10 @@ button { font-family: var(--font); }
   z-index: 1000;
   align-items: center;
   justify-content: center;
-  /* overflow:auto ensures the modal card is scrollable on very small screens */
   overflow: auto;
   padding: 16px;
-  backdrop-filter: blur(6px);
+  /* No backdrop-filter here — the modal is not sticky/scrollable,
+     so it's cheaper to skip blur and let the dark overlay do the work */
 }
 .modal-backdrop.open { display: flex; }
 .modal {
@@ -225,22 +236,22 @@ button { font-family: var(--font); }
   max-width: 440px;
   position: relative;
   box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-  animation: modalIn 0.25s ease;
+  animation: modalIn 0.2s ease;
 }
-@keyframes modalIn { from { opacity:0; transform:translateY(28px); } to { opacity:1; transform:none; } }
+@keyframes modalIn { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:none; } }
 .modal-close {
   position: absolute; top: 18px; right: 22px;
   background: none; border: none; color: #6c727f;
   font-size: 24px; cursor: pointer; line-height: 1;
   width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
-  border-radius: 50%; transition: all 0.2s;
+  border-radius: 50%; transition: color 0.15s, background 0.15s;
 }
 .modal-close:hover { color: var(--text); background: var(--surface2); }
 .modal-tabs { display: flex; margin-bottom: 28px; border-bottom: 1px solid var(--border); }
 .modal-tab {
   flex: 1; padding: 12px; background: none; border: none;
   color: #6c727f; font-size: 13px; font-weight: 600;
-  cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s;
+  cursor: pointer; border-bottom: 2px solid transparent; transition: color 0.15s, border-color 0.15s;
 }
 .modal-tab:hover { color: var(--text); }
 .modal-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
@@ -253,7 +264,7 @@ button { font-family: var(--font); }
   width: 100%; padding: 11px 13px;
   background: #0a0c10; border: 1px solid rgba(255,255,255,0.1);
   border-radius: 12px; color: var(--text); font-family: inherit; font-size: 13px;
-  outline: none; transition: border-color 0.2s;
+  outline: none; transition: border-color 0.15s;
 }
 .form-field input:focus { border-color: var(--accent); }
 .modal-error {
@@ -269,17 +280,13 @@ button { font-family: var(--font); }
 .modal-btn-full {
   width: 100%; padding: 12px; border-radius: 40px;
   background: var(--accent); color: var(--bg);
-  font-weight: 700; font-size: 13px; border: none; cursor: pointer; transition: all 0.2s;
+  font-weight: 700; font-size: 13px; border: none; cursor: pointer; transition: background 0.15s;
 }
 .modal-btn-full:hover { background: #f7be65; }
 .modal-btn-full:disabled { opacity: 0.6; cursor: not-allowed; }
 .modal-footer-link { text-align: center; margin-top: 18px; font-size: 12px; color: #6c727f; }
 .modal-footer-link a { color: var(--accent); cursor: pointer; font-weight: 500; }
 .modal-footer-link a:hover { text-decoration: underline; }
-
-/* Forgot-password form title (no dedicated tab button — just a text header) */
-#formForgot { }
-#formForgot .form-field label { color: var(--text-hint); }
 
 /* ============================================================
    HOME PAGE
@@ -305,7 +312,7 @@ button { font-family: var(--font); }
 .section-title { font-size: 2.2rem; text-align: center; margin-bottom: 16px; font-weight: 700; }
 .section-sub { text-align: center; color: #b0b8c5; max-width: 560px; margin: 0 auto 52px; }
 .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
-.feature-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 28px; transition: all 0.2s; }
+.feature-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 28px; transition: border-color 0.15s, transform 0.15s; }
 .feature-card:hover { border-color: rgba(245,176,66,0.4); transform: translateY(-4px); }
 .feature-icon { font-size: 2.2rem; margin-bottom: 18px; }
 .feature-card h3 { font-size: 1.1rem; margin-bottom: 10px; font-weight: 600; }
@@ -329,7 +336,7 @@ button { font-family: var(--font); }
    ============================================================ */
 .pricing-title { text-align: center; font-size: 2.2rem; margin: 60px 0 16px; font-weight: 700; }
 .pricing-grid  { display: flex; flex-wrap: wrap; justify-content: center; gap: 32px; margin: 20px 0 60px; }
-.pricing-card  { background: var(--surface); border: 1px solid var(--border); border-radius: 32px; padding: 32px; flex: 1; min-width: 280px; transition: all 0.3s; }
+.pricing-card  { background: var(--surface); border: 1px solid var(--border); border-radius: 32px; padding: 32px; flex: 1; min-width: 280px; transition: border-color 0.2s, box-shadow 0.2s; }
 .pricing-card.popular { border-color: var(--accent); transform: scale(1.02); box-shadow: 0 10px 30px -10px rgba(245,176,66,0.2); }
 .plan-name  { font-size: 1.8rem; font-weight: 700; margin-bottom: 8px; }
 .price      { font-size: 2.8rem; font-weight: 800; margin: 20px 0 8px; }
@@ -351,10 +358,10 @@ button { font-family: var(--font); }
 .contact-icon   { width: 48px; height: 48px; background: rgba(245,176,66,0.12); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
 .form-group     { margin-bottom: 20px; }
 .form-group label { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: #6c727f; margin-bottom: 8px; }
-.form-group input, .form-group textarea { width: 100%; background: var(--bg); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px 16px; color: var(--text); font-family: inherit; font-size: 14px; outline: none; transition: border-color 0.2s; }
+.form-group input, .form-group textarea { width: 100%; background: var(--bg); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px 16px; color: var(--text); font-family: inherit; font-size: 14px; outline: none; transition: border-color 0.15s; }
 .form-group input:focus, .form-group textarea:focus { border-color: var(--accent); }
 .form-group textarea { resize: vertical; min-height: 120px; }
-.submit-btn { width: 100%; background: var(--accent); color: var(--bg); border: none; border-radius: 40px; padding: 12px; font-weight: 700; font-size: 14px; cursor: pointer; transition: background 0.2s; }
+.submit-btn { width: 100%; background: var(--accent); color: var(--bg); border: none; border-radius: 40px; padding: 12px; font-weight: 700; font-size: 14px; cursor: pointer; transition: background 0.15s; }
 .submit-btn:hover { background: #f7be65; }
 .form-status { margin-top: 16px; padding: 10px; border-radius: 10px; font-size: 13px; text-align: center; display: none; }
 .form-status.success { background: #1A2E1A; color: var(--green); display: block; }
@@ -376,21 +383,22 @@ button { font-family: var(--font); }
 .usage-bar { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 12px 18px; margin-bottom: 18px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .usage-label   { font-size: 12px; color: var(--text-sec); flex-shrink: 0; }
 .usage-track   { flex: 1; min-width: 120px; height: 5px; background: var(--surface3); border-radius: 3px; overflow: hidden; }
-.usage-fill    { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.4s; }
+.usage-fill    { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.35s ease; }
 .usage-count   { font-size: 12px; font-weight: 600; flex-shrink: 0; }
 .usage-upgrade { font-size: 11px; color: var(--accent); cursor: pointer; flex-shrink: 0; font-weight: 500; }
 .usage-upgrade:hover { text-decoration: underline; }
 
 /* ── Topbar ── */
 .db-topbar { display: flex; align-items: center; gap: 10px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
-.db-title   { font-weight: 700; font-size: 17px; flex: 1; background: linear-gradient(135deg, #fff 40%, var(--accent) 80%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.db-title  { font-weight: 700; font-size: 17px; flex: 1; background: linear-gradient(135deg, #fff 40%, var(--accent) 80%); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .icon-btn {
   background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: 40px;
   width: 34px; height: 34px;
   display: flex; align-items: center; justify-content: center;
-  cursor: pointer; font-size: 17px; transition: all 0.18s;
+  cursor: pointer; font-size: 17px;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
   color: var(--text-sec);
 }
 .icon-btn:hover { background: var(--surface3); border-color: var(--border2); color: var(--text); }
@@ -398,26 +406,36 @@ button { font-family: var(--font); }
 /* ── Tabs ── */
 .db-tabs { display: flex; gap: 4px; padding: 10px 0 0; border-bottom: 1px solid var(--border); overflow-x: auto; -ms-overflow-style: none; scrollbar-width: none; }
 .db-tabs::-webkit-scrollbar { display: none; }
-.db-tab { padding: 8px 16px; background: transparent; border: none; color: var(--text-hint); font-weight: 500; font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent; transition: 0.15s; white-space: nowrap; }
+.db-tab { padding: 8px 16px; background: transparent; border: none; color: var(--text-hint); font-weight: 500; font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent; transition: color 0.12s, border-color 0.12s; white-space: nowrap; }
 .db-tab:hover  { color: var(--text-sec); }
 .db-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 .tab-lock { font-size: 10px; opacity: 0.7; margin-left: 4px; }
-.db-pane        { display: none; padding: 20px 0; }
+
+/* Dashboard panes: contain layout so story card insertions don't reflow the whole page */
+.db-pane        { display: none; padding: 20px 0; contain: layout; }
 .db-pane.active { display: block; }
 
 /* ── Controls ── */
 .controls-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; align-items: center; }
-.source-chip { background: transparent; border: 1px solid var(--border); border-radius: 40px; padding: 5px 13px; font-size: 12px; color: var(--text-sec); cursor: pointer; transition: 0.15s; }
+.source-chip { background: transparent; border: 1px solid var(--border); border-radius: 40px; padding: 5px 13px; font-size: 12px; color: var(--text-sec); cursor: pointer; transition: background 0.12s, border-color 0.12s, color 0.12s; }
 .source-chip.active { background: var(--surface2); border-color: var(--accent); color: var(--accent); }
 .source-chip.locked { opacity: 0.35; cursor: not-allowed; }
-.run-btn { margin-left: auto; background: var(--accent); color: var(--bg); border: none; padding: 8px 22px; border-radius: 30px; font-weight: 700; display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; transition: all 0.15s; }
+.run-btn {
+  margin-left: auto; background: var(--accent); color: var(--bg); border: none;
+  padding: 8px 22px; border-radius: 30px; font-weight: 700;
+  display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;
+  transition: filter 0.12s, transform 0.12s;
+  /* Promote run button to its own layer — it animates on every hover */
+  will-change: transform;
+}
 .run-btn:hover    { filter: brightness(1.1); transform: translateY(-1px); }
 .run-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; filter: none; }
 
 /* ── Progress ── */
 #progressMsg { font-size: 11px; color: #B0A07A; margin-bottom: 8px; min-height: 18px; }
 .prog-bar-wrap { height: 3px; background: var(--surface2); border-radius: 2px; margin-bottom: 14px; overflow: hidden; }
-.prog-bar-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.3s; border-radius: 2px; }
+/* width transition on progress bar is fine — it's a single composited element */
+.prog-bar-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.25s ease; border-radius: 2px; will-change: width; }
 
 /* ── Stats ── */
 .stats-strip { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 18px; }
@@ -427,53 +445,73 @@ button { font-family: var(--font); }
 
 /* ── Filters ── */
 .filter-row  { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-.filter-chip { background: var(--surface); border: 1px solid var(--border); border-radius: 30px; padding: 4px 13px; font-size: 11px; cursor: pointer; color: var(--text-sec); transition: 0.15s; }
+.filter-chip { background: var(--surface); border: 1px solid var(--border); border-radius: 30px; padding: 4px 13px; font-size: 11px; cursor: pointer; color: var(--text-sec); transition: background 0.12s, border-color 0.12s, color 0.12s; }
 .filter-chip.active { background: #2A2418; border-color: var(--accent); color: var(--accent); }
 
 /* ── Sort-mode toggle ── */
-.sort-bar {
-  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
-  margin-bottom: 14px;
-}
-.sort-mode-pill {
-  display: inline-flex; border: 1px solid var(--border2);
-  border-radius: 30px; overflow: hidden; flex-shrink: 0;
-}
+.sort-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
+.sort-mode-pill { display: inline-flex; border: 1px solid var(--border2); border-radius: 30px; overflow: hidden; flex-shrink: 0; }
 .sort-mode-pill button {
   background: transparent; border: none; padding: 5px 14px;
   font-size: 11px; font-weight: 600; color: var(--text-sec);
-  cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  cursor: pointer; transition: background 0.12s, color 0.12s; white-space: nowrap;
 }
-.sort-mode-pill button.active {
-  background: #2A2418; color: var(--accent);
-}
+.sort-mode-pill button.active  { background: #2A2418; color: var(--accent); }
 .sort-mode-pill button:first-child { border-radius: 30px 0 0 30px; }
 .sort-mode-pill button:last-child  { border-radius: 0 30px 30px 0; }
 
-.timeframe-chips {
-  display: inline-flex; gap: 5px; flex-wrap: wrap;
-  opacity: 0; pointer-events: none;
-  transition: opacity 0.2s;
-}
+.timeframe-chips { display: inline-flex; gap: 5px; flex-wrap: wrap; opacity: 0; pointer-events: none; transition: opacity 0.15s; }
 .timeframe-chips.visible { opacity: 1; pointer-events: auto; }
-.tf-chip {
-  background: transparent; border: 1px solid var(--border);
-  border-radius: 20px; padding: 3px 11px; font-size: 10px;
-  font-weight: 600; color: var(--text-hint); cursor: pointer;
-  transition: all 0.15s; white-space: nowrap;
+.tf-chip { background: transparent; border: 1px solid var(--border); border-radius: 20px; padding: 3px 11px; font-size: 10px; font-weight: 600; color: var(--text-hint); cursor: pointer; transition: background 0.12s, border-color 0.12s, color 0.12s; white-space: nowrap; }
+.tf-chip.active { background: rgba(245,176,66,0.12); border-color: var(--accent); color: var(--accent); }
+.sort-result-note { font-size: 10px; color: var(--text-hint); margin-left: auto; white-space: nowrap; align-self: center; }
+
+/* ── Article count slider ── */
+.article-count-wrap { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-sec); flex-shrink: 0; }
+.article-count-wrap label { white-space: nowrap; }
+.article-count-wrap input[type=range] {
+  -webkit-appearance: none;
+  width: 90px; height: 4px;
+  background: var(--surface3);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
 }
-.tf-chip.active {
-  background: rgba(245,176,66,0.12); border-color: var(--accent);
-  color: var(--accent);
+.article-count-wrap input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
 }
-.sort-result-note {
-  font-size: 10px; color: var(--text-hint);
-  margin-left: auto; white-space: nowrap; align-self: center;
+.article-count-wrap input[type=range]::-moz-range-thumb {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
+  cursor: pointer;
 }
+.article-count-val { min-width: 28px; text-align: right; font-weight: 600; color: var(--accent); }
 
 /* ── Story Cards ── */
-.story-list  { display: flex; flex-direction: column; gap: 12px; }
-.story-card  { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; transition: all 0.15s; }
+.story-list { display: flex; flex-direction: column; gap: 12px; }
+.story-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  /* Only animate border-color on hover — avoids triggering layout/paint for every property */
+  transition: border-color 0.12s;
+  /* Card-in animation for progressive rendering */
+  animation: cardIn 0.2s ease both;
+  /* contain:content tells the browser that nothing inside a card
+     affects layout outside it — critical for progressive append performance */
+  contain: content;
+}
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 .story-card:hover { border-color: rgba(245,176,66,0.3); }
 .card-top    { display: flex; gap: 12px; }
 .emotion-dot { width: 38px; height: 38px; background: var(--gold-glow); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
@@ -485,23 +523,24 @@ button { font-family: var(--font); }
 .badge-neutral { background: var(--surface3); color: var(--text-hint); }
 .ts           { font-size: 10px; color: var(--text-hint); margin-left: auto; }
 .card-title   { font-weight: 600; font-size: 14px; margin-bottom: 6px; }
-.card-title a { color: inherit; text-decoration: none; }
+.card-title a { color: inherit; }
 .card-title a:hover { color: var(--accent); }
 .card-explain { font-size: 11px; color: var(--text-sec); margin: 4px 0 6px; line-height: 1.5; }
 .card-kw      { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
 .kw           { background: var(--surface3); padding: 2px 8px; border-radius: 12px; font-size: 10px; color: var(--text-sec); }
 .conf-row     { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
 .conf-track   { flex: 1; height: 3px; background: var(--surface3); border-radius: 4px; overflow: hidden; }
-.conf-fill    { height: 100%; background: var(--accent); transition: width 0.4s; }
+/* No transition on conf-fill — it's set once at render, no need to animate */
+.conf-fill    { height: 100%; background: var(--accent); }
 .card-actions { display: flex; gap: 8px; margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
-.act-btn      { flex: 1; background: transparent; border: 1px solid var(--border); border-radius: 8px; padding: 5px; font-size: 11px; cursor: pointer; color: var(--text-sec); transition: all 0.1s; }
+.act-btn      { flex: 1; background: transparent; border: 1px solid var(--border); border-radius: 8px; padding: 5px; font-size: 11px; cursor: pointer; color: var(--text-sec); transition: background 0.1s, color 0.1s; }
 .act-btn:hover     { background: var(--surface2); color: var(--text); }
 .act-btn.locked-btn { opacity: 0.35; cursor: not-allowed; }
 
 /* ── Keywords ── */
 .section-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-hint); margin: 18px 0 10px; }
 .kw-grid       { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 6px; }
-.kw-tag        { background: var(--surface2); border: 1px solid var(--border); border-radius: 30px; padding: 4px 12px; font-size: 12px; cursor: pointer; transition: 0.1s; color: var(--text-sec); }
+.kw-tag        { background: var(--surface2); border: 1px solid var(--border); border-radius: 30px; padding: 4px 12px; font-size: 12px; cursor: pointer; transition: border-color 0.1s, color 0.1s; color: var(--text-sec); }
 .kw-tag:hover  { border-color: var(--accent); color: var(--accent); }
 
 /* ── Brief ── */
@@ -527,13 +566,13 @@ button { font-family: var(--font); }
 .settings-input:focus { border-color: var(--accent); }
 textarea.settings-input { resize: vertical; min-height: 72px; }
 .provider-row  { display: flex; gap: 10px; margin-bottom: 14px; }
-.provider-btn  { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 40px; padding: 9px; cursor: pointer; font-weight: 500; font-size: 13px; color: var(--text-sec); transition: all 0.15s; }
+.provider-btn  { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 40px; padding: 9px; cursor: pointer; font-weight: 500; font-size: 13px; color: var(--text-sec); transition: background 0.12s, border-color 0.12s, color 0.12s; }
 .provider-btn.active { background: #2A2318; border-color: var(--accent); color: var(--accent); }
 .toggle        { width: 40px; height: 20px; background: var(--surface3); border-radius: 40px; cursor: pointer; position: relative; flex-shrink: 0; border: none; transition: background 0.2s; }
 .toggle.on     { background: var(--accent); }
-.toggle::after { content: ''; width: 14px; height: 14px; background: white; border-radius: 50%; position: absolute; top: 3px; left: 3px; transition: 0.2s; }
+.toggle::after { content: ''; width: 14px; height: 14px; background: white; border-radius: 50%; position: absolute; top: 3px; left: 3px; transition: left 0.2s; }
 .toggle.on::after { left: 23px; }
-.save-btn      { background: var(--accent); color: var(--bg); border: none; border-radius: 40px; padding: 11px; width: 100%; font-weight: 700; cursor: pointer; font-size: 14px; transition: all 0.15s; margin-top: 4px; }
+.save-btn      { background: var(--accent); color: var(--bg); border: none; border-radius: 40px; padding: 11px; width: 100%; font-weight: 700; cursor: pointer; font-size: 14px; transition: filter 0.15s; margin-top: 4px; }
 .save-btn:hover { filter: brightness(1.1); }
 
 /* ── Account pane ── */
@@ -544,18 +583,15 @@ textarea.settings-input { resize: vertical; min-height: 72px; }
 /* ── Misc ── */
 .empty      { text-align: center; padding: 48px 20px; color: var(--text-hint); }
 .empty-icon { font-size: 2.4rem; margin-bottom: 12px; }
-.spinner    { width: 14px; height: 14px; border: 2px solid rgba(245,176,66,0.2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.65s linear infinite; display: inline-block; vertical-align: middle; }
+/* Spinner uses transform — already GPU-accelerated, will-change tells browser upfront */
+.spinner    { width: 14px; height: 14px; border: 2px solid rgba(245,176,66,0.2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; display: inline-block; vertical-align: middle; will-change: transform; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .error-msg  { background: rgba(46,26,26,0.8); color: var(--red); padding: 9px 13px; border-radius: 10px; margin-bottom: 12px; font-size: 12px; border: 1px solid rgba(224,122,95,0.2); }
-.sh-btn     { background: transparent; border: 1px solid var(--border2); border-radius: 30px; padding: 6px 14px; font-size: 11px; font-weight: 500; color: var(--text-sec); cursor: pointer; transition: all 0.15s; }
+.sh-btn     { background: transparent; border: 1px solid var(--border2); border-radius: 30px; padding: 6px 14px; font-size: 11px; font-weight: 500; color: var(--text-sec); cursor: pointer; transition: background 0.12s, color 0.12s; }
 .sh-btn:hover { background: var(--surface2); color: var(--text); }
 
 /* ── Key set indicator ── */
-.key-set-indicator {
-  display: inline-flex; align-items: center; gap: 6px;
-  font-size: 11px; color: var(--green);
-  margin-top: 6px; transition: color 0.2s;
-}
+.key-set-indicator { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--green); margin-top: 6px; transition: color 0.15s; }
 
 /* ── Trial expiry warning inside settings ── */
 .trial-expiry-warning { background: rgba(245,176,66,0.08); border: 1px solid rgba(245,176,66,0.2); border-radius: 12px; padding: 10px 14px; font-size: 12px; color: var(--accent); margin-bottom: 14px; }
@@ -575,4 +611,12 @@ textarea.settings-input { resize: vertical; min-height: 72px; }
   .dashboard-wrap    { padding: 14px 16px; }
   .stats-strip       { grid-template-columns: repeat(2,1fr); }
   .draft-actions .act-btn { flex: 1; text-align: center; }
+}
+
+/* Respect prefers-reduced-motion for users who've requested it */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

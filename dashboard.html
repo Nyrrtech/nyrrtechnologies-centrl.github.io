@@ -6,8 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard – News Sentiment Radar</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
-    rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Preload Supabase JS so the download starts during HTML parsing,
+       before the parser reaches the <script> tag at end of body -->
+  <link rel="preload" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" as="script">
+  <link rel="preload" href="auth.js" as="script">
   <link rel="stylesheet" href="style.css">
   <style>
     /* Article count slider */
@@ -1223,7 +1227,8 @@
         return;
       }
       _lastPipelineRun = Date.now();
-      await renderUsageBar();
+      // Fire usage bar update in background — no need to block the crawl on it
+      renderUsageBar();
 
       // 3. Crawl all selected sources in parallel
       if (progressDiv) progressDiv.innerHTML = '<span class="spinner"></span> Fetching articles from all sources…';
@@ -1279,13 +1284,27 @@
 
     // ── Dashboard init ─────────────────────────────────────────────
     async function initDashboard(user) {
-      await loadSettingsUI();
-      await renderSourceChips();
-      await renderUsageBar();
-      await renderTabLocks();
-      await renderAccountPane(user);
-      await renderSettingsTrialNote();
-      await window.renderTrialBanner('trialBannerContainer');
+      // Run all independent init tasks in parallel instead of sequentially.
+      // loadProfile() is called by each of these; auth.js caches the result
+      // after the first call so concurrent calls collapse into one network request.
+      //
+      // Group 1 — visible UI that the user sees immediately on load:
+      //   renderSourceChips, renderUsageBar, renderTabLocks, renderTrialBanner
+      // Group 2 — below-the-fold or settings-only content:
+      //   loadSettingsUI, renderAccountPane, renderSettingsTrialNote
+      //
+      // Running all 7 in parallel cuts init time from ~7 sequential Supabase
+      // round-trips down to the cost of a single round-trip (they all share
+      // the cached loadProfile() result).
+      await Promise.all([
+        loadSettingsUI(),
+        renderSourceChips(),
+        renderUsageBar(),
+        renderTabLocks(),
+        renderAccountPane(user),
+        renderSettingsTrialNote(),
+        window.renderTrialBanner('trialBannerContainer'),
+      ]);
 
       // Article count slider live update
       const slider    = document.getElementById('articleCountSlider');

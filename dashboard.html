@@ -263,11 +263,9 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="auth.js"></script>
   <script>
-    // ═══════════════════════════════════════════════════════════════════
-    //  NEWS SENTIMENT RADAR — Dashboard Logic
-    //  Default AI provider: Mistral
-    //  AI Topic Discovery with rate limiting & fallback
-    // ═══════════════════════════════════════════════════════════════════
+    // ============================================================
+    // FULL DASHBOARD LOGIC (FIXED AI DISCOVERY, RATE LIMITS, MISTRAL DEFAULT)
+    // ============================================================
 
     const RSS2JSON_URL  = 'https://api.rss2json.com/v1/api.json';
     const FETCH_TIMEOUT = 15000;
@@ -758,7 +756,7 @@
       if (phrases.length) h += `<div class="section-label">📌 Trending phrases</div><div class="kw-grid">` + phrases.map(([p]) => `<button class="kw-tag" data-term="${esc(p)}" style="color:var(--accent);border-color:rgba(245,176,66,0.3)">${esc(p)}</button>`).join('') + `</div>`;
       if (data.clusters?.length) {
         h += `<div class="section-label" style="margin-top:18px">🤖 AI keyword clusters</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:6px">`;
-        data.clusters.forEach(c => { const uc = { breaking: '#E07A5F', trending: '#f5b042', evergreen: '#8BC97F' }[c.urgency] || '#f5b042'; h += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-weight:700;font-size:13px;flex:1">${esc(c.theme)}</span><span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(0,0,0,0.3);color:${uc};border:1px solid ${uc}33">${esc(c.urgency)}</span></div><div style="font-size:12px;color:var(--text-sec);margin-bottom:10px;line-height:1.5">${esc(c.summary)}</div><div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">${(c.keywords||[]).map(k=>`<button class="kw-tag" data-term="${esc(k)}" style="padding:2px 9px;font-size:11px">${esc(k)}</button>`).join('')}</div><div style="font-size:11px;color:var(--text-hint)">Competition: ${esc(c.competition)} · Potential: ${esc(c.potential)}</div></div>`; });
+        data.clusters.forEach(c => { const uc = { breaking: '#E07A5F', trending: '#f5b042', evergreen: '#8BC97F' }[c.urgency] || '#f5b042'; h += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-weight:700;font-size:13px;flex:1">${esc(c.theme)}</span><span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(0,0,0,0.3);color:${uc};border:1px solid ${uc}33">${esc(c.urgency)}</span></div><div style="font-size:12px;color:var(--text-sec);margin-bottom:10px;line-height:1.5">${esc(c.summary)}</div><div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">${(c.keywords||[]).map(k=>`<button class="kw-tag" data-term="${esc(k)}" style="padding:2px 9px;font-size:11px">${esc(k)}</button>`).join('')}</div><div style="font-size:11px;color:var(--text-hint)">Competition: ${esc(c.competition)} · Potential: ${esc(c.potential)}</div></div>`); });
         h += `</div>`;
       }
       if (data.gaps?.length) {
@@ -949,9 +947,9 @@
       }
     }
 
-    // ─────────────────────────────────────────────────────────────
-    //  AI POWERED SEARCH BAR – WITH RATE LIMIT HANDLING
-    // ─────────────────────────────────────────────────────────────
+    // ============================================================
+    // AI DISCOVERY WITH RATE LIMIT HANDLING
+    // ============================================================
 
     async function fetchSingleRSSFeedWithRetry(feedUrl, feedName, retries = 3, baseDelay = 1000) {
       const key = settings.rss2jsonKey || '';
@@ -1133,9 +1131,9 @@
       }
     }
 
-    // ─────────────────────────────────────────────────────────────
-    //  ORIGINAL CRAWL PIPELINE
-    // ─────────────────────────────────────────────────────────────
+    // ============================================================
+    // ORIGINAL CRAWL PIPELINE
+    // ============================================================
 
     async function runPipeline() {
       const now = Date.now();
@@ -1235,9 +1233,9 @@
       if (crawlBtn) crawlBtn.disabled = false;
     }
 
-    // ─────────────────────────────────────────────────────────────
-    //  DASHBOARD INIT
-    // ─────────────────────────────────────────────────────────────
+    // ============================================================
+    // INIT
+    // ============================================================
 
     async function initDashboard(user) {
       await Promise.all([

@@ -264,8 +264,9 @@
   <script src="auth.js"></script>
   <script>
     // ═══════════════════════════════════════════════════════════════════
-    //  NEWS SENTIMENT RADAR — Dashboard Logic (with fixed AI discovery)
+    //  NEWS SENTIMENT RADAR — Dashboard Logic
     //  Default AI provider: Mistral
+    //  AI Topic Discovery with rate limiting & fallback
     // ═══════════════════════════════════════════════════════════════════
 
     const RSS2JSON_URL  = 'https://api.rss2json.com/v1/api.json';
@@ -949,61 +950,67 @@
     }
 
     // ─────────────────────────────────────────────────────────────
-    //  AI POWERED SEARCH BAR – FIXED VERSION
+    //  AI POWERED SEARCH BAR – WITH RATE LIMIT HANDLING
     // ─────────────────────────────────────────────────────────────
 
-    async function fetchSingleRSSFeed(feedUrl, feedName) {
+    async function fetchSingleRSSFeedWithRetry(feedUrl, feedName, retries = 3, baseDelay = 1000) {
       const key = settings.rss2jsonKey || '';
       const proxy = settings.proxyUrl || '';
-      try {
-        let items = null;
-        if (proxy) {
-          try {
-            const r = await fetchTimeout(`${proxy}?url=${encodeURIComponent(feedUrl)}&count=15`);
-            if (r.ok) { const d = await r.json(); if (d.items?.length) items = d.items; }
-          } catch(e) {}
+      for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+          let items = null;
+          if (proxy) {
+            try {
+              const r = await fetchTimeout(`${proxy}?url=${encodeURIComponent(feedUrl)}&count=15`);
+              if (r.ok) { const d = await r.json(); if (d.items?.length) items = d.items; }
+            } catch(e) {}
+          }
+          if (!items) {
+            const params = new URLSearchParams({ rss_url: feedUrl, count: 15, order_by: 'pubDate', order_dir: 'desc' });
+            if (key) params.set('api_key', key);
+            const r = await fetchTimeout(`${RSS2JSON_URL}?${params}`);
+            if (r.status === 429) {
+              const waitTime = baseDelay * Math.pow(2, attempt - 1) + Math.random() * 500;
+              console.warn(`Rate limited for ${feedName}, retry ${attempt} after ${waitTime}ms`);
+              await new Promise(resolve => setTimeout(resolve, waitTime));
+              continue;
+            }
+            if (r.ok) { const d = await r.json(); if (d.status === 'ok') items = d.items; }
+          }
+          if (!items || items.length === 0) throw new Error('No items');
+          items.sort((a,b) => new Date(b.pubDate || 0) - new Date(a.pubDate || 0));
+          return items.slice(0, 8).map(item => ({
+            source: feedName,
+            platform: 'ai_discovered',
+            title: (item.title || '').replace(/<[^>]+>/g, ''),
+            url: item.link,
+            description: (item.description || '').replace(/<[^>]+>/g, '').slice(0, 250),
+            publishedAt: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
+            score: 0, comments: 0
+          }));
+        } catch(e) {
+          if (attempt === retries) {
+            console.error(`Failed to fetch ${feedName} after ${retries} attempts:`, e.message);
+            return [];
+          }
+          await new Promise(resolve => setTimeout(resolve, baseDelay * attempt));
         }
-        if (!items) {
-          const params = new URLSearchParams({ rss_url: feedUrl, count: 15, order_by: 'pubDate', order_dir: 'desc' });
-          if (key) params.set('api_key', key);
-          const r = await fetchTimeout(`${RSS2JSON_URL}?${params}`);
-          if (r.ok) { const d = await r.json(); if (d.status === 'ok') items = d.items; }
-        }
-        if (!items) return [];
-        items.sort((a,b) => new Date(b.pubDate || 0) - new Date(a.pubDate || 0));
-        return items.slice(0, 8).map(item => ({
-          source: feedName,
-          platform: 'ai_discovered',
-          title: (item.title || '').replace(/<[^>]+>/g, ''),
-          url: item.link,
-          description: (item.description || '').replace(/<[^>]+>/g, '').slice(0, 250),
-          publishedAt: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
-          score: 0, comments: 0
-        }));
-      } catch(e) { return []; }
-    }
-
-    function isValidFeedUrl(url) {
-      if (!url) return false;
-      const lower = url.toLowerCase();
-      return lower.startsWith('http') && (lower.includes('.rss') || lower.includes('.xml') || lower.includes('/feed') || lower.includes('/rss'));
+      }
+      return [];
     }
 
     async function discoverFeedsForTopic(topic) {
       const provider = settings.aiProvider;
       const apiKey = provider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
       if (!apiKey) throw new Error('API key missing. Please set your AI provider key in Settings.');
-
       const prompt = `You are a professional news aggregator. For the topic: "${topic}", find 8 to 12 high-quality, active RSS feeds from reputable news websites, blogs, or publications that regularly cover this topic. Return ONLY a valid JSON array of objects with keys: "name" (string, human readable site name) and "url" (string, full RSS feed URL). Ensure URLs are valid RSS feeds (contain .rss, .xml, or typical feed pattern). Do not include any explanation or markdown. Example format: [{"name":"TechCrunch AI","url":"https://techcrunch.com/tag/artificial-intelligence/feed/"}, ...]. Make sure feeds are recent and relevant.`;
-
       let raw = await callAIWithRetry({ prompt, maxTokens: 1200, apiKey, provider, retries: 2, delayMs: 1000 });
       let cleaned = raw.replace(/```json\s*|```\s*$/g, '').trim();
       const match = cleaned.match(/\[[\s\S]*\]/);
       if (match) cleaned = match[0];
       const feeds = JSON.parse(cleaned);
       if (!Array.isArray(feeds) || feeds.length === 0) throw new Error('AI did not return any feeds.');
-      // filter valid URLs
-      return feeds.filter(f => isValidFeedUrl(f.url)).slice(0, 12);
+      return feeds.filter(f => f.url && (f.url.startsWith('http'))).slice(0, 12);
     }
 
     async function runAIDiscoveryPipeline() {
@@ -1045,39 +1052,46 @@
         try {
           feeds = await discoverFeedsForTopic(topic);
         } catch (aiErr) {
-          console.warn('AI feed discovery failed, using fallback:', aiErr);
-          statusDiv.innerHTML = '⚠️ AI feed discovery failed. Using fallback search...';
-          // Fallback: use a simple Google News RSS search (via rss2json)
-          const fallbackUrl = `https://api.rss2json.com/v1/api.json?rss_url=https://news.google.com/rss/search?q=${encodeURIComponent(topic)}&hl=en-US&gl=US&ceid=US:en`;
-          const resp = await fetchTimeout(fallbackUrl);
-          const data = await resp.json();
-          if (data.status === 'ok' && data.items?.length) {
-            feeds = [{ name: `Google News: ${topic}`, url: `https://news.google.com/rss/search?q=${encodeURIComponent(topic)}&hl=en-US&gl=US&ceid=US:en` }];
-          } else {
-            throw new Error('Could not fetch fallback feeds');
-          }
+          console.warn('AI feed discovery failed, using Google News fallback:', aiErr);
+          statusDiv.innerHTML = '⚠️ AI feed discovery failed. Using Google News fallback...';
+          const fallbackUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(topic)}&hl=en-US&gl=US&ceid=US:en`;
+          feeds = [{ name: `Google News: ${topic}`, url: fallbackUrl }];
         }
-
         if (!feeds || feeds.length === 0) throw new Error('No valid feeds discovered.');
 
-        statusDiv.innerHTML = `✅ AI found ${feeds.length} sources for "${escapeHtml(topic)}". Fetching articles...`;
+        statusDiv.innerHTML = `✅ AI found ${feeds.length} sources for "${escapeHtml(topic)}". Fetching articles (rate-limited)...`;
         if (progFill) progFill.style.width = '15%';
 
         await window.incrementCrawlCount();
         _lastPipelineRun = Date.now();
         renderUsageBar();
 
-        const feedTasks = feeds.map(feed => fetchSingleRSSFeed(feed.url, feed.name));
+        const feedTasks = [];
+        const feedDelayMs = 800;
+        for (let i = 0; i < feeds.length; i++) {
+          const feed = feeds[i];
+          feedTasks.push(
+            (async () => {
+              if (i > 0) await new Promise(r => setTimeout(r, feedDelayMs));
+              statusDiv.innerHTML = `📡 Fetching ${i+1}/${feeds.length}: ${feed.name}...`;
+              return await fetchSingleRSSFeedWithRetry(feed.url, feed.name, 3, 1000);
+            })()
+          );
+        }
         const feedResults = await Promise.allSettled(feedTasks);
         let rawArticles = feedResults.flatMap(r => r.status === 'fulfilled' ? r.value : []);
         const uniqueMap = new Map();
         rawArticles.forEach(a => { if (!uniqueMap.has(a.url)) uniqueMap.set(a.url, a); });
         rawArticles = Array.from(uniqueMap.values());
-
         const limit = getArticleLimit();
         rawArticles = rawArticles.slice(0, limit);
-        if (rawArticles.length === 0) throw new Error('No articles could be fetched from discovered feeds.');
-
+        if (rawArticles.length === 0) {
+          statusDiv.innerHTML = '⚠️ No articles from discovered feeds. Trying Google News...';
+          const googleFallbackUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(topic)}&hl=en-US&gl=US&ceid=US:en`;
+          const googleArticles = await fetchSingleRSSFeedWithRetry(googleFallbackUrl, `Google News: ${topic}`, 2, 1000);
+          if (googleArticles.length === 0) throw new Error('No articles could be fetched from any source.');
+          rawArticles = googleArticles;
+        }
         if (progressDiv) progressDiv.innerHTML = `<span class="spinner"></span> Analyzing ${rawArticles.length} discovered articles...`;
         if (progFill) progFill.style.width = '25%';
 
@@ -1091,7 +1105,6 @@
           const analysis = await analyzeArticle(article, apiKey, provider);
           return { ...article, ...analysis, analyzed: true };
         });
-
         await runConcurrent(analysisTasks, CONCURRENCY, async (idx, result) => {
           if (!result) return;
           stories.push(result);
@@ -1102,7 +1115,6 @@
           await appendStoryCard(result);
           if (doneCount % 5 === 0 || doneCount === rawArticles.length) { renderStats(); renderFilterRow(); }
         });
-
         await renderStories();
         renderStats();
         renderFilterRow();
@@ -1122,7 +1134,7 @@
     }
 
     // ─────────────────────────────────────────────────────────────
-    //  ORIGINAL CRAWL PIPELINE (kept for compatibility)
+    //  ORIGINAL CRAWL PIPELINE
     // ─────────────────────────────────────────────────────────────
 
     async function runPipeline() {
@@ -1222,6 +1234,10 @@
       setTimeout(() => { if (progressDiv) progressDiv.textContent = ''; if (progFill) progFill.style.width = '0%'; }, 2500);
       if (crawlBtn) crawlBtn.disabled = false;
     }
+
+    // ─────────────────────────────────────────────────────────────
+    //  DASHBOARD INIT
+    // ─────────────────────────────────────────────────────────────
 
     async function initDashboard(user) {
       await Promise.all([

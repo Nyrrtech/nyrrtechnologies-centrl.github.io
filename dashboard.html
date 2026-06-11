@@ -1012,79 +1012,133 @@
     }
 
     async function runAIDiscoveryPipeline() {
-      const topicInput = document.getElementById('aiTopicInput');
-      const topic = topicInput?.value.trim();
-      if (!topic) {
-        document.getElementById('aiDiscoveryStatus').innerHTML = '<span style="color:var(--red)">⚠️ Please enter a topic.</span>';
-        return;
+  const topicInput = document.getElementById('aiTopicInput');
+  const topic = topicInput?.value.trim();
+  if (!topic) {
+    document.getElementById('aiDiscoveryStatus').innerHTML = '<span style="color:var(--red)">⚠️ Please enter a topic.</span>';
+    return;
+  }
+  if (Date.now() - _lastPipelineRun < 60000) {
+    document.getElementById('aiDiscoveryStatus').innerHTML = '<span style="color:var(--accent)">⏳ Please wait before re-crawling (rate limit).</span>';
+    return;
+  }
+  const crawlCheck = await window.canCrawl();
+  if (!crawlCheck.ok) { renderUpsellBanner('storyList', 'crawl'); return; }
+
+  const provider = settings.aiProvider;
+  const apiKey = provider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
+  if (!apiKey) {
+    document.getElementById('aiDiscoveryStatus').innerHTML = '<span style="color:var(--red)">⚠️ Set your API key in Settings first.</span>';
+    document.querySelector('.db-tab[data-tab="settings"]').click();
+    return;
+  }
+
+  const discoverBtn = document.getElementById('aiDiscoverBtn');
+  const crawlBtn = document.getElementById('crawlBtn');
+  const progressDiv = document.getElementById('progressMsg');
+  const progFill = document.getElementById('progFill');
+  const statusDiv = document.getElementById('aiDiscoveryStatus');
+
+  discoverBtn.disabled = true;
+  if (crawlBtn) crawlBtn.disabled = true;
+  if (progressDiv) progressDiv.innerHTML = '<span class="spinner"></span> AI discovering relevant news sources...';
+  if (progFill) progFill.style.width = '5%';
+  statusDiv.innerHTML = '🤖 AI is searching for relevant RSS feeds (this may take 15-30 seconds)...';
+
+  try {
+    let feeds;
+    try {
+      feeds = await discoverFeedsForTopic(topic);
+    } catch (aiErr) {
+      console.warn('AI feed discovery failed, using Google News fallback:', aiErr);
+      statusDiv.innerHTML = '⚠️ AI feed discovery failed. Using Google News fallback...';
+      const fallbackUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(topic)}&hl=en-US&gl=US&ceid=US:en`;
+      feeds = [{ name: `Google News: ${topic}`, url: fallbackUrl }];
+    }
+    if (!feeds || feeds.length === 0) throw new Error('No valid feeds discovered.');
+
+    statusDiv.innerHTML = `✅ AI found ${feeds.length} sources for "${escapeHtml(topic)}". Now fetching articles slowly to avoid rate limits...`;
+    if (progFill) progFill.style.width = '12%';
+
+    await window.incrementCrawlCount();
+    _lastPipelineRun = Date.now();
+    renderUsageBar();
+
+    // Very conservative fetch: sequential, with long delays
+    const rawArticles = [];
+    const feedDelayMs = 2500; // 2.5 seconds between feed requests
+    const initialDelayMs = 2000; // 2 seconds before starting
+
+    statusDiv.innerHTML = `⏳ Waiting ${initialDelayMs/1000}s before first request...`;
+    await new Promise(r => setTimeout(r, initialDelayMs));
+
+    for (let i = 0; i < feeds.length; i++) {
+      const feed = feeds[i];
+      statusDiv.innerHTML = `📡 Fetching ${i+1}/${feeds.length}: ${feed.name}... (waiting ${feedDelayMs/1000}s between requests)`;
+      const articles = await fetchSingleRSSFeedWithRetry(feed.url, feed.name, 3, 2000);
+      rawArticles.push(...articles);
+      if (i < feeds.length - 1) {
+        // Wait before next request
+        await new Promise(r => setTimeout(r, feedDelayMs));
       }
-      if (Date.now() - _lastPipelineRun < 60000) {
-        document.getElementById('aiDiscoveryStatus').innerHTML = '<span style="color:var(--accent)">⏳ Please wait before re-crawling (rate limit).</span>';
-        return;
-      }
-      const crawlCheck = await window.canCrawl();
-      if (!crawlCheck.ok) { renderUpsellBanner('storyList', 'crawl'); return; }
+    }
 
-      const provider = settings.aiProvider;
-      const apiKey = provider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
-      if (!apiKey) {
-        document.getElementById('aiDiscoveryStatus').innerHTML = '<span style="color:var(--red)">⚠️ Set your API key in Settings first.</span>';
-        document.querySelector('.db-tab[data-tab="settings"]').click();
-        return;
-      }
+    const uniqueMap = new Map();
+    rawArticles.forEach(a => { if (!uniqueMap.has(a.url)) uniqueMap.set(a.url, a); });
+    let uniqueArticles = Array.from(uniqueMap.values());
+    const limit = getArticleLimit();
+    uniqueArticles = uniqueArticles.slice(0, limit);
 
-      const discoverBtn = document.getElementById('aiDiscoverBtn');
-      const crawlBtn = document.getElementById('crawlBtn');
-      const progressDiv = document.getElementById('progressMsg');
-      const progFill = document.getElementById('progFill');
-      const statusDiv = document.getElementById('aiDiscoveryStatus');
+    if (uniqueArticles.length === 0) {
+      statusDiv.innerHTML = '⚠️ No articles from discovered feeds. Trying Google News fallback...';
+      const googleFallbackUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(topic)}&hl=en-US&gl=US&ceid=US:en`;
+      const googleArticles = await fetchSingleRSSFeedWithRetry(googleFallbackUrl, `Google News: ${topic}`, 3, 2000);
+      if (googleArticles.length === 0) throw new Error('No articles could be fetched from any source.');
+      uniqueArticles = googleArticles;
+    }
 
-      discoverBtn.disabled = true;
-      if (crawlBtn) crawlBtn.disabled = true;
-      if (progressDiv) progressDiv.innerHTML = '<span class="spinner"></span> AI discovering relevant news sources...';
-      if (progFill) progFill.style.width = '8%';
-      statusDiv.innerHTML = '🤖 AI is searching for relevant RSS feeds...';
+    if (progressDiv) progressDiv.innerHTML = `<span class="spinner"></span> Analyzing ${uniqueArticles.length} discovered articles...`;
+    if (progFill) progFill.style.width = '30%';
 
-      try {
-        let feeds;
-        try {
-          feeds = await discoverFeedsForTopic(topic);
-        } catch (aiErr) {
-          console.warn('AI feed discovery failed, using Google News fallback:', aiErr);
-          statusDiv.innerHTML = '⚠️ AI feed discovery failed. Using Google News fallback...';
-          const fallbackUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(topic)}&hl=en-US&gl=US&ceid=US:en`;
-          feeds = [{ name: `Google News: ${topic}`, url: fallbackUrl }];
-        }
-        if (!feeds || feeds.length === 0) throw new Error('No valid feeds discovered.');
+    const storyContainer = document.getElementById('storyList');
+    stories = [];
+    if (storyContainer) storyContainer.innerHTML = `<div class="empty"><span class="spinner"></span> AI analyzing ${uniqueArticles.length} articles — results appear live...</div>`;
 
-        statusDiv.innerHTML = `✅ AI found ${feeds.length} sources for "${escapeHtml(topic)}". Fetching articles (rate-limited)...`;
-        if (progFill) progFill.style.width = '15%';
+    const CONCURRENCY = provider === 'mistral' ? 2 : 3; // Lower concurrency for safety
+    let doneCount = 0;
+    const analysisTasks = uniqueArticles.map(article => async () => {
+      const analysis = await analyzeArticle(article, apiKey, provider);
+      return { ...article, ...analysis, analyzed: true };
+    });
 
-        await window.incrementCrawlCount();
-        _lastPipelineRun = Date.now();
-        renderUsageBar();
+    await runConcurrent(analysisTasks, CONCURRENCY, async (idx, result) => {
+      if (!result) return;
+      stories.push(result);
+      doneCount++;
+      const pct = 30 + Math.round((doneCount / uniqueArticles.length) * 70);
+      if (progFill) progFill.style.width = pct + '%';
+      if (progressDiv) progressDiv.textContent = `Analyzed ${doneCount} / ${uniqueArticles.length}...`;
+      await appendStoryCard(result);
+      if (doneCount % 5 === 0 || doneCount === uniqueArticles.length) { renderStats(); renderFilterRow(); }
+    });
 
-        const feedTasks = [];
-        const feedDelayMs = 800;
-        for (let i = 0; i < feeds.length; i++) {
-          const feed = feeds[i];
-          feedTasks.push(
-            (async () => {
-              if (i > 0) await new Promise(r => setTimeout(r, feedDelayMs));
-              statusDiv.innerHTML = `📡 Fetching ${i+1}/${feeds.length}: ${feed.name}...`;
-              return await fetchSingleRSSFeedWithRetry(feed.url, feed.name, 3, 1000);
-            })()
-          );
-        }
-        const feedResults = await Promise.allSettled(feedTasks);
-        let rawArticles = feedResults.flatMap(r => r.status === 'fulfilled' ? r.value : []);
-        const uniqueMap = new Map();
-        rawArticles.forEach(a => { if (!uniqueMap.has(a.url)) uniqueMap.set(a.url, a); });
-        rawArticles = Array.from(uniqueMap.values());
-        const limit = getArticleLimit();
-        rawArticles = rawArticles.slice(0, limit);
-        if (rawArticles.length === 0) {
-          statusDiv.innerHTML = '⚠️ No articles from discovered feeds. Trying Google News...';
+    await renderStories();
+    renderStats();
+    renderFilterRow();
+    if (settings.aiKeywords) await renderKeywords();
+    if (progFill) progFill.style.width = '100%';
+    if (progressDiv) progressDiv.textContent = `✅ AI discovery complete — ${stories.length} articles analyzed for "${escapeHtml(topic)}"`;
+    statusDiv.innerHTML = `🎯 Success! Crawled ${feeds.length} AI-discovered sources (rate limits respected).`;
+    setTimeout(() => { if (progressDiv) progressDiv.textContent = ''; if (progFill) progFill.style.width = '0%'; }, 3000);
+  } catch (err) {
+    console.error(err);
+    statusDiv.innerHTML = `<span style="color:var(--red)">❌ Discovery error: ${escapeHtml(err.message)}</span>`;
+    if (progressDiv) progressDiv.innerHTML = '';
+  } finally {
+    discoverBtn.disabled = false;
+    if (crawlBtn) crawlBtn.disabled = false;
+  }
+}
           const googleFallbackUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(topic)}&hl=en-US&gl=US&ceid=US:en`;
           const googleArticles = await fetchSingleRSSFeedWithRetry(googleFallbackUrl, `Google News: ${topic}`, 2, 1000);
           if (googleArticles.length === 0) throw new Error('No articles could be fetched from any source.');

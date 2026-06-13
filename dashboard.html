@@ -218,7 +218,7 @@
   <script src="auth.js"></script>
   <script>
     // ============================================================
-    //  FULL DASHBOARD LOGIC (ALL ORIGINAL FUNCTIONALITY)
+    //  FULL DASHBOARD LOGIC (SYNTAX ERROR FIXED)
     //  esc is already defined by auth.js – do NOT redeclare it
     // ============================================================
 
@@ -232,7 +232,6 @@
     let _lastPipelineRun = 0;
     const PIPELINE_COOLDOWN_MS = 60000;
 
-    // Helper for settings messages
     function showSettingsMessage(msg, isError = false) {
       const msgDiv = document.getElementById('settingsMsg');
       if (msgDiv) {
@@ -242,7 +241,6 @@
       }
     }
 
-    // ==================== HELPER FUNCTIONS ====================
     function timeAgo(iso) {
       if (!iso) return '';
       const s = (Date.now() - new Date(iso)) / 1000;
@@ -726,7 +724,6 @@
         if (el('groupAnthropicKey')) el('groupAnthropicKey').style.display = 'block';
         if (el('groupMistralKey')) el('groupMistralKey').style.display = 'none';
       }
-      // Show key status indicators if keys are already saved
       if (remote.anthropicKeySet && el('anthropicKeyStatus')) {
         el('anthropicKeyStatus').style.display = 'flex';
         el('anthropicKeyStatusIcon').innerHTML = '✓';
@@ -808,7 +805,7 @@
       }
     }
 
-    async function renderKeywords() { /* Full keyword intelligence with AI enrichment */ 
+    async function renderKeywords() {
       const container = document.getElementById('kwContent');
       if (!container) return;
       if (!stories.length) { container.innerHTML = '<div class="empty"><div class="empty-icon">🔑</div>Run a crawl first to see keyword intelligence.</div>'; return; }
@@ -868,7 +865,7 @@
       sec.querySelectorAll('[data-term]').forEach(el => el.addEventListener('click', () => generateBriefFromTopic(el.dataset.term)));
     }
 
-    // ==================== AI DISCOVERY PIPELINE (rate‑limited) ====================
+    // ==================== AI DISCOVERY PIPELINE ====================
     async function fetchSingleRSSFeedWithRetry(feedUrl, feedName, retries = 3, baseDelay = 2000) {
       const key = settings.rss2jsonKey || '';
       const proxy = settings.proxyUrl || '';
@@ -1060,8 +1057,7 @@
         const remote = await window.loadSettings();
         const keyIsSaved = provider === 'anthropic' ? remote.anthropicKeySet : remote.mistralKeySet;
         if (keyIsSaved) {
-          if (storyDiv) storyDiv.innerHTML = '<div class="error-msg"><span class="spinner" style="width:11px;height:11px;border-width:1.5px;vertical-align:middle;margin-right:6px"></span> Loading your API key… please click Crawl again in a moment.</div>';
-          // try to fetch key from backend
+          if (storyDiv) storyDiv.innerHTML = '<div class="error-msg"><span class="spinner"></span> Loading your API key… please click Crawl again in a moment.</div>';
         } else {
           if (storyDiv) storyDiv.innerHTML = `<div class="error-msg">⚠ Please enter your ${provider === 'anthropic' ? 'Anthropic' : 'Mistral'} API key in Settings.</div>`;
           document.querySelector('.db-tab[data-tab="settings"]').click();

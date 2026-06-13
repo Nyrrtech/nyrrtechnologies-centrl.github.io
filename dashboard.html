@@ -221,19 +221,6 @@
     //  COMPLETE DASHBOARD LOGIC (NO PLACEHOLDERS)
     // ============================================================
 
-    // Make sure esc() is available (fallback if auth.js hasn't loaded it)
-    if (typeof window.escapeHtml !== 'function') {
-      window.escapeHtml = function(str) {
-        if (!str) return '';
-        return String(str).replace(/[&<>]/g, function(m) {
-          if (m === '&') return '&amp;';
-          if (m === '<') return '&lt;';
-          if (m === '>') return '&gt;';
-          return m;
-        });
-      };
-    }
-    const esc = window.escapeHtml;
 
     // ==================== GLOBALS & CONFIG ====================
     const RSS2JSON_URL = 'https://api.rss2json.com/v1/api.json';

@@ -103,6 +103,7 @@
         <div class="prog-bar-wrap"><div class="prog-bar-fill" id="progFill"></div></div>
         <div id="statsStrip" class="stats-strip" style="display:none"></div>
         <div id="filterRow" class="filter-row" style="display:none"></div>
+        <div id="keywordFilterRow" class="filter-row" style="display:none; margin-top: -8px; margin-bottom: 16px;"></div>
         <div id="storyList" class="story-list">
           <div class="empty"><div class="empty-icon">📡</div>Select sources and click Crawl, or use AI Topic Discovery above.</div>
         </div>
@@ -227,10 +228,54 @@
     const FETCH_TIMEOUT = 15000;
 
     let settings = { aiProvider: 'mistral', anthropicKey: '', mistralKey: '', rss2jsonKey: '', proxyUrl: '', aiKeywords: true };
-    let stories = [], activeFilter = null, currentBrief = null;
+    let stories = [], activeFilter = null, activeKeywordFilter = null, currentBrief = null;
     let sortMode = 'newest', timeframeMs = 604800000;
     let _lastPipelineRun = 0;
     const PIPELINE_COOLDOWN_MS = 60000;
+
+    // Rate Limit Mechanics
+    let _aiRateLimitPaused = false;
+    let _aiRateLimitResumeTime = 0;
+    let _rss2jsonSuspended = false;
+
+    function suspendRss2Json() {
+      _rss2jsonSuspended = true;
+      setTimeout(() => { _rss2jsonSuspended = false; }, 60000); // Suspend for 60s
+    }
+
+    function updateRateLimitStatus(isPaused, seconds) {
+      const progressDiv = document.getElementById('progressMsg');
+      const aiStatusDiv = document.getElementById('aiDiscoveryStatus');
+      const msg = `⚠️ AI Rate Limit reached. Pausing crawl for ${seconds}s before resuming...`;
+      
+      if (isPaused) {
+        if (progressDiv && progressDiv.innerHTML.includes('Analyzing')) {
+          if (!progressDiv.dataset.originalText) progressDiv.dataset.originalText = progressDiv.textContent;
+          progressDiv.innerHTML = `<span class="spinner" style="border-top-color: var(--accent);"></span> <span style="color: var(--accent); font-weight: 600;">${msg}</span>`;
+        } else if (aiStatusDiv) {
+          aiStatusDiv.innerHTML = `<span style="color: var(--accent); font-weight: 600;">${msg}</span>`;
+        }
+      } else {
+        if (progressDiv && progressDiv.dataset.originalText) {
+          progressDiv.textContent = progressDiv.dataset.originalText;
+          progressDiv.dataset.originalText = '';
+        }
+      }
+    }
+
+    async function checkAndDelayIfRateLimited() {
+      if (_aiRateLimitPaused) {
+        let now = Date.now();
+        while (now < _aiRateLimitResumeTime) {
+          const waitTime = _aiRateLimitResumeTime - now;
+          updateRateLimitStatus(true, Math.ceil(waitTime / 1000));
+          await new Promise(r => setTimeout(r, Math.min(1000, waitTime)));
+          now = Date.now();
+        }
+        _aiRateLimitPaused = false;
+        updateRateLimitStatus(false);
+      }
+    }
 
     function showSettingsMessage(msg, isError = false) {
       const msgDiv = document.getElementById('settingsMsg');
@@ -276,12 +321,19 @@
     function getArticleLimit() { return parseInt(document.getElementById('articleCountSlider')?.value || '35', 10); }
     function applySortAndSlice(raw) {
       const limit = getArticleLimit();
+      const now = Date.now();
+      
+      // Filter by timeframe in both sorting modes
+      let pool = timeframeMs > 0 ? raw.filter(s => (now - new Date(s.publishedAt)) <= timeframeMs) : raw;
+      
       if (sortMode === 'popular') {
-        const now = Date.now();
-        const pool = timeframeMs > 0 ? raw.filter(s => (now - new Date(s.publishedAt)) <= timeframeMs) : raw;
-        return [...pool].sort((a,b) => ((b.score||0)+(b.comments||0)*2+1)/Math.pow((Date.now()-new Date(b.publishedAt))/3.6e6+2,1.3) - ((a.score||0)+(a.comments||0)*2+1)/Math.pow((Date.now()-new Date(a.publishedAt))/3.6e6+2,1.3)).slice(0, limit);
+        return [...pool].sort((a,b) => {
+          const aGravity = ((a.score||0)+(a.comments||0)*2+(a.relevance||0)+1)/Math.pow((now-new Date(a.publishedAt))/3.6e6+2,1.3);
+          const bGravity = ((b.score||0)+(b.comments||0)*2+(b.relevance||0)+1)/Math.pow((now-new Date(b.publishedAt))/3.6e6+2,1.3);
+          return bGravity - aGravity;
+        }).slice(0, limit);
       }
-      return [...raw].sort((a,b) => new Date(b.publishedAt) - new Date(a.publishedAt)).slice(0, limit);
+      return [...pool].sort((a,b) => new Date(b.publishedAt) - new Date(a.publishedAt)).slice(0, limit);
     }
 
     function updateSortNote(arr) {
@@ -302,12 +354,18 @@
 
     // ==================== AI CALLS ====================
     async function callAI({ prompt, maxTokens = 600, apiKey, provider }) {
+      await checkAndDelayIfRateLimited();
       if (provider === 'anthropic') {
         const r = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
           body: JSON.stringify({ model: 'claude-3-haiku-20240307', max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] })
         });
+        if (r.status === 429) {
+          _aiRateLimitPaused = true;
+          _aiRateLimitResumeTime = Date.now() + 16000;
+          throw new Error('429 Rate Limit Exceeded');
+        }
         if (!r.ok) { const e = await r.text(); throw new Error(`Anthropic ${r.status}: ${e.slice(0,100)}`); }
         const d = await r.json(); return d.content[0].text;
       } else {
@@ -316,25 +374,156 @@
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
           body: JSON.stringify({ model: 'mistral-large-latest', max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] })
         });
+        if (r.status === 429) {
+          _aiRateLimitPaused = true;
+          _aiRateLimitResumeTime = Date.now() + 16000;
+          throw new Error('429 Rate Limit Exceeded');
+        }
         if (!r.ok) { const e = await r.text(); throw new Error(`Mistral ${r.status}: ${e.slice(0,120)}`); }
         const d = await r.json(); return d.choices[0].message.content;
       }
     }
 
-    async function callAIWithRetry({ prompt, maxTokens = 600, apiKey, provider, retries = 3, delayMs = 800 }) {
+    async function callAIWithRetry({ prompt, maxTokens = 600, apiKey, provider, retries = 5, delayMs = 1000 }) {
       let lastErr;
       for (let i = 1; i <= retries; i++) {
-        try { return await callAI({ prompt, maxTokens, apiKey, provider }); }
+        try {
+          await checkAndDelayIfRateLimited();
+          return await callAI({ prompt, maxTokens, apiKey, provider });
+        }
         catch (e) {
           lastErr = e;
-          const is429 = e.message.includes('429');
+          const is429 = e.message.includes('429') || e.message.includes('Rate Limit');
           const is5xx = /\b5\d{2}\b/.test(e.message);
-          if ((!is429 && !is5xx) || i === retries) throw e;
-          const wait = is429 ? 12000 + Math.random()*3000 : delayMs * Math.pow(2,i-1) + Math.random()*300;
+          
+          if (is429) {
+            _aiRateLimitPaused = true;
+            _aiRateLimitResumeTime = Date.now() + 16000;
+            await checkAndDelayIfRateLimited();
+            continue;
+          }
+          
+          if (!is5xx || i === retries) throw e;
+          const wait = delayMs * Math.pow(2, i-1) + Math.random()*300;
           await new Promise(r => setTimeout(r, wait));
         }
       }
       throw lastErr;
+    }
+
+    // --- RSS Local Parser & Fallback Mechanics (Rate limit free) ---
+    function parseRSSXml(xmlText) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(xmlText, 'text/xml');
+      if (doc.querySelector('parsererror')) {
+        const htmlParser = new DOMParser();
+        const htmlDoc = htmlParser.parseFromString(xmlText, 'text/html');
+        return parseXmlDoc(htmlDoc);
+      }
+      return parseXmlDoc(doc);
+    }
+    
+    function parseXmlDoc(doc) {
+      const items = [];
+      const itemNodes = doc.querySelectorAll('item');
+      if (itemNodes.length > 0) {
+        itemNodes.forEach(node => {
+          const title = node.querySelector('title')?.textContent || '';
+          const link = node.querySelector('link')?.textContent || node.querySelector('link')?.getAttribute('href') || '';
+          const description = node.querySelector('description')?.textContent || node.querySelector('encoded')?.textContent || '';
+          const pubDate = node.querySelector('pubDate')?.textContent || node.querySelector('pubDate')?.innerHTML || '';
+          items.push({ title, link, description, pubDate });
+        });
+      } else {
+        const entryNodes = doc.querySelectorAll('entry');
+        entryNodes.forEach(node => {
+          const title = node.querySelector('title')?.textContent || '';
+          let link = node.querySelector('link[rel="alternate"]')?.getAttribute('href') || node.querySelector('link')?.getAttribute('href') || '';
+          const description = node.querySelector('summary')?.textContent || node.querySelector('content')?.textContent || '';
+          const pubDate = node.querySelector('updated')?.textContent || node.querySelector('published')?.textContent || '';
+          items.push({ title, link, description, pubDate });
+        });
+      }
+      return items;
+    }
+
+    function mapRss2JsonItem(item) {
+      return {
+        title: (item.title || '').replace(/<[^>]+>/g, '').trim(),
+        link: item.link || item.guid,
+        description: (item.description || '').replace(/<[^>]+>/g, '').slice(0, 250).trim(),
+        pubDate: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString()
+      };
+    }
+    
+    function mapXmlItem(item) {
+      return {
+        title: (item.title || '').replace(/<[^>]+>/g, '').trim(),
+        link: item.link || item.guid,
+        description: (item.description || '').replace(/<[^>]+>/g, '').slice(0, 250).trim(),
+        pubDate: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString()
+      };
+    }
+
+    async function fetchFeedItems(feedUrl) {
+      const key = settings.rss2jsonKey || '';
+      const customProxy = settings.proxyUrl || '';
+      
+      // 1. Custom Proxy
+      if (customProxy) {
+        try {
+          const r = await fetchTimeout(`${customProxy}?url=${encodeURIComponent(feedUrl)}&count=20`);
+          if (r.ok) {
+            const d = await r.json();
+            if (d.items?.length) return d.items.map(mapRss2JsonItem);
+          }
+        } catch (e) {
+          console.warn(`[Crawl] Custom proxy failed for ${feedUrl}:`, e);
+        }
+      }
+      
+      // 2. rss2json API (with key, and if not suspended)
+      if (key && !_rss2jsonSuspended) {
+        try {
+          const params = new URLSearchParams({ rss_url: feedUrl, count: 20, order_by: 'pubDate', order_dir: 'desc', api_key: key });
+          const r = await fetchTimeout(`${RSS2JSON_URL}?${params}`);
+          if (r.status === 429) {
+            console.warn(`[Crawl] rss2json 429 rate limit. Suspending rss2json queries for 60s.`);
+            suspendRss2Json();
+          } else if (r.ok) {
+            const d = await r.json();
+            if (d.status === 'ok' && d.items?.length) {
+              return d.items.map(mapRss2JsonItem);
+            }
+          }
+        } catch (e) {
+          console.warn(`[Crawl] rss2json fetch failed for ${feedUrl}:`, e);
+        }
+      }
+      
+      // 3. Free CORS proxy + local DOMParser XML route
+      const publicProxies = [
+        url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+        url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
+      ];
+      
+      for (const proxyFn of publicProxies) {
+        try {
+          const proxyUrl = proxyFn(feedUrl);
+          const r = await fetchTimeout(proxyUrl);
+          if (r.ok) {
+            const xmlText = await r.text();
+            const items = parseRSSXml(xmlText);
+            if (items && items.length > 0) {
+              return items.map(mapXmlItem);
+            }
+          }
+        } catch (e) {
+          console.warn(`[Crawl] Public proxy route failed for ${feedUrl}:`, e);
+        }
+      }
+      
+      return [];
     }
 
     async function analyzeArticle(article, apiKey, provider) {
@@ -448,7 +637,21 @@
       const hasBriefs = await canUseBriefs();
       const sorted = applySortAndSlice(stories);
       updateSortNote(sorted);
-      const filtered = activeFilter ? sorted.filter(s => s.emotion === activeFilter) : sorted;
+      
+      let filtered = sorted;
+      if (activeFilter) {
+        filtered = filtered.filter(s => s.emotion === activeFilter);
+      }
+      if (activeKeywordFilter) {
+        const kwLower = activeKeywordFilter.toLowerCase();
+        filtered = filtered.filter(s => {
+          const title = (s.title || '').toLowerCase();
+          const desc = (s.description || '').toLowerCase();
+          const keywords = (s.keywords || []).map(k => k.toLowerCase());
+          return keywords.includes(kwLower) || title.includes(kwLower) || desc.includes(kwLower);
+        });
+      }
+      
       if (!filtered.length) { container.innerHTML = '<div class="empty"><div class="empty-icon">📭</div>No stories match this filter.</div>'; return; }
       container.innerHTML = filtered.map(s => buildStoryCardHTML(s, hasBriefs)).join('');
       bindCardButtons(container);
@@ -460,7 +663,21 @@
       const hasBriefs = await canUseBriefs();
       if (container.querySelector('.empty')) container.innerHTML = '';
       const sorted = applySortAndSlice(stories);
-      const filtered = activeFilter ? sorted.filter(s => s.emotion === activeFilter) : sorted;
+      
+      let filtered = sorted;
+      if (activeFilter) {
+        filtered = filtered.filter(s => s.emotion === activeFilter);
+      }
+      if (activeKeywordFilter) {
+        const kwLower = activeKeywordFilter.toLowerCase();
+        filtered = filtered.filter(s => {
+          const title = (s.title || '').toLowerCase();
+          const desc = (s.description || '').toLowerCase();
+          const keywords = (s.keywords || []).map(k => k.toLowerCase());
+          return keywords.includes(kwLower) || title.includes(kwLower) || desc.includes(kwLower);
+        });
+      }
+      
       if (!filtered.find(s => s.url === story.url)) return;
       const div = document.createElement('div');
       div.innerHTML = buildStoryCardHTML(story, hasBriefs);
@@ -487,12 +704,56 @@
       const sorted = applySortAndSlice(stories);
       const emotions = [...new Set(sorted.map(s=>s.emotion))];
       row.style.display='flex';
-      row.innerHTML = `<button class="filter-chip${!activeFilter ? ' active' : ''}" data-filter="">All</button>` + emotions.map(e=>`<button class="filter-chip${activeFilter===e ? ' active' : ''}" data-filter="${esc(e)}">${emojiMap[e]||''} ${esc(e)}</button>`).join('');
+      row.innerHTML = `<button class="filter-chip${!activeFilter ? ' active' : ''}" data-filter="">All Emotions</button>` + emotions.map(e=>`<button class="filter-chip${activeFilter===e ? ' active' : ''}" data-filter="${esc(e)}">${emojiMap[e]||''} ${esc(e)}</button>`).join('');
       row.querySelectorAll('.filter-chip').forEach(chip => chip.addEventListener('click', () => {
         activeFilter = chip.dataset.filter || null;
         row.querySelectorAll('.filter-chip').forEach(c=>c.classList.toggle('active',c===chip));
         renderStories();
       }));
+    }
+
+    function renderKeywordFilterRow() {
+      const row = document.getElementById('keywordFilterRow');
+      if (!row) return;
+      if (!stories.length) { row.style.display = 'none'; return; }
+      
+      row.style.display = 'flex';
+      
+      const kwMap = {};
+      stories.forEach(s => {
+        (s.keywords || []).forEach(k => {
+          const kl = k.toLowerCase().trim();
+          if (kl && kl.length > 2) {
+            kwMap[kl] = (kwMap[kl] || 0) + 1;
+          }
+        });
+      });
+      
+      const topKw = Object.entries(kwMap)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([kw]) => kw);
+        
+      if (!topKw.length) {
+        row.style.display = 'none';
+        return;
+      }
+      
+      let html = `<span style="font-size:11px;color:var(--text-hint);align-self:center;margin-right:6px">Keywords:</span>`;
+      html += `<button class="filter-chip${!activeKeywordFilter ? ' active' : ''}" data-kw="">All</button>`;
+      topKw.forEach(kw => {
+        html += `<button class="filter-chip${activeKeywordFilter === kw ? ' active' : ''}" data-kw="${esc(kw)}">🏷️ ${esc(kw)}</button>`;
+      });
+      
+      row.innerHTML = html;
+      
+      row.querySelectorAll('.filter-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          activeKeywordFilter = chip.dataset.kw || null;
+          row.querySelectorAll('.filter-chip').forEach(c => c.classList.toggle('active', c === chip));
+          renderStories();
+        });
+      });
     }
 
     // ==================== BRIEF & DRAFT GENERATION ====================
@@ -724,6 +985,20 @@
         if (el('groupAnthropicKey')) el('groupAnthropicKey').style.display = 'block';
         if (el('groupMistralKey')) el('groupMistralKey').style.display = 'none';
       }
+
+      // Load decrypted API keys from Supabase (server-side decryption)
+      const keyLoads = [];
+      if (remote.anthropicKeySet) {
+        keyLoads.push(window.getApiKey('anthropic').then(k => { if (k) settings.anthropicKey = k; }));
+      }
+      if (remote.mistralKeySet) {
+        keyLoads.push(window.getApiKey('mistral').then(k => { if (k) settings.mistralKey = k; }));
+      }
+      if (remote.rss2jsonKeySet) {
+        keyLoads.push(window.getApiKey('rss2json').then(k => { if (k) settings.rss2jsonKey = k; }));
+      }
+      await Promise.allSettled(keyLoads);
+
       if (remote.anthropicKeySet && el('anthropicKeyStatus')) {
         el('anthropicKeyStatus').style.display = 'flex';
         el('anthropicKeyStatusIcon').innerHTML = '✓';
@@ -867,33 +1142,23 @@
 
     // ==================== AI DISCOVERY PIPELINE ====================
     async function fetchSingleRSSFeedWithRetry(feedUrl, feedName, retries = 3, baseDelay = 2000) {
-      const key = settings.rss2jsonKey || '';
-      const proxy = settings.proxyUrl || '';
       for (let attempt = 1; attempt <= retries; attempt++) {
         try {
-          let items = null;
-          if (proxy) {
-            try {
-              const r = await fetchTimeout(`${proxy}?url=${encodeURIComponent(feedUrl)}&count=15`);
-              if (r.ok) { const d = await r.json(); if (d.items?.length) items = d.items; }
-            } catch(e) {}
+          const items = await fetchFeedItems(feedUrl);
+          if (items && items.length > 0) {
+            items.sort((a,b) => new Date(b.pubDate||0) - new Date(a.pubDate||0));
+            return items.slice(0, 10).map(item => ({
+              source: feedName,
+              platform: 'rss',
+              title: item.title,
+              url: item.link,
+              description: item.description,
+              publishedAt: item.pubDate,
+              score: 0,
+              comments: 0
+            }));
           }
-          if (!items) {
-            const params = new URLSearchParams({ rss_url: feedUrl, count: 15, order_by: 'pubDate', order_dir: 'desc' });
-            if (key) params.set('api_key', key);
-            const r = await fetchTimeout(`${RSS2JSON_URL}?${params}`);
-            if (r.status === 429) {
-              const waitTime = baseDelay * Math.pow(2, attempt - 1) + Math.random() * 1000;
-              await new Promise(resolve => setTimeout(resolve, waitTime));
-              continue;
-            }
-            if (r.ok) { const d = await r.json(); if (d.status === 'ok') items = d.items; }
-          }
-          if (!items || items.length === 0) throw new Error('No items');
-          items.sort((a,b) => new Date(b.pubDate||0) - new Date(a.pubDate||0));
-          return items.slice(0,8).map(item => ({
-            source: feedName, platform: 'ai_discovered', title: (item.title||'').replace(/<[^>]+>/g,''), url: item.link, description: (item.description||'').replace(/<[^>]+>/g,'').slice(0,250), publishedAt: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(), score: 0, comments: 0
-          }));
+          throw new Error('No items');
         } catch(e) {
           if (attempt === retries) return [];
           await new Promise(resolve => setTimeout(resolve, baseDelay * attempt));
@@ -916,6 +1181,119 @@
       return feeds.filter(f => f.url && f.url.startsWith('http')).slice(0,12);
     }
 
+    function getGoogleNewsTimeframeQuery() {
+      if (timeframeMs === 86400000) return ' when:1d';
+      if (timeframeMs === 604800000) return ' when:7d';
+      if (timeframeMs === 2592000000) return ' when:1m';
+      if (timeframeMs === 31536000000) return ' when:1y';
+      return '';
+    }
+
+    function calculateRelevanceScore(article, topic) {
+      if (!topic) return 0;
+      const t = topic.toLowerCase();
+      const title = (article.title || '').toLowerCase();
+      const desc = (article.description || '').toLowerCase();
+      
+      let score = 0;
+      if (title.includes(t)) {
+        score += 150;
+      } else {
+        const keywords = t.split(/\s+/).filter(k => k.length > 2);
+        let matchCount = 0;
+        keywords.forEach(kw => {
+          if (title.includes(kw)) matchCount += 35;
+          if (desc.includes(kw)) matchCount += 15;
+        });
+        score += matchCount;
+      }
+      
+      if (article.platform === 'reddit' || article.platform === 'hackernews') {
+        score += (article.score || 0) * 0.1;
+      }
+      return score;
+    }
+
+    async function crawlSearchSources(topic) {
+      // 1. Google News search with timeframe parameters
+      const timeframeQuery = getGoogleNewsTimeframeQuery();
+      const googleNewsUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(topic + timeframeQuery)}&hl=en-US&gl=US&ceid=US:en`;
+      const googleNewsPromise = fetchSingleRSSFeedWithRetry(googleNewsUrl, 'Google News Search', 3, 1500)
+        .then(items => items.map(item => ({ ...item, platform: 'google_news' })));
+
+      // 2. Reddit Search
+      let redditTime = 'all';
+      if (timeframeMs === 86400000) redditTime = 'day';
+      else if (timeframeMs === 604800000) redditTime = 'week';
+      else if (timeframeMs === 2592000000) redditTime = 'month';
+      else if (timeframeMs === 31536000000) redditTime = 'year';
+      
+      const redditSort = sortMode === 'popular' ? 'relevance' : 'new';
+      const redditUrl = `https://www.reddit.com/search.json?q=${encodeURIComponent(topic)}&sort=${redditSort}&t=${redditTime}&limit=25`;
+      const redditPromise = fetchTimeout(redditUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } })
+        .then(r => r.json())
+        .then(d => (d.data?.children || []).filter(c => !c.data.stickied).map(c => ({
+          source: `r/${c.data.subreddit}`,
+          platform: 'reddit',
+          title: c.data.title,
+          url: c.data.url,
+          score: c.data.score || 0,
+          comments: c.data.num_comments || 0,
+          description: (c.data.selftext || '').slice(0, 250),
+          publishedAt: new Date(c.data.created_utc * 1000).toISOString()
+        })))
+        .catch(e => { console.warn('[Crawl] Reddit search failed:', e); return []; });
+
+      // 3. Hacker News Search via Algolia API
+      let hnUrl = `https://hn.algolia.com/api/v1/search${sortMode === 'newest' ? '_by_date' : ''}?query=${encodeURIComponent(topic)}&tags=story&hitsPerPage=20`;
+      if (timeframeMs > 0) {
+        const minTimeSec = Math.floor((Date.now() - timeframeMs) / 1000);
+        hnUrl += `&numericFilters=created_at_i>${minTimeSec}`;
+      }
+      const hnPromise = fetchTimeout(hnUrl)
+        .then(r => r.json())
+        .then(d => (d.hits || []).map(hit => ({
+          source: 'Hacker News',
+          platform: 'hackernews',
+          title: hit.title,
+          url: hit.url || `https://news.ycombinator.com/item?id=${hit.objectID}`,
+          score: hit.points || 0,
+          comments: hit.num_comments || 0,
+          description: hit.story_text || '',
+          publishedAt: new Date(hit.created_at_i * 1000).toISOString()
+        })))
+        .catch(e => { console.warn('[Crawl] HN search failed:', e); return []; });
+
+      // 4. AI-discovered niche publication feeds (capped to prevent rate limits)
+      const aiFeedsPromise = (async () => {
+        try {
+          const feeds = await discoverFeedsForTopic(topic);
+          const slicedFeeds = feeds.slice(0, 4);
+          const articles = [];
+          for (const feed of slicedFeeds) {
+            const feedArticles = await fetchSingleRSSFeedWithRetry(feed.url, feed.name, 2, 1000);
+            articles.push(...feedArticles);
+            await new Promise(r => setTimeout(r, 800));
+          }
+          return articles;
+        } catch (e) {
+          console.warn('[Crawl] AI feed discovery/fetch failed:', e);
+          return [];
+        }
+      })();
+
+      const results = await Promise.allSettled([googleNewsPromise, redditPromise, hnPromise, aiFeedsPromise]);
+      const allArticles = results.flatMap(r => r.status === 'fulfilled' ? r.value : []);
+      
+      const uniqueMap = new Map();
+      allArticles.forEach(a => {
+        if (a.url && !uniqueMap.has(a.url)) {
+          uniqueMap.set(a.url, a);
+        }
+      });
+      return Array.from(uniqueMap.values());
+    }
+
     async function runAIDiscoveryPipeline() {
       const topicInput = document.getElementById('aiTopicInput');
       const topic = topicInput?.value.trim();
@@ -930,12 +1308,25 @@
       const crawlCheck = await window.canCrawl();
       if (!crawlCheck.ok) { renderUpsellBanner('storyList', 'crawl'); return; }
 
-      const provider = settings.aiProvider;
-      const apiKey = provider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
+      let provider = settings.aiProvider;
+      let apiKey = provider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
       if (!apiKey) {
-        document.getElementById('aiDiscoveryStatus').innerHTML = '<span style="color:var(--red)">⚠️ Set your API key in Settings first.</span>';
-        document.querySelector('.db-tab[data-tab="settings"]').click();
-        return;
+        const remote = await window.loadSettings();
+        const keyType = provider === 'anthropic' ? 'anthropic' : 'mistral';
+        const keyIsSaved = provider === 'anthropic' ? remote.anthropicKeySet : remote.mistralKeySet;
+        if (keyIsSaved) {
+          const fetchedKey = await window.getApiKey(keyType);
+          if (fetchedKey) {
+            if (provider === 'anthropic') settings.anthropicKey = fetchedKey;
+            else settings.mistralKey = fetchedKey;
+            apiKey = fetchedKey;
+          }
+        }
+        if (!apiKey) {
+          document.getElementById('aiDiscoveryStatus').innerHTML = '<span style="color:var(--red)">⚠️ Set your API key in Settings first.</span>';
+          document.querySelector('.db-tab[data-tab="settings"]').click();
+          return;
+        }
       }
 
       const discoverBtn = document.getElementById('aiDiscoverBtn');
@@ -948,55 +1339,42 @@
       if (crawlBtn) crawlBtn.disabled = true;
       if (progressDiv) progressDiv.innerHTML = '<span class="spinner"></span> AI discovering sources...';
       if (progFill) progFill.style.width = '5%';
-      statusDiv.innerHTML = '🤖 AI is searching for relevant RSS feeds (15-30s)...';
+      statusDiv.innerHTML = '🤖 AI is analyzing topic and querying search engines...';
+
+      // Reset filters for new crawl
+      activeFilter = null;
+      activeKeywordFilter = null;
 
       try {
-        let feeds;
-        try {
-          feeds = await discoverFeedsForTopic(topic);
-        } catch (aiErr) {
-          statusDiv.innerHTML = '⚠️ AI feed discovery failed. Using Google News fallback...';
-          feeds = [{ name: `Google News: ${topic}`, url: `https://news.google.com/rss/search?q=${encodeURIComponent(topic)}&hl=en-US&gl=US&ceid=US:en` }];
-        }
-        if (!feeds || feeds.length === 0) throw new Error('No valid feeds discovered.');
+        const rawArticles = await crawlSearchSources(topic);
+        if (rawArticles.length === 0) throw new Error('No articles found matching the search topic.');
 
-        statusDiv.innerHTML = `✅ AI found ${feeds.length} sources. Fetching slowly to avoid rate limits...`;
-        if (progFill) progFill.style.width = '12%';
+        statusDiv.innerHTML = `✅ Found ${rawArticles.length} raw articles. Selecting the most relevant and applying filters...`;
+        if (progFill) progFill.style.width = '35%';
 
         await window.incrementCrawlCount();
         _lastPipelineRun = Date.now();
         renderUsageBar();
 
-        const rawArticles = [];
-        const feedDelayMs = 2500;
-        await new Promise(r => setTimeout(r, 2000));
+        rawArticles.forEach(a => {
+          a.relevance = calculateRelevanceScore(a, topic);
+        });
 
-        for (let i = 0; i < feeds.length; i++) {
-          const feed = feeds[i];
-          statusDiv.innerHTML = `📡 Fetching ${i+1}/${feeds.length}: ${feed.name}... (2.5s between requests)`;
-          const articles = await fetchSingleRSSFeedWithRetry(feed.url, feed.name, 3, 2000);
-          rawArticles.push(...articles);
-          if (i < feeds.length - 1) await new Promise(r => setTimeout(r, feedDelayMs));
+        let sortedArticles = applySortAndSlice(rawArticles);
+        if (sortedArticles.length === 0) {
+          throw new Error('No articles match the selected timeframe/filters. Try selecting a broader timeframe.');
         }
 
-        const uniqueMap = new Map();
-        rawArticles.forEach(a => { if (!uniqueMap.has(a.url)) uniqueMap.set(a.url, a); });
-        let uniqueArticles = Array.from(uniqueMap.values());
-        const limit = getArticleLimit();
-        uniqueArticles = uniqueArticles.slice(0, limit);
-
-        if (uniqueArticles.length === 0) throw new Error('No articles could be fetched.');
-
-        if (progressDiv) progressDiv.innerHTML = `<span class="spinner"></span> Analyzing ${uniqueArticles.length} articles...`;
-        if (progFill) progFill.style.width = '30%';
+        if (progressDiv) progressDiv.innerHTML = `<span class="spinner"></span> AI analyzing ${sortedArticles.length} articles...`;
+        if (progFill) progFill.style.width = '45%';
 
         const storyContainer = document.getElementById('storyList');
         stories = [];
-        if (storyContainer) storyContainer.innerHTML = `<div class="empty"><span class="spinner"></span> AI analyzing ${uniqueArticles.length} articles...</div>`;
+        if (storyContainer) storyContainer.innerHTML = `<div class="empty"><span class="spinner"></span> AI analyzing ${sortedArticles.length} articles...</div>`;
 
         const CONCURRENCY = provider === 'mistral' ? 2 : 3;
         let doneCount = 0;
-        const analysisTasks = uniqueArticles.map(article => async () => {
+        const analysisTasks = sortedArticles.map(article => async () => {
           const analysis = await analyzeArticle(article, apiKey, provider);
           return { ...article, ...analysis, analyzed: true };
         });
@@ -1005,20 +1383,26 @@
           if (!result) return;
           stories.push(result);
           doneCount++;
-          const pct = 30 + Math.round((doneCount / uniqueArticles.length) * 70);
+          const pct = 45 + Math.round((doneCount / sortedArticles.length) * 55);
           if (progFill) progFill.style.width = pct + '%';
-          if (progressDiv) progressDiv.textContent = `Analyzed ${doneCount} / ${uniqueArticles.length}...`;
+          if (progressDiv) progressDiv.textContent = `Analyzed ${doneCount} / ${sortedArticles.length}...`;
           await appendStoryCard(result);
-          if (doneCount % 5 === 0 || doneCount === uniqueArticles.length) { renderStats(); renderFilterRow(); }
+          if (doneCount % 5 === 0 || doneCount === sortedArticles.length) { 
+            renderStats(); 
+            renderFilterRow(); 
+            renderKeywordFilterRow();
+          }
         });
 
         await renderStories();
         renderStats();
         renderFilterRow();
+        renderKeywordFilterRow();
+        
         if (settings.aiKeywords) await renderKeywords();
         if (progFill) progFill.style.width = '100%';
-        if (progressDiv) progressDiv.textContent = `✅ AI discovery complete — ${stories.length} articles analyzed.`;
-        statusDiv.innerHTML = `🎯 Success! Crawled ${feeds.length} AI-discovered sources.`;
+        if (progressDiv) progressDiv.textContent = `✅ AI search & discovery complete — ${stories.length} articles analyzed.`;
+        statusDiv.innerHTML = `🎯 Success! Crawled and analyzed search results for "${esc(topic)}".`;
         setTimeout(() => { if (progressDiv) progressDiv.textContent = ''; if (progFill) progFill.style.width = '0%'; }, 3000);
       } catch (err) {
         console.error(err);
@@ -1050,19 +1434,29 @@
       const crawlCheck = await window.canCrawl();
       if (!crawlCheck.ok) { renderUpsellBanner('storyList', 'crawl'); return; }
 
-      const provider = settings.aiProvider;
-      const apiKey = provider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
+      let provider = settings.aiProvider;
+      let apiKey = provider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
       if (!apiKey) {
-        const storyDiv = document.getElementById('storyList');
+        // Try to fetch the decrypted key from Supabase on the fly
         const remote = await window.loadSettings();
+        const keyType = provider === 'anthropic' ? 'anthropic' : 'mistral';
         const keyIsSaved = provider === 'anthropic' ? remote.anthropicKeySet : remote.mistralKeySet;
         if (keyIsSaved) {
-          if (storyDiv) storyDiv.innerHTML = '<div class="error-msg"><span class="spinner"></span> Loading your API key… please click Crawl again in a moment.</div>';
-        } else {
+          const storyDiv = document.getElementById('storyList');
+          if (storyDiv) storyDiv.innerHTML = '<div class="error-msg"><span class="spinner"></span> Loading your API key…</div>';
+          const fetchedKey = await window.getApiKey(keyType);
+          if (fetchedKey) {
+            if (provider === 'anthropic') settings.anthropicKey = fetchedKey;
+            else settings.mistralKey = fetchedKey;
+            apiKey = fetchedKey;
+          }
+        }
+        if (!apiKey) {
+          const storyDiv = document.getElementById('storyList');
           if (storyDiv) storyDiv.innerHTML = `<div class="error-msg">⚠ Please enter your ${provider === 'anthropic' ? 'Anthropic' : 'Mistral'} API key in Settings.</div>`;
           document.querySelector('.db-tab[data-tab="settings"]').click();
+          return;
         }
-        return;
       }
 
       const selected = [...document.querySelectorAll('.source-chip.active:not(.locked)')].map(c => c.dataset.src);
@@ -1091,6 +1485,10 @@
       _lastPipelineRun = Date.now();
       renderUsageBar();
 
+      // Reset filters for new crawl
+      activeFilter = null;
+      activeKeywordFilter = null;
+
       if (progressDiv) progressDiv.innerHTML = '<span class="spinner"></span> Fetching articles from all sources…';
       let raw = await crawlAllSources(selected);
       raw = applySortAndSlice(raw);
@@ -1117,12 +1515,18 @@
         if (progFill) progFill.style.width = pct + '%';
         if (progressDiv) progressDiv.textContent = `Analyzed ${doneCount} / ${raw.length}…`;
         await appendStoryCard(result);
-        if (doneCount % 5 === 0 || doneCount === raw.length) { renderStats(); renderFilterRow(); }
+        if (doneCount % 5 === 0 || doneCount === raw.length) { 
+          renderStats(); 
+          renderFilterRow(); 
+          renderKeywordFilterRow();
+        }
       });
 
       await renderStories();
       renderStats();
       renderFilterRow();
+      renderKeywordFilterRow();
+      
       if (settings.aiKeywords) await renderKeywords();
       if (progFill) progFill.style.width = '100%';
       if (progressDiv) progressDiv.textContent = `✅ Done — ${stories.length} articles analyzed`;
@@ -1142,6 +1546,13 @@
       const cnt   = document.getElementById('usageCount');
       if (fill) { fill.style.width = pct + '%'; fill.style.background = pct >= 90 ? 'var(--red)' : 'var(--accent)'; }
       if (cnt)  cnt.textContent = `${count} / ${profile.crawlLimit}`;
+    }
+
+    function updateSortUI() {
+      const isPopular = (sortMode === 'popular');
+      document.getElementById('sortPopular')?.classList.toggle('active', isPopular);
+      document.getElementById('sortNewest')?.classList.toggle('active', !isPopular);
+      document.getElementById('timeframeChips')?.classList.toggle('visible', isPopular);
     }
 
     // ==================== INIT ====================
@@ -1184,14 +1595,22 @@
       });
 
       // Sort mode toggles
-      document.getElementById('sortNewest')?.addEventListener('click', () => { sortMode = 'newest'; renderStories(); });
-      document.getElementById('sortPopular')?.addEventListener('click', () => { sortMode = 'popular'; renderStories(); });
+      updateSortUI();
+      document.getElementById('sortNewest')?.addEventListener('click', () => {
+        sortMode = 'newest';
+        updateSortUI();
+        renderStories();
+      });
+      document.getElementById('sortPopular')?.addEventListener('click', () => {
+        sortMode = 'popular';
+        updateSortUI();
+        renderStories();
+      });
       document.querySelectorAll('.tf-chip').forEach(chip => {
         chip.addEventListener('click', () => {
           document.querySelectorAll('.tf-chip').forEach(c => c.classList.remove('active'));
           chip.classList.add('active');
           timeframeMs = Number(chip.dataset.ms);
-          sortMode = 'popular';
           renderStories();
         });
       });

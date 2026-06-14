@@ -663,6 +663,29 @@ window.checkAuthAndRedirect = async function(url) {
   window.location.href = url;
 };
 
+// A helper to dispatch the auth state check and store the arguments for late registration
+function dispatchAuthStateChecked(user, profile) {
+  window._authStateCheckedArgs = [user, profile];
+  if (typeof window.onAuthStateChecked === 'function') {
+    window.onAuthStateChecked(user, profile);
+  }
+}
+
+// Intercept window.onAuthStateChecked to handle late bindings
+let _onAuthStateCheckedFn = null;
+Object.defineProperty(window, 'onAuthStateChecked', {
+  get() {
+    return _onAuthStateCheckedFn;
+  },
+  set(fn) {
+    _onAuthStateCheckedFn = fn;
+    if (typeof fn === 'function' && window._authStateCheckedArgs) {
+      fn(...window._authStateCheckedArgs);
+    }
+  },
+  configurable: true
+});
+
 // ══════════════════════════════════════════════════════════════════
 //  HEADER RENDERING  (account dropdown with plan badge)
 // ══════════════════════════════════════════════════════════════════
@@ -678,7 +701,7 @@ async function renderHeader() {
       <button class="btn btn-sm" id="headerDashBtn">Dashboard</button>`;
     document.getElementById('headerSignInBtn')?.addEventListener('click', () => window.showAuthModal('login'));
     document.getElementById('headerDashBtn')?.addEventListener('click',   () => window.checkAuthAndRedirect('dashboard.html'));
-    if (typeof window.onAuthStateChecked === 'function') window.onAuthStateChecked(null, null);
+    dispatchAuthStateChecked(null, null);
     return;
   }
 
@@ -741,7 +764,7 @@ async function renderHeader() {
     if (dropdown) { dropdown.style.display = 'none'; menuBtn?.setAttribute('aria-expanded', 'false'); }
   });
 
-  if (typeof window.onAuthStateChecked === 'function') window.onAuthStateChecked(user, profile);
+  dispatchAuthStateChecked(user, profile);
 }
 
 // ══════════════════════════════════════════════════════════════════

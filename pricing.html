@@ -3,9 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pricing – News Sentiment Radar</title>
+  <title>Pricing | News Sentiment Radar Plans</title>
+  <meta name="description" content="Compare News Sentiment Radar plans for AI-powered news crawling, sentiment analysis, keyword intelligence, briefs, drafts, and enterprise access.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://nyrrtechnologies-centrl.github.io/pricing.html">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="News Sentiment Radar">
+  <meta property="og:title" content="News Sentiment Radar Pricing">
+  <meta property="og:description" content="Start free or choose Pro for unlimited crawls, AI briefs, drafts, keyword intelligence, and all sources.">
+  <meta property="og:url" content="https://nyrrtechnologies-centrl.github.io/pricing.html">
+  <meta property="og:image" content="https://nyrrtechnologies-centrl.github.io/logo.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#0a0c10">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="preload" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" as="script">
+  <link rel="preload" href="auth.js" as="script">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -23,7 +37,7 @@
   </div>
 </header>
 
-<div class="container">
+<main class="container">
   <h1 class="pricing-title">Simple, transparent pricing</h1>
   <p class="section-sub">Choose the plan that fits your content workflow. Free plan includes 50 crawls/month.</p>
 
@@ -38,7 +52,7 @@
         <li>Keyword extraction</li>
         <li>Community support</li>
       </ul>
-      <button class="btn btn-block" id="freePlanBtn">Get started</button>
+      <button class="btn btn-block" id="freePlanBtn" type="button">Get started</button>
     </div>
 
     <div class="pricing-card popular">
@@ -52,7 +66,7 @@
         <li>Priority email support</li>
         <li>Export to Markdown / JSON</li>
       </ul>
-      <button class="btn btn-block" id="proPlanBtn">Start 14‑day trial</button>
+      <button class="btn btn-block" id="proPlanBtn" type="button">Start 3-day trial</button>
     </div>
 
     <div class="pricing-card">
@@ -69,11 +83,11 @@
       <a href="contact.html" class="btn btn-block" style="text-align:center;">Contact sales</a>
     </div>
   </div>
-</div>
+</main>
 
 <footer class="footer">
   <div class="container">
-    <p>© 2025 News Sentiment Radar – <a href="#">Privacy</a> | <a href="#">Terms</a></p>
+    <p>© 2026 News Sentiment Radar – <a href="privacy.html">Privacy</a> | <a href="terms.html">Terms</a></p>
   </div>
 </footer>
 
@@ -81,6 +95,7 @@
 <script src="auth.js" defer></script>
 <script>
   async function handleGetStarted() {
+    if (!window.supabase || !window.showAuthModal) return;
     const { data: { user } } = await window.supabase.auth.getUser();
     if (user) {
       window.location.href = 'dashboard.html';

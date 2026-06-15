@@ -20,6 +20,8 @@ const MIME = {
   '.css':  'text/css; charset=utf-8',
   '.js':   'text/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
+  '.txt':  'text/plain; charset=utf-8',
+  '.xml':  'application/xml; charset=utf-8',
   '.png':  'image/png',
   '.jpg':  'image/jpeg',
   '.jpeg': 'image/jpeg',
@@ -69,12 +71,29 @@ function securityHeaders() {
 
 http.createServer((req, res) => {
   // Reject any path-traversal attempts
-  const rawPath  = req.url.split('?')[0];
-  const safePath = path.normalize(rawPath).replace(/^(\.\.[/\\])+/, '');
-  const filePath = path.join(__dirname, safePath === '/' ? 'index.html' : safePath);
+  let rawPath;
+  try {
+    rawPath = decodeURIComponent(req.url.split('?')[0]);
+  } catch (err) {
+    res.writeHead(400, { 'Content-Type': 'text/plain', ...securityHeaders() });
+    res.end('Bad Request');
+    return;
+  }
+  const relativePath = rawPath === '/' ? 'index.html' : rawPath.replace(/^[/\\]+/, '');
+  const safePath = path.normalize(relativePath);
+
+  if (safePath.startsWith('..') || path.isAbsolute(safePath)) {
+    res.writeHead(403, { 'Content-Type': 'text/plain', ...securityHeaders() });
+    res.end('Forbidden');
+    return;
+  }
+
+  const filePath = path.join(__dirname, safePath);
 
   // Ensure the resolved path is inside the project root (guard against symlink escape)
-  if (!filePath.startsWith(__dirname + path.sep) && filePath !== __dirname) {
+  const rootPath = path.resolve(__dirname);
+  const resolvedFilePath = path.resolve(filePath);
+  if (!resolvedFilePath.startsWith(rootPath + path.sep) && resolvedFilePath !== rootPath) {
     res.writeHead(403, { 'Content-Type': 'text/plain' });
     res.end('Forbidden');
     return;

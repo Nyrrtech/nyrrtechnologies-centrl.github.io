@@ -3,9 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Contact – News Sentiment Radar</title>
+  <title>Contact News Sentiment Radar | Sales and Support</title>
+  <meta name="description" content="Contact News Sentiment Radar for product support, pricing questions, enterprise plans, and AI newsroom workflow help.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://nyrrtechnologies-centrl.github.io/contact.html">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="News Sentiment Radar">
+  <meta property="og:title" content="Contact News Sentiment Radar">
+  <meta property="og:description" content="Talk to the News Sentiment Radar team about AI-powered news intelligence, support, and enterprise plans.">
+  <meta property="og:url" content="https://nyrrtechnologies-centrl.github.io/contact.html">
+  <meta property="og:image" content="https://nyrrtechnologies-centrl.github.io/logo.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#0a0c10">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="preload" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" as="script">
+  <link rel="preload" href="auth.js" as="script">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -51,7 +65,7 @@
 
 <footer class="footer">
   <div class="container">
-    <p>© 2025 News Sentiment Radar &nbsp;·&nbsp; <a href="#">Privacy</a> &nbsp;·&nbsp; <a href="#">Terms</a> &nbsp;·&nbsp; <a href="contact.html">Contact</a></p>
+    <p>© 2026 News Sentiment Radar &nbsp;·&nbsp; <a href="privacy.html">Privacy</a> &nbsp;·&nbsp; <a href="terms.html">Terms</a> &nbsp;·&nbsp; <a href="contact.html">Contact</a></p>
   </div>
 </footer>
 
@@ -63,7 +77,7 @@
     e.preventDefault();
     const statusDiv = document.getElementById('formStatus');
     statusDiv.textContent = 'Sending...';
-    statusDiv.className = 'form-status';
+    statusDiv.className = 'form-status active';
     setTimeout(() => {
       statusDiv.textContent = 'Thank you! Your message has been sent.';
       statusDiv.className = 'form-status success';

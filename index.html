@@ -3,11 +3,53 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>News Sentiment Radar – AI News Intelligence</title>
+  <title>News Sentiment Radar | AI News Sentiment Analysis</title>
+  <meta name="description" content="News Sentiment Radar helps content teams crawl trending stories, analyze sentiment and emotion, discover keywords, and generate editorial briefs with AI.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://nyrrtechnologies-centrl.github.io/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="News Sentiment Radar">
+  <meta property="og:title" content="News Sentiment Radar | AI News Sentiment Analysis">
+  <meta property="og:description" content="Crawl trending stories, detect sentiment and emotion, and generate AI-powered briefs from one newsroom dashboard.">
+  <meta property="og:url" content="https://nyrrtechnologies-centrl.github.io/">
+  <meta property="og:image" content="https://nyrrtechnologies-centrl.github.io/logo.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="News Sentiment Radar | AI News Sentiment Analysis">
+  <meta name="twitter:description" content="Crawl trending stories, detect sentiment and emotion, and generate AI-powered briefs from one newsroom dashboard.">
+  <meta name="twitter:image" content="https://nyrrtechnologies-centrl.github.io/logo.png">
+  <meta name="theme-color" content="#0a0c10">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="preload" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" as="script">
+  <link rel="preload" href="auth.js" as="script">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "News Sentiment Radar",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "url": "https://nyrrtechnologies-centrl.github.io/",
+      "description": "AI-powered news crawling, sentiment analysis, keyword intelligence, and editorial brief generation for content teams.",
+      "offers": [
+        {
+          "@type": "Offer",
+          "name": "Free",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        {
+          "@type": "Offer",
+          "name": "Pro",
+          "price": "19",
+          "priceCurrency": "USD"
+        }
+      ]
+    }
+  </script>
 </head>
 <body>
 
@@ -23,14 +65,16 @@
   </div>
 </header>
 
+
+
 <main>
   <div class="container hero">
     <div class="hero-eyebrow">✦ AI-Powered News Intelligence</div>
     <h1>Turn news chaos into<br>content intelligence</h1>
     <p>News Sentiment Radar crawls trending stories, detects emotion & bias, and helps you write better briefs and drafts in seconds – powered by Claude AI.</p>
     <div class="hero-buttons">
-      <button class="btn" id="heroDashboardBtn">Open Dashboard →</button>
-      <a href="pricing.html"><button class="btn btn-outline">View Plans</button></a>
+      <button class="btn" id="heroDashboardBtn" type="button">Open Dashboard →</button>
+      <a href="pricing.html" class="btn btn-outline">View Plans</a>
     </div>
     <div class="hero-social-proof">Trusted by <span>500+</span> content creators · No credit card required for Free tier</div>
   </div>
@@ -66,8 +110,8 @@
       <h2>Ready to supercharge your newsroom?</h2>
       <p>Join 500+ content creators who never miss a sentiment shift. Free plan, no card needed.</p>
       <div class="cta-buttons">
-        <button class="btn" id="ctaDashboardBtn">Open Dashboard – Free</button>
-        <a href="pricing.html"><button class="btn btn-outline">See all plans</button></a>
+        <button class="btn" id="ctaDashboardBtn" type="button">Open Dashboard – Free</button>
+        <a href="pricing.html" class="btn btn-outline">See all plans</a>
       </div>
     </div>
   </div>
@@ -75,7 +119,7 @@
 
 <footer class="footer">
   <div class="container">
-    <p>© 2025 News Sentiment Radar &nbsp;·&nbsp; <a href="#">Privacy</a> &nbsp;·&nbsp; <a href="#">Terms</a> &nbsp;·&nbsp; <a href="contact.html">Contact</a></p>
+    <p>© 2026 News Sentiment Radar &nbsp;·&nbsp; <a href="privacy.html">Privacy</a> &nbsp;·&nbsp; <a href="terms.html">Terms</a> &nbsp;·&nbsp; <a href="contact.html">Contact</a></p>
     <div class="footer-tagline">Navigate Your News Reality – Sentiment Ready</div>
   </div>
 </footer>
@@ -84,10 +128,10 @@
 <script src="auth.js" defer></script>
 <script>
   document.getElementById('heroDashboardBtn')?.addEventListener('click', () => {
-    window.checkAuthAndRedirect('dashboard.html');
+    window.checkAuthAndRedirect?.('dashboard.html');
   });
   document.getElementById('ctaDashboardBtn')?.addEventListener('click', () => {
-    window.checkAuthAndRedirect('dashboard.html');
+    window.checkAuthAndRedirect?.('dashboard.html');
   });
 </script>
 </body>

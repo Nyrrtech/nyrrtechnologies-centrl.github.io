@@ -51,6 +51,7 @@ const PLAN_META = {
 let _cachedProfile  = null;   // { id, name, plan, trial_expires_at, ... }
 let _cachedSettings = null;   // { aiProvider, proxyUrl, aiKeywordsEnabled, ... }
 let _deviceFp       = null;   // SHA-256 device fingerprint, computed once per page
+let _profilePromise = null;   // shares concurrent profile loads during page boot
 
 // ── XSS helper ────────────────────────────────────────────────────
 window.escapeHtml = function(str) {
@@ -140,6 +141,9 @@ window.sendPasswordReset = async function(email) {
  */
 window.loadProfile = async function(force = false) {
   if (_cachedProfile && !force) return _cachedProfile;
+  if (_profilePromise && !force) return _profilePromise;
+
+  _profilePromise = (async () => {
 
   const { data: { user } } = await _sb.auth.getUser();
   if (!user) { _cachedProfile = null; return null; }
@@ -183,6 +187,14 @@ window.loadProfile = async function(force = false) {
     ...meta,
   };
   return _cachedProfile;
+  })();
+
+  const profilePromise = _profilePromise;
+  try {
+    return await profilePromise;
+  } finally {
+    if (_profilePromise === profilePromise) _profilePromise = null;
+  }
 };
 
 window.getCurrentPlan = async function() {
@@ -449,7 +461,7 @@ function injectModal() {
           </div>
           <button class="modal-btn-full" id="doRegisterBtn">Create free account</button>
           <div class="modal-footer-link" style="font-size:11px;margin-top:14px">
-            By signing up you agree to our <a href="#">Terms</a>.
+            By signing up you agree to our <a href="terms.html">Terms</a>.
           </div>
         </div>
 
@@ -693,6 +705,114 @@ async function renderHeader() {
   const headerAuth = document.getElementById('headerAuth');
   if (!headerAuth) return;
 
+  const renderGuestHeader = () => {
+    headerAuth.innerHTML = `
+      <button class="btn btn-outline btn-sm" id="headerSignInBtn" type="button">Sign in</button>
+      <button class="btn btn-sm" id="headerDashBtn" type="button">Dashboard</button>`;
+    document.getElementById('headerSignInBtn')?.addEventListener('click', () => window.showAuthModal('login'));
+    document.getElementById('headerDashBtn')?.addEventListener('click',   () => window.checkAuthAndRedirect('dashboard.html'));
+  };
+
+  const renderUserHeader = (sessionUser, profile = null) => {
+    const meta = profile ? (PLAN_META[profile.plan] || PLAN_META.free) : null;
+    const displayName = profile?.name || sessionUser.user_metadata?.name || sessionUser.email.split('@')[0];
+    const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+
+    let trialBanner = '';
+    if (profile?.plan === 'trial' && profile.trialExpiresAt) {
+      const remaining = Math.max(0, Math.ceil((new Date(profile.trialExpiresAt) - Date.now()) / 86400000));
+      trialBanner = `<span class="trial-countdown">${remaining}d trial</span>`;
+    }
+
+    const planBadge = meta
+      ? `<span class="plan-badge ${meta.badgeClass}">${meta.label}</span>`
+      : '<span class="plan-badge plan-loading">...</span>';
+    const planMenuBadge = meta
+      ? `<span class="plan-badge ${meta.badgeClass}">${meta.label}</span>`
+      : '<span class="plan-badge plan-loading">Checking</span>';
+
+    const dropId = 'userDropdown';
+    headerAuth.innerHTML = `
+      <div class="user-menu-wrap">
+        <button class="user-menu-btn" id="userMenuBtn" aria-haspopup="true" aria-expanded="false">
+          <span class="user-avatar">${esc(initials)}</span>
+          <span class="user-menu-name">${esc(displayName)}</span>
+          ${trialBanner}
+          ${planBadge}
+          <span class="user-caret">&#9662;</span>
+        </button>
+        <div id="${dropId}" class="user-dropdown" role="menu" style="display:none">
+          <div class="user-dropdown-header">
+            <div class="user-avatar user-avatar-lg">${esc(initials)}</div>
+            <div class="user-dropdown-info">
+              <div class="user-dropdown-name">${esc(profile?.name || displayName)}</div>
+              <div class="user-dropdown-email">${esc(sessionUser.email)}</div>
+            </div>
+          </div>
+          <div class="user-dropdown-plan">
+            <span class="ud-label">Current plan</span>
+            ${planMenuBadge}
+          </div>
+          <div class="user-dropdown-divider"></div>
+          <a href="dashboard.html" class="user-dropdown-item" role="menuitem">Dashboard</a>
+          <a href="pricing.html" class="user-dropdown-item" role="menuitem">Upgrade plan</a>
+          <div class="user-dropdown-divider"></div>
+          <button class="user-dropdown-item user-dropdown-logout" id="headerLogoutBtn" role="menuitem">Sign out</button>
+        </div>
+      </div>`;
+
+    const menuBtn = document.getElementById('userMenuBtn');
+    const dropdown = document.getElementById(dropId);
+
+    menuBtn?.addEventListener('click', e => {
+      e.stopPropagation();
+      const open = dropdown.style.display !== 'none';
+      dropdown.style.display = open ? 'none' : 'block';
+      menuBtn.setAttribute('aria-expanded', String(!open));
+    });
+
+    document.getElementById('headerLogoutBtn')?.addEventListener('click', window.logout);
+
+    if (!window.__headerDropdownBound) {
+      window.__headerDropdownBound = true;
+      document.addEventListener('click', () => {
+        const currentDropdown = document.getElementById('userDropdown');
+        const currentMenuBtn = document.getElementById('userMenuBtn');
+        if (currentDropdown) {
+          currentDropdown.style.display = 'none';
+          currentMenuBtn?.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
+  };
+
+  const { data: { session } } = await _sb.auth.getSession();
+  const sessionUser = session?.user || null;
+
+  if (!sessionUser) {
+    renderGuestHeader();
+    dispatchAuthStateChecked(null, null);
+    return;
+  }
+
+  renderUserHeader(sessionUser);
+  dispatchAuthStateChecked(sessionUser, null);
+
+  window.loadProfile()
+    .then(profile => {
+      if (!profile) {
+        renderGuestHeader();
+        dispatchAuthStateChecked(null, null);
+        return;
+      }
+      renderUserHeader(sessionUser, profile);
+      dispatchAuthStateChecked(sessionUser, profile);
+    })
+    .catch(err => {
+      console.warn('[auth] profile load failed:', err?.message);
+    });
+  return;
+
   const { data: { user } } = await _sb.auth.getUser();
 
   if (!user) {
@@ -810,8 +930,14 @@ window.renderTrialBanner = async function(containerId) {
 // ══════════════════════════════════════════════════════════════════
 //  BOOT  (DOMContentLoaded)
 // ══════════════════════════════════════════════════════════════════
-document.addEventListener('DOMContentLoaded', () => {
+function bootAuthUI() {
   injectModal();
   bindModalListeners();
   renderHeader();
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootAuthUI);
+} else {
+  bootAuthUI();
+}

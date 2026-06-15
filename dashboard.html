@@ -787,25 +787,53 @@
       if (!stories.length) { row.style.display = 'none'; return; }
       
       row.style.display = 'flex';
+
+      const normalizeKeyword = k => String(k || '')
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}\s-]/gu, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      const stopKeywords = new Set([
+        'the','and','for','with','from','this','that','are','was','were','has','have','had','not','but','you','your',
+        'news','latest','update','updates','says','said','after','before','over','under','into','about','more','new',
+        'will','can','could','would','should','may','might','amid','report','reports','story','live','video'
+      ]);
+
+      const isUsefulKeyword = kw => {
+        if (!kw || kw.length < 3 || kw.length > 32) return false;
+        if (stopKeywords.has(kw)) return false;
+        if (/^\d+$/.test(kw)) return false;
+        return true;
+      };
       
       const kwMap = {};
-      stories.forEach(s => {
+      const visibleStories = applySortAndSlice(stories);
+      visibleStories.forEach(s => {
+        const seenForStory = new Set();
         (s.keywords || []).forEach(k => {
-          const kl = k.toLowerCase().trim();
-          if (kl && kl.length > 2) {
-            kwMap[kl] = (kwMap[kl] || 0) + 1;
-          }
+          const kl = normalizeKeyword(k);
+          if (isUsefulKeyword(kl)) seenForStory.add(kl);
+        });
+        seenForStory.forEach(kw => {
+          if (!kwMap[kw]) kwMap[kw] = { count: 0, storyCount: 0 };
+          kwMap[kw].count += 1;
+          kwMap[kw].storyCount += 1;
         });
       });
       
       const topKw = Object.entries(kwMap)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 10)
+        .sort((a, b) => (b[1].storyCount - a[1].storyCount) || (b[1].count - a[1].count) || a[0].localeCompare(b[0]))
+        .slice(0, 8)
         .map(([kw]) => kw);
         
       if (!topKw.length) {
         row.style.display = 'none';
         return;
+      }
+
+      if (activeKeywordFilter && !topKw.includes(activeKeywordFilter)) {
+        activeKeywordFilter = null;
       }
       
       let html = `<span style="font-size:11px;color:var(--text-hint);align-self:center;margin-right:6px">Keywords:</span>`;

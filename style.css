@@ -632,6 +632,234 @@ textarea.settings-input { resize: vertical; min-height: 72px; }
   color: var(--text-sec);
 }
 
+/* ── Password input wrapper (eye toggle + input side-by-side) ── */
+.pw-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.pw-wrapper input {
+  padding-right: 40px !important; /* room for eye button */
+}
+.pw-toggle {
+  position: absolute;
+  right: 11px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-hint);
+  font-size: 15px;
+  line-height: 1;
+  padding: 2px;
+  transition: color 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pw-toggle:hover { color: var(--text-sec); }
+
+/* ── Info tooltip (ℹ icon next to labels) ── */
+.field-label-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 7px;
+}
+.field-label-row label {
+  margin-bottom: 0 !important;
+}
+.info-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.07);
+  color: var(--text-hint);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 700;
+  cursor: default;
+  position: relative;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.info-icon:hover { background: rgba(245,176,66,0.15); color: var(--accent); }
+.info-icon .tooltip {
+  display: none;
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 7px);
+  transform: translateX(-50%);
+  background: #1e2028;
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  padding: 8px 11px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-sec);
+  white-space: nowrap;
+  z-index: 2000;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+  pointer-events: none;
+  line-height: 1.5;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.info-icon .tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--border2);
+}
+.info-icon:hover .tooltip { display: block; }
+
+/* ── Password strength meter ── */
+.pw-strength {
+  margin-top: 7px;
+  display: none;
+}
+.pw-strength.visible { display: block; }
+.pw-strength-bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 5px;
+}
+.pw-strength-seg {
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--surface3);
+  transition: background 0.25s;
+}
+.pw-strength-seg.filled-weak   { background: var(--red); }
+.pw-strength-seg.filled-fair   { background: #f5b042; }
+.pw-strength-seg.filled-good   { background: #7ec8a4; }
+.pw-strength-seg.filled-strong { background: var(--green); }
+.pw-strength-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-hint);
+  transition: color 0.25s;
+}
+.pw-strength-label.weak   { color: var(--red); }
+.pw-strength-label.fair   { color: #f5b042; }
+.pw-strength-label.good   { color: #7ec8a4; }
+.pw-strength-label.strong { color: var(--green); }
+
+/* ── Password requirement checklist ── */
+.pw-reqs {
+  margin-top: 8px;
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+}
+.pw-reqs.visible { display: flex; }
+.pw-req {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  color: var(--text-hint);
+  transition: color 0.2s;
+}
+.pw-req.met { color: var(--green); }
+.pw-req-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--surface3);
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+.pw-req.met .pw-req-dot { background: var(--green); }
+
+/* ── Sign-in success toast ── */
+.auth-toast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: #1a2e1a;
+  border: 1px solid rgba(139,201,127,0.35);
+  color: var(--green);
+  padding: 12px 22px;
+  border-radius: 40px;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  z-index: 9999;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  opacity: 0;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.auth-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.auth-toast-icon { font-size: 16px; }
+
+/* ── Remember me checkbox ── */
+.remember-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.remember-row input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.remember-row label {
+  font-size: 11px;
+  color: var(--text-sec);
+  cursor: pointer;
+  margin-bottom: 0 !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  font-weight: 500 !important;
+}
+
+/* ── "Or continue with" social divider ── */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 18px 0;
+  color: var(--text-hint);
+  font-size: 11px;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ── Input valid/invalid border states ── */
+.form-field input.input-valid   { border-color: rgba(139,201,127,0.4); }
+.form-field input.input-invalid { border-color: rgba(224,122,95,0.5); }
+
+/* ── Inline field-level error hint ── */
+.field-hint {
+  font-size: 10px;
+  margin-top: 5px;
+  color: var(--red);
+  display: none;
+}
+.field-hint.visible { display: block; }
+
 /* Responsive */
 @media (max-width: 768px) {
   .header-inner      { flex-direction: column; text-align: center; }

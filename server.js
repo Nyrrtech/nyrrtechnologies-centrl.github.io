@@ -50,7 +50,9 @@ function securityHeaders() {
       "font-src 'self' https://fonts.gstatic.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       // Scripts: self + CDN (Supabase JS, jsdelivr)
-      "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+      // 'unsafe-eval' is required by the Supabase JS client (supabase-js v2 uses
+      // eval internally for realtime/websocket channel parsing).
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net",
       // Images
       "img-src 'self' data: https:",
       // No plugins

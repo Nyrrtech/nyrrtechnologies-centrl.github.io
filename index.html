@@ -28,24 +28,57 @@
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "News Sentiment Radar",
-      "applicationCategory": "BusinessApplication",
-      "operatingSystem": "Web",
-      "url": "https://nyrrtechnologies-centrl.github.io/",
-      "description": "AI-powered news crawling, sentiment analysis, keyword intelligence, and editorial brief generation for content teams.",
-      "offers": [
+      "@graph": [
         {
-          "@type": "Offer",
-          "name": "Free",
-          "price": "0",
-          "priceCurrency": "USD"
+          "@type": "SoftwareApplication",
+          "name": "News Sentiment Radar",
+          "applicationCategory": "BusinessApplication",
+          "operatingSystem": "Web",
+          "url": "https://nyrrtechnologies-centrl.github.io/",
+          "description": "AI-powered news crawling, sentiment analysis, keyword intelligence, and editorial brief generation for content teams.",
+          "offers": [
+            {
+              "@type": "Offer",
+              "name": "Free",
+              "price": "0",
+              "priceCurrency": "USD"
+            },
+            {
+              "@type": "Offer",
+              "name": "Pro",
+              "price": "19",
+              "priceCurrency": "USD"
+            }
+          ]
         },
         {
-          "@type": "Offer",
-          "name": "Pro",
-          "price": "19",
-          "priceCurrency": "USD"
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "What is News Sentiment Radar?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "News Sentiment Radar is an AI news intelligence app that crawls trending stories, analyzes sentiment and emotion, extracts keywords, and helps content teams create briefs and article drafts."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Who is News Sentiment Radar for?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "It is built for editors, content marketers, publishers, research teams, and agencies that need to monitor news narratives, spot sentiment shifts, and turn signals into editorial content quickly."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Does News Sentiment Radar support SEO workflows?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes. The app surfaces keyword opportunities, content gaps, trending topics, and structured briefs that help teams plan search-focused and answer-focused editorial content."
+              }
+            }
+          ]
         }
       ]
     }
@@ -70,8 +103,13 @@
 <main>
   <div class="container hero">
     <div class="hero-eyebrow">✦ AI-Powered News Intelligence</div>
-    <h1>Turn news chaos into<br>content intelligence</h1>
+    <h1>Turn news chaos into <span>content intelligence</span></h1>
     <p>News Sentiment Radar crawls trending stories, detects emotion & bias, and helps you write better briefs and drafts in seconds – powered by Claude AI.</p>
+    <div class="hero-proof-grid" aria-label="Product highlights">
+      <div><strong>50</strong><span>free crawls/month</span></div>
+      <div><strong>8+</strong><span>news and social sources</span></div>
+      <div><strong>AI</strong><span>briefs, drafts, keywords</span></div>
+    </div>
     <div class="hero-buttons">
       <button class="btn" id="heroDashboardBtn" type="button">Open Dashboard →</button>
       <a href="pricing.html" class="btn btn-outline">View Plans</a>
@@ -84,7 +122,7 @@
     <h2 class="section-title">Everything your newsroom needs</h2>
     <p class="section-sub">From raw crawling to polished drafts — all in one place.</p>
     <div class="features-grid">
-      <div class="feature-card"><div class="feature-icon">🌐</div><h3>Multi-source crawling</h3><p>Reddit, Hacker News, RSS (BBC, Reuters, TechCrunch) – all in one dashboard.</p><span class="feature-lock lock-free">✓ Free</span></div>
+      <div class="feature-card"><div class="feature-icon">🌐</div><h3>Multi-source crawling</h3><p>Track Reddit, Hacker News, major RSS feeds, and custom sources in one dashboard.</p><span class="feature-lock lock-free">✓ Free</span></div>
       <div class="feature-card"><div class="feature-icon">🧠</div><h3>Sentiment & emotion AI</h3><p>Detects joy, anger, fear, surprise across every story with confidence scores.</p><span class="feature-lock lock-free">✓ Free (50/mo)</span></div>
       <div class="feature-card"><div class="feature-icon">✍️</div><h3>One-click briefs & drafts</h3><p>Generate structured briefs and full AP-style draft articles instantly.</p><span class="feature-lock lock-pro">⚡ Pro</span></div>
       <div class="feature-card"><div class="feature-icon">📊</div><h3>Keyword intelligence</h3><p>See trending topics, gaps, and SEO opportunities across sources.</p><span class="feature-lock lock-pro">⚡ Pro</span></div>
@@ -102,6 +140,49 @@
       <div class="step"><div class="step-number">2</div><h3>Analyze</h3><p>AI assigns sentiment, emotion, and keywords to every story.</p></div>
       <div class="step"><div class="step-number">3</div><h3>Brief</h3><p>One click turns any story into a structured editorial brief.</p></div>
       <div class="step"><div class="step-number">4</div><h3>Draft</h3><p>Generate a full AP-style article ready for your CMS.</p></div>
+    </div>
+  </div>
+
+  <div class="container section answer-section">
+    <div class="section-eyebrow">Answer-ready intelligence</div>
+    <h2 class="section-title">Built for SEO, AEO, and AI search workflows</h2>
+    <p class="section-sub">Search and AI discovery reward clear, useful, original information. News Sentiment Radar helps your team find that signal before you write.</p>
+    <div class="answer-grid">
+      <div class="answer-item">
+        <h3>Find the question behind the trend</h3>
+        <p>Track how stories are framed across sources, then turn emerging topics into direct answers, explainers, briefs, and timely article drafts.</p>
+      </div>
+      <div class="answer-item">
+        <h3>Prioritize useful content angles</h3>
+        <p>Use sentiment, emotion, keywords, and source context to decide which topics deserve coverage and which angles are already over-served.</p>
+      </div>
+      <div class="answer-item">
+        <h3>Write for humans and answer engines</h3>
+        <p>Create structured briefs with headlines, angles, key points, and supporting context so editors can publish clearer, more helpful content.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="container section faq-section">
+    <div class="section-eyebrow">Questions</div>
+    <h2 class="section-title">News Sentiment Radar FAQ</h2>
+    <div class="faq-grid">
+      <div class="faq-item">
+        <h3>What is news sentiment analysis?</h3>
+        <p>News sentiment analysis uses AI to classify whether a story, headline, or topic is positive, negative, or neutral, and can also identify emotions such as anger, fear, joy, and surprise.</p>
+      </div>
+      <div class="faq-item">
+        <h3>How does this help SEO and content planning?</h3>
+        <p>It helps teams identify trending topics, keyword opportunities, content gaps, and changing audience narratives before creating search-focused briefs or articles.</p>
+      </div>
+      <div class="faq-item">
+        <h3>Can the app generate article briefs?</h3>
+        <p>Yes. Pro workflows can turn a story or topic into a structured editorial brief and draft, giving writers a faster starting point while keeping human review in the process.</p>
+      </div>
+      <div class="faq-item">
+        <h3>Which teams use this kind of tool?</h3>
+        <p>Newsrooms, publishers, agencies, content marketers, analysts, and research teams can use it to monitor signals, compare sources, and create timely editorial content.</p>
+      </div>
     </div>
   </div>
 

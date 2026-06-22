@@ -788,13 +788,16 @@ async function renderHeader() {
 
   const { data: { session } } = await _sb.auth.getSession();
   const sessionUser = session?.user || null;
+  const navDashboardLink = document.getElementById('navDashboardLink');
 
   if (!sessionUser) {
+    if (navDashboardLink) navDashboardLink.style.display = 'none';
     renderGuestHeader();
     dispatchAuthStateChecked(null, null);
     return;
   }
 
+  if (navDashboardLink) navDashboardLink.style.display = 'block';
   renderUserHeader(sessionUser);
   dispatchAuthStateChecked(sessionUser, null);
 

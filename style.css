@@ -23,8 +23,8 @@
 }
 
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { max-width: 100%; overflow-x: hidden; }
-body   { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.5; font-size: 14px; }
+html   { max-width: 100%;}
+body   { max-width: 100%; overflow-x: hidden; font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.5; font-size: 14px; }
 a      { text-decoration: none; color: inherit; }
 button { font-family: var(--font); }
 

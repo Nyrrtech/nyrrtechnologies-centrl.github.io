@@ -4,9 +4,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard – News Sentiment Radar</title>
-  <meta name="description" content="News Sentiment Radar dashboard for authenticated users.">
+  <title>scryweb.com Dashboard | News Sentiment Radar</title>
+  <meta name="description" content="Use the scryweb.com dashboard to crawl news, analyze sentiment and emotion, discover keywords, and create briefs or drafts.">
   <meta name="robots" content="noindex, nofollow">
+  <link rel="canonical" href="https://scryweb.com/dashboard.html">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="scryweb.com">
+  <meta property="og:title" content="scryweb.com Dashboard">
+  <meta property="og:description" content="Authenticated dashboard for AI news crawling, sentiment analysis, keyword intelligence, briefs, and drafts.">
+  <meta property="og:url" content="https://scryweb.com/dashboard.html">
+  <meta property="og:image" content="https://scryweb.com/logo.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="scryweb.com Dashboard">
+  <meta name="twitter:description" content="Authenticated dashboard for AI news crawling, sentiment analysis, keyword intelligence, briefs, and drafts.">
+  <meta name="twitter:image" content="https://scryweb.com/logo.png">
   <meta name="theme-color" content="#0a0c10">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,6 +26,26 @@
   <link rel="preload" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" as="script">
   <link rel="preload" href="auth.js" as="script">
   <link rel="stylesheet" href="style.css">
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://scryweb.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Dashboard",
+          "item": "https://scryweb.com/dashboard.html"
+        }
+      ]
+    }
+  </script>
 </head>
 
 <body>
@@ -22,7 +53,7 @@
   <header class="header">
     <div class="container header-inner">
       <a href="index.html" class="logo-text">News Sentiment <span style="color:#f5b042">Radar</span></a>
-      <nav class="nav">
+      <nav class="nav" aria-label="Primary navigation">
         <a href="index.html">Home</a>
         <a href="pricing.html">Pricing</a>
         <a href="contact.html">Contact</a>
@@ -32,6 +63,7 @@
   </header>
 
   <div class="dashboard-wrap">
+    <h1 class="sr-only">scryweb.com News Sentiment Radar dashboard</h1>
 
     <div id="authGate" class="auth-gate" style="display:none">
       <div class="auth-gate-icon">🔐</div>
@@ -56,22 +88,22 @@
 
       <div class="db-topbar">
         <div class="db-title">News Sentiment <span style="-webkit-background-clip:unset;background:none;color:var(--accent)">Radar</span></div>
-        <button class="icon-btn" id="refreshBtn" title="Re-crawl news">↻</button>
-        <button class="icon-btn" id="settingsBtn" title="Settings">⚙</button>
+        <button class="icon-btn" id="refreshBtn" title="Re-crawl news" aria-label="Re-crawl news">↻</button>
+        <button class="icon-btn" id="settingsBtn" title="Settings" aria-label="Open settings">⚙</button>
       </div>
 
-      <div class="db-tabs">
-        <button class="db-tab active" data-tab="news">📰 News</button>
-        <button class="db-tab" data-tab="keywords">🔑 Keywords</button>
-        <button class="db-tab" data-tab="briefs">📝 Briefs <span class="tab-lock" id="briefsTabLock"></span></button>
-        <button class="db-tab" data-tab="draft">✍️ Draft <span class="tab-lock" id="draftTabLock"></span></button>
-        <button class="db-tab" data-tab="humanizer">✨ Humanizer <span class="tab-lock" id="humanizerTabLock"></span></button>
-        <button class="db-tab" data-tab="settings">⚙️ Settings</button>
-        <button class="db-tab" data-tab="account">👤 Account</button>
+      <div class="db-tabs" role="tablist" aria-label="Dashboard sections">
+        <button class="db-tab active" id="tab-news" data-tab="news" role="tab" aria-controls="pane-news" aria-selected="true">📰 News</button>
+        <button class="db-tab" id="tab-keywords" data-tab="keywords" role="tab" aria-controls="pane-keywords" aria-selected="false">🔑 Keywords</button>
+        <button class="db-tab" id="tab-briefs" data-tab="briefs" role="tab" aria-controls="pane-briefs" aria-selected="false">📝 Briefs <span class="tab-lock" id="briefsTabLock"></span></button>
+        <button class="db-tab" id="tab-draft" data-tab="draft" role="tab" aria-controls="pane-draft" aria-selected="false">✍️ Draft <span class="tab-lock" id="draftTabLock"></span></button>
+        <button class="db-tab" id="tab-humanizer" data-tab="humanizer" role="tab" aria-controls="pane-humanizer" aria-selected="false">✨ Humanizer <span class="tab-lock" id="humanizerTabLock"></span></button>
+        <button class="db-tab" id="tab-settings" data-tab="settings" role="tab" aria-controls="pane-settings" aria-selected="false">⚙️ Settings</button>
+        <button class="db-tab" id="tab-account" data-tab="account" role="tab" aria-controls="pane-account" aria-selected="false">👤 Account</button>
       </div>
 
       <!-- NEWS PANE (with AI search bar) -->
-      <div class="db-pane active" id="pane-news">
+      <div class="db-pane active" id="pane-news" role="tabpanel" aria-labelledby="tab-news">
         
         <div class="ai-search-bar">
           <div class="ai-search-field">
@@ -114,12 +146,12 @@
       </div>
 
       <!-- KEYWORDS PANE -->
-      <div class="db-pane" id="pane-keywords">
+      <div class="db-pane" id="pane-keywords" role="tabpanel" aria-labelledby="tab-keywords">
         <div id="kwContent" class="empty"><div class="empty-icon">🔑</div>Run a crawl first to see keyword intelligence.</div>
       </div>
 
       <!-- BRIEFS PANE -->
-      <div class="db-pane" id="pane-briefs">
+      <div class="db-pane" id="pane-briefs" role="tabpanel" aria-labelledby="tab-briefs">
         <div class="settings-card">
           <div class="settings-section-title">✍️ Generate a brief manually</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
@@ -133,7 +165,7 @@
       </div>
 
       <!-- DRAFT PANE -->
-      <div class="db-pane" id="pane-draft">
+      <div class="db-pane" id="pane-draft" role="tabpanel" aria-labelledby="tab-draft">
         <div class="settings-card">
           <div class="settings-section-title">✍️ Write a draft manually</div>
           <textarea id="draftPromptInput" class="settings-input" rows="3" placeholder="Describe the article — topic, angle, key points, target audience, word count…" style="resize:vertical;line-height:1.5"></textarea>
@@ -148,7 +180,7 @@
       </div>
 
       <!-- HUMANIZER PANE -->
-      <div class="db-pane" id="pane-humanizer">
+      <div class="db-pane" id="pane-humanizer" role="tabpanel" aria-labelledby="tab-humanizer">
         <div class="settings-card" style="border-color:rgba(245,176,66,0.2)">
           <div class="settings-section-title">✨ Advanced AI Humanizer <span style="font-size:10px;background:rgba(245,176,66,0.12);color:var(--accent);padding:2px 8px;border-radius:20px;margin-left:6px;border:1px solid rgba(245,176,66,0.25)">Anti-Detection</span></div>
           <p style="font-size:12px;color:var(--text-sec);margin-bottom:18px;line-height:1.6">Rewrite AI-generated content to pass detection tools (GPTZero, Originality, Turnitin) while preserving all facts and SEO signals.</p>
@@ -176,7 +208,7 @@
       </div>
 
       <!-- SETTINGS PANE -->
-      <div class="db-pane" id="pane-settings">
+      <div class="db-pane" id="pane-settings" role="tabpanel" aria-labelledby="tab-settings">
         <div id="trialSettingsNote"></div>
         <div class="settings-card">
           <div class="settings-section-title">⚡ AI Provider</div>
@@ -203,13 +235,13 @@
         </div>
         <div class="settings-card">
           <div class="settings-section-title">⚙ Preferences</div>
-          <div class="settings-group" style="display:flex;align-items:center;gap:12px"><button class="toggle" id="aiEnrichToggle"></button><span style="font-size:12px;color:var(--text-sec)">AI keyword enrichment <span id="enrichPlanNote" style="color:var(--accent);font-size:11px"></span></span></div>
+          <div class="settings-group" style="display:flex;align-items:center;gap:12px"><button class="toggle" id="aiEnrichToggle" aria-label="Toggle AI keyword enrichment"></button><span style="font-size:12px;color:var(--text-sec)">AI keyword enrichment <span id="enrichPlanNote" style="color:var(--accent);font-size:11px"></span></span></div>
         </div>
         <button class="save-btn" id="saveSettingsBtn">💾 Save settings</button><div id="settingsMsg" style="margin-top:8px;text-align:center;font-size:12px;color:var(--accent)"></div>
       </div>
 
       <!-- ACCOUNT PANE -->
-      <div class="db-pane" id="pane-account">
+      <div class="db-pane" id="pane-account" role="tabpanel" aria-labelledby="tab-account">
         <div class="account-card" id="accountCard"></div>
         <div class="settings-card" id="planCard"></div>
         <div class="settings-card" id="sessionCard"><div class="settings-section-title">🖥 Active Session</div><div id="sessionInfo" style="font-size:12px;color:var(--text-sec)">Loading device info…</div></div>
@@ -1722,6 +1754,7 @@
           document.querySelectorAll('.db-tab').forEach(t => t.classList.remove('active'));
           document.querySelectorAll('.db-pane').forEach(p => p.classList.remove('active'));
           tab.classList.add('active');
+          document.querySelectorAll('.db-tab').forEach(t => t.setAttribute('aria-selected', t === tab ? 'true' : 'false'));
           document.getElementById(`pane-${tab.dataset.tab}`)?.classList.add('active');
         });
       });

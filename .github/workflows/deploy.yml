@@ -22,7 +22,19 @@ jobs:
       - name: Install deployment tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y rsync sshpass
+          sudo apt-get install -y netcat-openbsd rsync sshpass
+
+      - name: Test SSH connection
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+        run: |
+          set -euo pipefail
+
+          : "${SSH_HOST:?Missing SSH_HOST secret}"
+          : "${SSH_PORT:?Missing SSH_PORT secret}"
+
+          nc -vz "$SSH_HOST" "$SSH_PORT"
 
       - name: Deploy to public_html
         env:

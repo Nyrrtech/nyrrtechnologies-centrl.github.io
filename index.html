@@ -3,20 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>News Sentiment Radar | AI News Sentiment Analysis</title>
-  <meta name="description" content="News Sentiment Radar helps content teams crawl trending stories, analyze sentiment and emotion, discover keywords, and generate editorial briefs with AI.">
+  <title>scryweb.com | AI News Sentiment Analysis</title>
+  <meta name="description" content="scryweb.com crawls trending news, analyzes sentiment and emotion, and generates editorial briefs and AP-style drafts for content teams.">
   <meta name="robots" content="index, follow">
-  <link rel="canonical" href="https://nyrrtechnologies-centrl.github.io/">
+  <link rel="canonical" href="https://scryweb.com/">
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="News Sentiment Radar">
-  <meta property="og:title" content="News Sentiment Radar | AI News Sentiment Analysis">
-  <meta property="og:description" content="Crawl trending stories, detect sentiment and emotion, and generate AI-powered briefs from one newsroom dashboard.">
-  <meta property="og:url" content="https://nyrrtechnologies-centrl.github.io/">
-  <meta property="og:image" content="https://nyrrtechnologies-centrl.github.io/logo.png">
+  <meta property="og:site_name" content="scryweb.com">
+  <meta property="og:title" content="scryweb.com | AI News Sentiment Analysis">
+  <meta property="og:description" content="Crawl trending news, detect sentiment and emotion, and generate editorial briefs and AP-style drafts from one newsroom dashboard.">
+  <meta property="og:url" content="https://scryweb.com/">
+  <meta property="og:image" content="https://scryweb.com/logo.png">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="News Sentiment Radar | AI News Sentiment Analysis">
-  <meta name="twitter:description" content="Crawl trending stories, detect sentiment and emotion, and generate AI-powered briefs from one newsroom dashboard.">
-  <meta name="twitter:image" content="https://nyrrtechnologies-centrl.github.io/logo.png">
+  <meta name="twitter:title" content="scryweb.com | AI News Sentiment Analysis">
+  <meta name="twitter:description" content="Crawl trending news, detect sentiment and emotion, and generate editorial briefs and AP-style drafts from one newsroom dashboard.">
+  <meta name="twitter:image" content="https://scryweb.com/logo.png">
   <meta name="theme-color" content="#0a0c10">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -30,24 +30,66 @@
       "@context": "https://schema.org",
       "@graph": [
         {
+          "@type": "Organization",
+          "@id": "https://scryweb.com/#organization",
+          "name": "scryweb.com",
+          "alternateName": "News Sentiment Radar",
+          "url": "https://scryweb.com/",
+          "logo": "https://scryweb.com/logo.png",
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "contactType": "sales and support",
+            "url": "https://scryweb.com/contact.html"
+          }
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://scryweb.com/#website",
+          "name": "scryweb.com",
+          "alternateName": "News Sentiment Radar",
+          "url": "https://scryweb.com/",
+          "publisher": {
+            "@id": "https://scryweb.com/#organization"
+          },
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://scryweb.com/dashboard.html?topic={search_term_string}",
+            "query-input": "required name=search_term_string"
+          }
+        },
+        {
           "@type": "SoftwareApplication",
+          "@id": "https://scryweb.com/#software",
           "name": "News Sentiment Radar",
+          "alternateName": "scryweb.com",
           "applicationCategory": "BusinessApplication",
           "operatingSystem": "Web",
-          "url": "https://nyrrtechnologies-centrl.github.io/",
-          "description": "AI-powered news crawling, sentiment analysis, keyword intelligence, and editorial brief generation for content teams.",
+          "url": "https://scryweb.com/",
+          "description": "AI-powered news crawling, sentiment analysis, emotion detection, keyword intelligence, editorial brief generation, and AP-style draft creation for content teams.",
+          "publisher": {
+            "@id": "https://scryweb.com/#organization"
+          },
           "offers": [
             {
               "@type": "Offer",
               "name": "Free",
               "price": "0",
-              "priceCurrency": "USD"
+              "priceCurrency": "USD",
+              "description": "Free plan with up to 50 story crawls per month, basic sentiment and emotion analysis, three source categories, keyword extraction, and community support."
             },
             {
               "@type": "Offer",
               "name": "Pro",
               "price": "19",
-              "priceCurrency": "USD"
+              "priceCurrency": "USD",
+              "description": "Pro plan with unlimited story crawls, full AI sentiment analysis, all eight sources plus custom RSS, AI-generated briefs, full drafts, priority email support, and Markdown or JSON export."
+            },
+            {
+              "@type": "Offer",
+              "name": "Enterprise",
+              "price": "Custom",
+              "priceCurrency": "USD",
+              "description": "Enterprise plan with Pro features, team accounts, SSO, on-premise AI deployment, custom sentiment models, SLAs, dedicated support, and API whitelabeling."
             }
           ]
         },
@@ -56,27 +98,46 @@
           "mainEntity": [
             {
               "@type": "Question",
-              "name": "What is News Sentiment Radar?",
+              "name": "What is news sentiment analysis?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "News Sentiment Radar is an AI news intelligence app that crawls trending stories, analyzes sentiment and emotion, extracts keywords, and helps content teams create briefs and article drafts."
+                "text": "News sentiment analysis is the use of AI to classify whether news coverage is positive, negative, or neutral while also identifying emotions such as anger, fear, joy, and surprise, so editorial teams can understand how a story is framed before they write or respond. In scryweb.com, that analysis is paired with source context, confidence scoring, and keyword extraction for planning briefs and drafts."
               }
             },
             {
               "@type": "Question",
-              "name": "Who is News Sentiment Radar for?",
+              "name": "How does this help SEO and content planning?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "It is built for editors, content marketers, publishers, research teams, and agencies that need to monitor news narratives, spot sentiment shifts, and turn signals into editorial content quickly."
+                "text": "News sentiment analysis helps SEO and content teams choose timely topics by showing which stories are trending, which keywords are recurring, which emotional frames are gaining attention, and where original coverage can answer user questions before a brief or article is written. Teams can use those signals to prioritize original angles, avoid over-served narratives, and write answer-ready content."
               }
             },
             {
               "@type": "Question",
-              "name": "Does News Sentiment Radar support SEO workflows?",
+              "name": "Can the app generate article briefs?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Yes. The app surfaces keyword opportunities, content gaps, trending topics, and structured briefs that help teams plan search-focused and answer-focused editorial content."
+                "text": "Yes, scryweb.com can generate structured editorial briefs from a story or topic, including a headline, angle, primary keyword, outline, key points, and context, so writers have a reviewed starting point before drafting or assigning coverage to an editor or reporter. Pro workflows can also turn those briefs into AP-style article drafts while keeping human editorial review in the process."
               }
+            },
+            {
+              "@type": "Question",
+              "name": "Which teams use this kind of tool?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "News sentiment tools are used by newsrooms, publishers, agencies, content marketers, analysts, and research teams that need to monitor fast-moving narratives, compare source framing, detect sentiment shifts, and convert trend signals into timely editorial work for search and audience planning. scryweb.com supports those teams with crawling, sentiment analysis, keyword intelligence, briefs, drafts, and export workflows."
+              }
+            }
+          ]
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Home",
+              "item": "https://scryweb.com/"
             }
           ]
         }
@@ -89,7 +150,7 @@
 <header class="header">
   <div class="container header-inner">
     <a href="index.html" class="logo-text">News Sentiment <span style="color:#f5b042">Radar</span></a>
-    <nav class="nav">
+    <nav class="nav" aria-label="Primary navigation">
       <a href="index.html" class="active">Home</a>
       <a href="pricing.html">Pricing</a>
       <a href="contact.html">Contact</a>
@@ -103,64 +164,64 @@
 
 <main>
   <div class="container hero">
-    <div class="hero-eyebrow">✦ AI-Powered News Intelligence</div>
-    <h1>Turn news chaos into <span>content intelligence</span></h1>
-    <p>News Sentiment Radar crawls trending stories, detects emotion & bias, and helps you write better briefs and drafts in seconds – powered by Claude AI.</p>
+    <div class="hero-eyebrow">AI-Powered News Intelligence</div>
+    <h1>Analyze trending news sentiment across <span>8+ sources</span></h1>
+    <p>scryweb.com's News Sentiment Radar crawls trending news and social sources, classifies sentiment and emotion, extracts keywords, and generates editorial briefs and AP-style drafts for content teams.</p>
     <div class="hero-proof-grid" aria-label="Product highlights">
       <div><strong>50</strong><span>free crawls/month</span></div>
       <div><strong>8+</strong><span>news and social sources</span></div>
       <div><strong>AI</strong><span>briefs, drafts, keywords</span></div>
     </div>
     <div class="hero-buttons">
-      <button class="btn" id="heroDashboardBtn" type="button">Open Dashboard →</button>
+      <button class="btn" id="heroDashboardBtn" type="button">Open Dashboard</button>
       <a href="pricing.html" class="btn btn-outline">View Plans</a>
       <a href="extension.zip" download="news-sentiment-radar-ext.zip" class="btn btn-outline" style="border-color: #8BC97F; color: #8BC97F;">Chrome Extension</a>
     </div>
-    <div class="hero-social-proof">Trusted by <span>500+</span> content creators · No credit card required for Free tier</div>
+    <div class="hero-social-proof">Used by <span>500+</span> content creators · Free tier includes 50 story crawls per month</div>
   </div>
 
   <div class="container section">
     <div class="section-eyebrow">What's included</div>
-    <h2 class="section-title">Everything your newsroom needs</h2>
-    <p class="section-sub">From raw crawling to polished drafts — all in one place.</p>
+    <h2 class="section-title">Six newsroom workflows in one AI dashboard</h2>
+    <p class="section-sub">News Sentiment Radar combines source crawling, sentiment analysis, emotion detection, keyword intelligence, briefs, drafts, and team/API options in one web app.</p>
     <div class="features-grid">
-      <div class="feature-card"><div class="feature-icon">🌐</div><h3>Multi-source crawling</h3><p>Track Reddit, Hacker News, major RSS feeds, and custom sources in one dashboard.</p><span class="feature-lock lock-free">✓ Free</span></div>
-      <div class="feature-card"><div class="feature-icon">🧠</div><h3>Sentiment & emotion AI</h3><p>Detects joy, anger, fear, surprise across every story with confidence scores.</p><span class="feature-lock lock-free">✓ Free (50/mo)</span></div>
-      <div class="feature-card"><div class="feature-icon">✍️</div><h3>One-click briefs & drafts</h3><p>Generate structured briefs and full AP-style draft articles instantly.</p><span class="feature-lock lock-pro">⚡ Pro</span></div>
-      <div class="feature-card"><div class="feature-icon">📊</div><h3>Keyword intelligence</h3><p>See trending topics, gaps, and SEO opportunities across sources.</p><span class="feature-lock lock-pro">⚡ Pro</span></div>
-      <div class="feature-card"><div class="feature-icon">⚡</div><h3>Unlimited crawls</h3><p>Remove the 50-story cap. Crawl all categories at any frequency.</p><span class="feature-lock lock-pro">⚡ Pro</span></div>
-      <div class="feature-card"><div class="feature-icon">🏢</div><h3>Team & API access</h3><p>Multi-seat accounts, custom models, SSO, and whitelabel API.</p><span class="feature-lock lock-ent">★ Enterprise</span></div>
+      <div class="feature-card"><div class="feature-icon">🌐</div><h3>Multi-source crawling</h3><p>Multi-source crawling tracks Reddit, Hacker News, major RSS feeds, and custom RSS feeds from one dashboard.</p><span class="feature-lock lock-free">Free</span></div>
+      <div class="feature-card"><div class="feature-icon">🧠</div><h3>Sentiment & emotion AI</h3><p>Sentiment and emotion analysis labels each story as positive, negative, or neutral and identifies emotions such as joy, anger, fear, and surprise with confidence scores.</p><span class="feature-lock lock-free">Free (50/mo)</span></div>
+      <div class="feature-card"><div class="feature-icon">✍️</div><h3>One-click briefs & drafts</h3><p>Brief and draft generation turns a selected story into a structured editorial brief and an AP-style draft article for human review.</p><span class="feature-lock lock-pro">Pro</span></div>
+      <div class="feature-card"><div class="feature-icon">📊</div><h3>Keyword intelligence</h3><p>Keyword intelligence surfaces recurring topics, content gaps, and SEO opportunities across crawled sources.</p><span class="feature-lock lock-pro">Pro</span></div>
+      <div class="feature-card"><div class="feature-icon">⚡</div><h3>Unlimited crawls</h3><p>The Pro plan removes the Free plan's 50-story monthly crawl limit and unlocks all source categories.</p><span class="feature-lock lock-pro">Pro</span></div>
+      <div class="feature-card"><div class="feature-icon">🏢</div><h3>Team & API access</h3><p>Enterprise access adds multi-seat accounts, SSO, custom sentiment models, on-premise AI deployment, and whitelabel API options.</p><span class="feature-lock lock-ent">Enterprise</span></div>
     </div>
   </div>
 
   <div class="container section">
     <div class="section-eyebrow">How it works</div>
-    <h2 class="section-title">From signal to story in minutes</h2>
-    <p class="section-sub" style="margin-bottom: 40px;">Four steps. No newsroom experience required.</p>
+    <h2 class="section-title">Four-step workflow from crawl to draft</h2>
+    <p class="section-sub" style="margin-bottom: 40px;">The workflow is crawl, analyze, brief, and draft, so teams can move from source monitoring to reviewed editorial output without switching tools.</p>
     <div class="steps">
-      <div class="step"><div class="step-number">1</div><h3>Crawl</h3><p>Select sources – World, Tech, Reddit, HN – hit Crawl.</p></div>
-      <div class="step"><div class="step-number">2</div><h3>Analyze</h3><p>AI assigns sentiment, emotion, and keywords to every story.</p></div>
-      <div class="step"><div class="step-number">3</div><h3>Brief</h3><p>One click turns any story into a structured editorial brief.</p></div>
-      <div class="step"><div class="step-number">4</div><h3>Draft</h3><p>Generate a full AP-style article ready for your CMS.</p></div>
+      <div class="step"><div class="step-number">1</div><h3>Crawl</h3><p>Select source categories such as World, Tech, Reddit, and Hacker News, then run a crawl.</p></div>
+      <div class="step"><div class="step-number">2</div><h3>Analyze</h3><p>The app assigns sentiment, emotion, confidence, and keywords to each crawled story.</p></div>
+      <div class="step"><div class="step-number">3</div><h3>Brief</h3><p>A selected story can become a structured editorial brief with headline, angle, outline, and keyword context.</p></div>
+      <div class="step"><div class="step-number">4</div><h3>Draft</h3><p>Pro users can generate an AP-style draft article that editors review before publication.</p></div>
     </div>
   </div>
 
   <div class="container section answer-section">
     <div class="section-eyebrow">Answer-ready intelligence</div>
     <h2 class="section-title">Built for SEO, AEO, and AI search workflows</h2>
-    <p class="section-sub">Search and AI discovery reward clear, useful, original information. News Sentiment Radar helps your team find that signal before you write.</p>
+    <p class="section-sub">Answer engines cite pages that define terms clearly, answer specific questions, and provide source-aware context. News Sentiment Radar helps teams collect those inputs before writing.</p>
     <div class="answer-grid">
       <div class="answer-item">
         <h3>Find the question behind the trend</h3>
-        <p>Track how stories are framed across sources, then turn emerging topics into direct answers, explainers, briefs, and timely article drafts.</p>
+        <p>The app compares source framing and sentiment so teams can turn emerging topics into direct answers, explainers, briefs, and timely article drafts.</p>
       </div>
       <div class="answer-item">
         <h3>Prioritize useful content angles</h3>
-        <p>Use sentiment, emotion, keywords, and source context to decide which topics deserve coverage and which angles are already over-served.</p>
+        <p>Sentiment, emotion, keywords, and source context help teams decide which topics deserve coverage and which angles are already over-served.</p>
       </div>
       <div class="answer-item">
         <h3>Write for humans and answer engines</h3>
-        <p>Create structured briefs with headlines, angles, key points, and supporting context so editors can publish clearer, more helpful content.</p>
+        <p>Structured briefs include headlines, angles, key points, and supporting context so editors can publish clearer, more helpful content.</p>
       </div>
     </div>
   </div>
@@ -171,29 +232,29 @@
     <div class="faq-grid">
       <div class="faq-item">
         <h3>What is news sentiment analysis?</h3>
-        <p>News sentiment analysis uses AI to classify whether a story, headline, or topic is positive, negative, or neutral, and can also identify emotions such as anger, fear, joy, and surprise.</p>
+        <p>News sentiment analysis is the use of AI to classify whether news coverage is positive, negative, or neutral while also identifying emotions such as anger, fear, joy, and surprise, so editorial teams can understand how a story is framed before they write or respond. In scryweb.com, that analysis is paired with source context, confidence scoring, and keyword extraction for planning briefs and drafts.</p>
       </div>
       <div class="faq-item">
         <h3>How does this help SEO and content planning?</h3>
-        <p>It helps teams identify trending topics, keyword opportunities, content gaps, and changing audience narratives before creating search-focused briefs or articles.</p>
+        <p>News sentiment analysis helps SEO and content teams choose timely topics by showing which stories are trending, which keywords are recurring, which emotional frames are gaining attention, and where original coverage can answer user questions before a brief or article is written. Teams can use those signals to prioritize original angles, avoid over-served narratives, and write answer-ready content.</p>
       </div>
       <div class="faq-item">
         <h3>Can the app generate article briefs?</h3>
-        <p>Yes. Pro workflows can turn a story or topic into a structured editorial brief and draft, giving writers a faster starting point while keeping human review in the process.</p>
+        <p>Yes, scryweb.com can generate structured editorial briefs from a story or topic, including a headline, angle, primary keyword, outline, key points, and context, so writers have a reviewed starting point before drafting or assigning coverage to an editor or reporter. Pro workflows can also turn those briefs into AP-style article drafts while keeping human editorial review in the process.</p>
       </div>
       <div class="faq-item">
         <h3>Which teams use this kind of tool?</h3>
-        <p>Newsrooms, publishers, agencies, content marketers, analysts, and research teams can use it to monitor signals, compare sources, and create timely editorial content.</p>
+        <p>News sentiment tools are used by newsrooms, publishers, agencies, content marketers, analysts, and research teams that need to monitor fast-moving narratives, compare source framing, detect sentiment shifts, and convert trend signals into timely editorial work for search and audience planning. scryweb.com supports those teams with crawling, sentiment analysis, keyword intelligence, briefs, drafts, and export workflows.</p>
       </div>
     </div>
   </div>
 
   <div class="container section" style="border-top:none; padding-top: 0;">
     <div class="dashboard-cta">
-      <h2>Ready to supercharge your newsroom?</h2>
-      <p>Join 500+ content creators who never miss a sentiment shift. Free plan, no card needed.</p>
+      <h2>Ready to monitor news sentiment?</h2>
+      <p>Join 500+ content creators using a Free plan with 50 story crawls per month and no credit card requirement.</p>
       <div class="cta-buttons">
-        <button class="btn" id="ctaDashboardBtn" type="button">Open Dashboard – Free</button>
+        <button class="btn" id="ctaDashboardBtn" type="button">Open Dashboard Free</button>
         <a href="pricing.html" class="btn btn-outline">See all plans</a>
       </div>
     </div>

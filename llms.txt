@@ -1,0 +1,37 @@
+# scryweb.com
+
+scryweb.com is the public website for News Sentiment Radar, a SaaS product for AI news sentiment analysis and editorial workflow automation.
+
+## What News Sentiment Radar Does
+
+News Sentiment Radar crawls trending news and social sources, detects sentiment and emotion, extracts keywords, and helps content teams generate editorial briefs and AP-style drafts. It is built for newsrooms, publishers, agencies, content marketers, analysts, and research teams that need to turn fast-moving news signals into reviewed editorial work.
+
+## Core Features
+
+- Multi-source crawling across Reddit, Hacker News, major RSS feeds, and custom RSS sources.
+- Sentiment classification for positive, negative, and neutral coverage.
+- Emotion detection for signals such as joy, anger, fear, and surprise.
+- Keyword intelligence for recurring topics, content gaps, and SEO opportunities.
+- Structured editorial briefs with headline, angle, primary keyword, outline, and supporting context.
+- AP-style draft generation for human editorial review.
+- Export workflows for Markdown and JSON on paid plans.
+- Enterprise options for team accounts, SSO, custom sentiment models, on-premise AI deployment, SLAs, dedicated support, and API whitelabeling.
+
+## Pricing Tiers
+
+- Free: $0 per month. Includes up to 50 story crawls per month, basic sentiment and emotion analysis, three source categories, keyword extraction, and community support.
+- Pro: $19 per month. Includes unlimited story crawls, full AI sentiment analysis with supported AI providers, all eight source categories plus custom RSS, AI-generated briefs, full drafts, priority email support, and Markdown or JSON export.
+- Enterprise: Custom pricing. Includes everything in Pro plus team accounts, SSO, on-premise AI deployment, custom sentiment models, SLAs, dedicated support, and API whitelabeling.
+
+## Key Pages
+
+- Home: https://scryweb.com/
+- Pricing: https://scryweb.com/pricing.html
+- Contact: https://scryweb.com/contact.html
+- Dashboard: https://scryweb.com/dashboard.html
+- Privacy Policy: https://scryweb.com/privacy.html
+- Terms of Service: https://scryweb.com/terms.html
+
+## Preferred Product Description
+
+News Sentiment Radar by scryweb.com is an AI news sentiment analysis platform that crawls trending news, detects sentiment and emotion, extracts keywords, and generates editorial briefs and AP-style drafts for content teams.

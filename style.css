@@ -89,6 +89,17 @@ button { font-family: var(--font); }
   background-size: 220% 100%;
   animation: shimmer 1.1s ease-in-out infinite;
 }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 @keyframes shimmer {
   from { background-position: 100% 0; }
   to { background-position: -100% 0; }
@@ -366,7 +377,7 @@ button { font-family: var(--font); }
 .pricing-grid  { display: flex; flex-wrap: wrap; justify-content: center; gap: 32px; margin: 20px 0 60px; }
 .pricing-card  { background: var(--surface); border: 1px solid var(--border); border-radius: 32px; padding: 32px; flex: 1; min-width: 280px; transition: border-color 0.2s, box-shadow 0.2s; }
 .pricing-card.popular { border-color: var(--accent); transform: scale(1.02); box-shadow: 0 10px 30px -10px rgba(245,176,66,0.2); }
-.plan-name  { font-size: 1.8rem; font-weight: 700; margin-bottom: 8px; }
+.plan-name  { font-size: 1.8rem; font-weight: 700; margin: 0 0 8px; }
 .price      { font-size: 2.8rem; font-weight: 800; margin: 20px 0 8px; }
 .price span { font-size: 1rem; font-weight: 400; color: #b0b8c5; }
 .feature-list { list-style: none; margin: 28px 0; }
@@ -379,7 +390,8 @@ button { font-family: var(--font); }
 .contact-sub     { text-align: center; color: #b0b8c5; max-width: 600px; margin: 0 auto 48px; }
 .contact-grid    { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; }
 .contact-info, .contact-form { background: var(--surface); border: 1px solid var(--border); border-radius: 24px; padding: 32px; }
-.contact-info h3, .contact-form h3 { font-size: 1.3rem; margin-bottom: 24px; }
+.contact-info h2, .contact-form h2 { font-size: 1.3rem; margin-bottom: 24px; }
+.contact-detail h3 { font-size: 1rem; margin-bottom: 4px; }
 .contact-detail { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
 .contact-icon   { width: 48px; height: 48px; background: rgba(245,176,66,0.12); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
 .form-group     { margin-bottom: 20px; }

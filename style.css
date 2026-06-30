@@ -51,6 +51,17 @@ button { font-family: var(--font); }
   gap: 18px;
   min-height: 40px;
 }
+.logo-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+.logo-brand img {
+  height: 32px;
+  width: auto;
+  display: block;
+}
 .logo-text {
   font-size: 1.4rem;
   font-weight: 700;
@@ -957,6 +968,7 @@ textarea.settings-input { resize: vertical; min-height: 72px; }
 }
 @media (max-width: 420px) {
   .logo-text         { font-size: 1.25rem; }
+  .logo-brand img    { height: 26px; }
   .nav              { gap: 8px; }
   .nav a            { padding: 7px 10px; }
   .header-auth      { min-width: 0; width: 100%; justify-content: center; }

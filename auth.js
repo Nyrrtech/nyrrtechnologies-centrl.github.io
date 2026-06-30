@@ -706,14 +706,17 @@ async function renderHeader() {
   if (!headerAuth) return;
 
   const renderGuestHeader = () => {
+    const navDashboardLink = document.getElementById('navDashboardLink');
+    if (navDashboardLink) navDashboardLink.style.display = 'none';
     headerAuth.innerHTML = `
-      <button class="btn btn-outline btn-sm" id="headerSignInBtn" type="button">Sign in</button>
-      <button class="btn btn-sm" id="headerDashBtn" type="button">Dashboard</button>`;
+      <button class="btn btn-outline btn-sm" id="headerSignInBtn" type="button">Sign in</button>`;
     document.getElementById('headerSignInBtn')?.addEventListener('click', () => window.showAuthModal('login'));
-    document.getElementById('headerDashBtn')?.addEventListener('click',   () => window.checkAuthAndRedirect('dashboard.html'));
   };
 
   const renderUserHeader = (sessionUser, profile = null) => {
+    const navDashboardLink = document.getElementById('navDashboardLink');
+    if (navDashboardLink) navDashboardLink.style.display = 'block';
+
     const meta = profile ? (PLAN_META[profile.plan] || PLAN_META.free) : null;
     const displayName = profile?.name || sessionUser.user_metadata?.name || sessionUser.email.split('@')[0];
     const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);

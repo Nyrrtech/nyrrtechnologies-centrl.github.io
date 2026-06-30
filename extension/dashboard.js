@@ -1,0 +1,1520 @@
+// ============================================================
+    //  FULL DASHBOARD LOGIC (SYNTAX ERROR FIXED)
+    //  esc is already defined by auth.js – do NOT redeclare it
+    // ============================================================
+
+    // ==================== GLOBALS & CONFIG ====================
+    const RSS2JSON_URL = 'https://api.rss2json.com/v1/api.json';
+    const FETCH_TIMEOUT = 15000;
+
+    let settings = { aiProvider: 'mistral', anthropicKey: '', mistralKey: '', rss2jsonKey: '', proxyUrl: '', aiKeywords: true };
+    let stories = [], activeFilter = null, activeKeywordFilter = null, currentBrief = null;
+    let sortMode = 'newest', timeframeMs = 604800000;
+    let _lastPipelineRun = 0;
+    const PIPELINE_COOLDOWN_MS = 60000;
+
+    // Rate Limit Mechanics
+    let _aiRateLimitPaused = false;
+    let _aiRateLimitResumeTime = 0;
+    let _rss2jsonSuspended = false;
+
+    function suspendRss2Json() {
+      _rss2jsonSuspended = true;
+      setTimeout(() => { _rss2jsonSuspended = false; }, 60000); // Suspend for 60s
+    }
+
+    function updateRateLimitStatus(isPaused, seconds) {
+      const progressDiv = document.getElementById('progressMsg');
+      const aiStatusDiv = document.getElementById('aiDiscoveryStatus');
+      const msg = `⚠️ AI Rate Limit reached. Pausing crawl for ${seconds}s before resuming...`;
+      
+      if (isPaused) {
+        if (progressDiv && progressDiv.innerHTML.includes('Analyzing')) {
+          if (!progressDiv.dataset.originalText) progressDiv.dataset.originalText = progressDiv.textContent;
+          progressDiv.innerHTML = `<span class="spinner" style="border-top-color: var(--accent);"></span> <span style="color: var(--accent); font-weight: 600;">${msg}</span>`;
+        } else if (aiStatusDiv) {
+          aiStatusDiv.innerHTML = `<span style="color: var(--accent); font-weight: 600;">${msg}</span>`;
+        }
+      } else {
+        if (progressDiv && progressDiv.dataset.originalText) {
+          progressDiv.textContent = progressDiv.dataset.originalText;
+          progressDiv.dataset.originalText = '';
+        }
+      }
+    }
+
+    async function checkAndDelayIfRateLimited() {
+      if (_aiRateLimitPaused) {
+        let now = Date.now();
+        while (now < _aiRateLimitResumeTime) {
+          const waitTime = _aiRateLimitResumeTime - now;
+          updateRateLimitStatus(true, Math.ceil(waitTime / 1000));
+          await new Promise(r => setTimeout(r, Math.min(1000, waitTime)));
+          now = Date.now();
+        }
+        _aiRateLimitPaused = false;
+        updateRateLimitStatus(false);
+      }
+    }
+
+    function showSettingsMessage(msg, isError = false) {
+      const msgDiv = document.getElementById('settingsMsg');
+      if (msgDiv) {
+        msgDiv.textContent = msg;
+        msgDiv.style.color = isError ? 'var(--red)' : 'var(--accent)';
+        setTimeout(() => { msgDiv.textContent = ''; }, 3000);
+      }
+    }
+
+    function timeAgo(iso) {
+      if (!iso) return '';
+      const s = (Date.now() - new Date(iso)) / 1000;
+      if (s < 3600) return Math.floor(s / 60) + 'm';
+      if (s < 86400) return Math.floor(s / 3600) + 'h';
+      return Math.floor(s / 86400) + 'd';
+    }
+
+    function safeJsonParse(str, fallback = {}) {
+      if (!str) return fallback;
+      try {
+        let c = str.replace(/```json\s*|```\s*$/g, '').trim();
+        const m = c.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+        if (m) c = m[0];
+        c = c.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']');
+        return JSON.parse(c);
+      } catch (e) { return fallback; }
+    }
+
+    async function runConcurrent(tasks, limit, onEach) {
+      let nextIdx = 0;
+      async function worker() {
+        while (nextIdx < tasks.length) {
+          const idx = nextIdx++;
+          let result = null;
+          try { result = await tasks[idx](); } catch (e) {}
+          if (onEach) await onEach(idx, result);
+        }
+      }
+      await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, worker));
+    }
+
+    function getArticleLimit() { return parseInt(document.getElementById('articleCountSlider')?.value || '35', 10); }
+    function applySortAndSlice(raw) {
+      const limit = getArticleLimit();
+      const now = Date.now();
+      
+      // Filter by timeframe in both sorting modes
+      let pool = timeframeMs > 0 ? raw.filter(s => (now - new Date(s.publishedAt)) <= timeframeMs) : raw;
+      
+      if (sortMode === 'popular') {
+        return [...pool].sort((a,b) => {
+          const aGravity = ((a.score||0)+(a.comments||0)*2+(a.relevance||0)+1)/Math.pow((now-new Date(a.publishedAt))/3.6e6+2,1.3);
+          const bGravity = ((b.score||0)+(b.comments||0)*2+(b.relevance||0)+1)/Math.pow((now-new Date(b.publishedAt))/3.6e6+2,1.3);
+          return bGravity - aGravity;
+        }).slice(0, limit);
+      }
+      return [...pool].sort((a,b) => new Date(b.publishedAt) - new Date(a.publishedAt)).slice(0, limit);
+    }
+
+    function updateSortNote(arr) {
+      const note = document.getElementById('sortNote');
+      if (!note) return;
+      if (sortMode === 'newest') note.textContent = `${arr.length} stories · newest first`;
+      else {
+        const label = timeframeMs === 0 ? 'all time' : timeframeMs <= 86400000 ? 'last 24h' : timeframeMs <= 604800000 ? 'last 7d' : timeframeMs <= 2592000000 ? 'last 30d' : 'last year';
+        note.textContent = `${arr.length} stories · top engagement · ${label}`;
+      }
+    }
+
+    async function fetchTimeout(url, opts = {}) {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT);
+      try { return await fetch(url, { ...opts, signal: ctrl.signal }); } finally { clearTimeout(t); }
+    }
+
+    // ==================== AI CALLS ====================
+    async function callAI({ prompt, maxTokens = 600, apiKey, provider }) {
+      await checkAndDelayIfRateLimited();
+      if (provider === 'anthropic') {
+        const r = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+          body: JSON.stringify({ model: 'claude-3-haiku-20240307', max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] })
+        });
+        if (r.status === 429) {
+          _aiRateLimitPaused = true;
+          _aiRateLimitResumeTime = Date.now() + 16000;
+          throw new Error('429 Rate Limit Exceeded');
+        }
+        if (!r.ok) { const e = await r.text(); throw new Error(`Anthropic ${r.status}: ${e.slice(0,100)}`); }
+        const d = await r.json(); return d.content[0].text;
+      } else {
+        const r = await fetch('https://api.mistral.ai/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+          body: JSON.stringify({ model: 'mistral-large-latest', max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] })
+        });
+        if (r.status === 429) {
+          _aiRateLimitPaused = true;
+          _aiRateLimitResumeTime = Date.now() + 16000;
+          throw new Error('429 Rate Limit Exceeded');
+        }
+        if (!r.ok) { const e = await r.text(); throw new Error(`Mistral ${r.status}: ${e.slice(0,120)}`); }
+        const d = await r.json(); return d.choices[0].message.content;
+      }
+    }
+
+    async function callAIWithRetry({ prompt, maxTokens = 600, apiKey, provider, retries = 5, delayMs = 1000 }) {
+      let lastErr;
+      for (let i = 1; i <= retries; i++) {
+        try {
+          await checkAndDelayIfRateLimited();
+          return await callAI({ prompt, maxTokens, apiKey, provider });
+        }
+        catch (e) {
+          lastErr = e;
+          const is429 = e.message.includes('429') || e.message.includes('Rate Limit');
+          const is5xx = /\b5\d{2}\b/.test(e.message);
+          
+          if (is429) {
+            _aiRateLimitPaused = true;
+            _aiRateLimitResumeTime = Date.now() + 16000;
+            await checkAndDelayIfRateLimited();
+            continue;
+          }
+          
+          if (!is5xx || i === retries) throw e;
+          const wait = delayMs * Math.pow(2, i-1) + Math.random()*300;
+          await new Promise(r => setTimeout(r, wait));
+        }
+      }
+      throw lastErr;
+    }
+
+    // --- RSS Local Parser & Fallback Mechanics (Rate limit free) ---
+    function parseRSSXml(xmlText) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(xmlText, 'text/xml');
+      if (doc.querySelector('parsererror')) {
+        const htmlParser = new DOMParser();
+        const htmlDoc = htmlParser.parseFromString(xmlText, 'text/html');
+        return parseXmlDoc(htmlDoc);
+      }
+      return parseXmlDoc(doc);
+    }
+    
+    function parseXmlDoc(doc) {
+      const items = [];
+      const itemNodes = doc.querySelectorAll('item');
+      if (itemNodes.length > 0) {
+        itemNodes.forEach(node => {
+          const title = node.querySelector('title')?.textContent || '';
+          const link = node.querySelector('link')?.textContent || node.querySelector('link')?.getAttribute('href') || '';
+          const description = node.querySelector('description')?.textContent || node.querySelector('encoded')?.textContent || '';
+          const pubDate = node.querySelector('pubDate')?.textContent || node.querySelector('pubDate')?.innerHTML || '';
+          items.push({ title, link, description, pubDate });
+        });
+      } else {
+        const entryNodes = doc.querySelectorAll('entry');
+        entryNodes.forEach(node => {
+          const title = node.querySelector('title')?.textContent || '';
+          let link = node.querySelector('link[rel="alternate"]')?.getAttribute('href') || node.querySelector('link')?.getAttribute('href') || '';
+          const description = node.querySelector('summary')?.textContent || node.querySelector('content')?.textContent || '';
+          const pubDate = node.querySelector('updated')?.textContent || node.querySelector('published')?.textContent || '';
+          items.push({ title, link, description, pubDate });
+        });
+      }
+      return items;
+    }
+
+    function mapRss2JsonItem(item) {
+      return {
+        title: (item.title || '').replace(/<[^>]+>/g, '').trim(),
+        link: item.link || item.guid,
+        description: (item.description || '').replace(/<[^>]+>/g, '').slice(0, 250).trim(),
+        pubDate: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString()
+      };
+    }
+    
+    function mapXmlItem(item) {
+      return {
+        title: (item.title || '').replace(/<[^>]+>/g, '').trim(),
+        link: item.link || item.guid,
+        description: (item.description || '').replace(/<[^>]+>/g, '').slice(0, 250).trim(),
+        pubDate: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString()
+      };
+    }
+
+    async function fetchFeedItems(feedUrl) {
+      const key = settings.rss2jsonKey || '';
+      const customProxy = settings.proxyUrl || '';
+      
+      // 1. Custom Proxy
+      if (customProxy) {
+        try {
+          const r = await fetchTimeout(`${customProxy}?url=${encodeURIComponent(feedUrl)}&count=20`);
+          if (r.ok) {
+            const d = await r.json();
+            if (d.items?.length) return d.items.map(mapRss2JsonItem);
+          }
+        } catch (e) {
+          console.warn(`[Crawl] Custom proxy failed for ${feedUrl}:`, e);
+        }
+      }
+      
+      // 2. rss2json API (with key, and if not suspended)
+      if (key && !_rss2jsonSuspended) {
+        try {
+          const params = new URLSearchParams({ rss_url: feedUrl, count: 20, order_by: 'pubDate', order_dir: 'desc', api_key: key });
+          const r = await fetchTimeout(`${RSS2JSON_URL}?${params}`);
+          if (r.status === 429) {
+            console.warn(`[Crawl] rss2json 429 rate limit. Suspending rss2json queries for 60s.`);
+            suspendRss2Json();
+          } else if (r.ok) {
+            const d = await r.json();
+            if (d.status === 'ok' && d.items?.length) {
+              return d.items.map(mapRss2JsonItem);
+            }
+          }
+        } catch (e) {
+          console.warn(`[Crawl] rss2json fetch failed for ${feedUrl}:`, e);
+        }
+      }
+      
+      // 3. Free CORS proxy + local DOMParser XML route
+      const publicProxies = [
+        url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+        url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
+      ];
+      
+      for (const proxyFn of publicProxies) {
+        try {
+          const proxyUrl = proxyFn(feedUrl);
+          const r = await fetchTimeout(proxyUrl);
+          if (r.ok) {
+            const xmlText = await r.text();
+            const items = parseRSSXml(xmlText);
+            if (items && items.length > 0) {
+              return items.map(mapXmlItem);
+            }
+          }
+        } catch (e) {
+          console.warn(`[Crawl] Public proxy route failed for ${feedUrl}:`, e);
+        }
+      }
+      
+      return [];
+    }
+
+    async function analyzeArticle(article, apiKey, provider) {
+      const prompt = `Analyze headline: "${article.title.replace(/"/g, '\\"')}". Return ONLY JSON: {"emotion":"fear|anger|joy|sadness|surprise|neutral","sentiment":"positive|negative|neutral","intonation":"informative|alarming|hopeful","confidence":0.0,"keywords":["w1","w2"],"explanation":"short"}`;
+      try {
+        const raw = await callAIWithRetry({ prompt, maxTokens: 220, apiKey, provider, retries: 2, delayMs: 600 });
+        return safeJsonParse(raw, { emotion: 'neutral', sentiment: 'neutral', intonation: 'informative', confidence: 0.5, keywords: [], explanation: '' });
+      } catch (e) {
+        return { emotion: 'neutral', sentiment: 'neutral', intonation: 'informative', confidence: 0.5, keywords: [], explanation: '' };
+      }
+    }
+
+    // ==================== SOURCE CRAWLING ====================
+    const SOURCE_LABELS = { world:'🌍 World', us:'🇺🇸 US', tech:'💻 Tech', science:'🔬 Science', business:'📈 Business', reddit:'👾 Reddit', hackernews:'🔶 HN', climate:'🌱 Climate' };
+    const ALL_SOURCES = {
+      world: [ { name:'BBC World', url:'https://feeds.bbci.co.uk/news/world/rss.xml' }, { name:'Reuters', url:'https://feeds.reuters.com/reuters/topNews' }, { name:'Al Jazeera', url:'https://www.aljazeera.com/xml/rss/all.xml' }, { name:'Guardian World', url:'https://www.theguardian.com/world/rss' }, { name:'NPR News', url:'https://feeds.npr.org/1001/rss.xml' }, { name:'Deutsche Welle', url:'https://rss.dw.com/rdf/rss-en-all' }, { name:'AP News', url:'https://rsshub.app/apnews/topics/apf-topnews' } ],
+      us: [ { name:'CNN', url:'http://rss.cnn.com/rss/edition.rss' }, { name:'NBC News', url:'https://feeds.nbcnews.com/nbcnews/public/news' }, { name:'ABC News', url:'https://abcnews.go.com/abcnews/topstories' }, { name:'Axios', url:'https://api.axios.com/feed/' }, { name:'CBS News', url:'https://www.cbsnews.com/latest/rss/main' }, { name:'Politico', url:'https://rss.politico.com/politics-news.xml' } ],
+      tech: [ { name:'TechCrunch', url:'https://techcrunch.com/feed/' }, { name:'The Verge', url:'https://www.theverge.com/rss/index.xml' }, { name:'Wired', url:'https://www.wired.com/feed/rss' }, { name:'Ars Technica', url:'https://feeds.arstechnica.com/arstechnica/index' }, { name:'Engadget', url:'https://www.engadget.com/rss.xml' }, { name:'MIT Tech Review', url:'https://www.technologyreview.com/feed/' } ],
+      science: [ { name:'Science Daily', url:'https://www.sciencedaily.com/rss/top.xml' }, { name:'Phys.org', url:'https://phys.org/rss-feed/' }, { name:'New Scientist', url:'https://www.newscientist.com/feed/home' }, { name:'Space.com', url:'https://www.space.com/feeds/all' } ],
+      business: [ { name:'CNBC', url:'https://www.cnbc.com/id/100003114/device/rss/rss.html' }, { name:'Business Insider', url:'https://feeds.businessinsider.com/custom/all' }, { name:'Forbes', url:'https://www.forbes.com/real-time/feed2/' }, { name:'MarketWatch', url:'https://feeds.marketwatch.com/marketwatch/topstories/' } ],
+      reddit: [ { name:'r/worldnews', url:'https://www.reddit.com/r/worldnews/hot.json?limit=10' }, { name:'r/news', url:'https://www.reddit.com/r/news/hot.json?limit=8' }, { name:'r/technology', url:'https://www.reddit.com/r/technology/hot.json?limit=8' }, { name:'r/science', url:'https://www.reddit.com/r/science/hot.json?limit=8' }, { name:'r/business', url:'https://www.reddit.com/r/business/hot.json?limit=6' } ],
+      hackernews: 'hn',
+      climate: [ { name:'Guardian Env', url:'https://www.theguardian.com/environment/rss' }, { name:'Inside Climate', url:'https://insideclimatenews.org/feed/' }, { name:'Carbon Brief', url:'https://www.carbonbrief.org/feed' } ],
+    };
+
+    async function fetchReddit() {
+      const results = await Promise.allSettled(ALL_SOURCES.reddit.flatMap(src => ['new','hot'].map(async listing => {
+        try {
+          const listingUrl = src.url.replace(/\/(hot|new|top|rising)(\.json)?/, `/${listing}.json`);
+          const r = await fetchTimeout(listingUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+          const d = await r.json();
+          return (d.data?.children || []).slice(0,8).filter(c => !c.data.stickied && c.data.score > 10).map(c => ({ source: src.name, platform: 'reddit', title: c.data.title, url: c.data.url, score: c.data.score, comments: c.data.num_comments, description: (c.data.selftext||'').slice(0,200), publishedAt: new Date(c.data.created_utc*1000).toISOString() }));
+        } catch(e) { return []; }
+      })));
+      const all = results.flatMap(r => r.status === 'fulfilled' ? r.value : []);
+      const map = new Map(); all.forEach(s => map.set(s.url, s)); return Array.from(map.values());
+    }
+
+    async function fetchHN() {
+      try {
+        const [topIds, newIds] = await Promise.all([fetch('https://hacker-news.firebaseio.com/v0/topstories.json').then(r=>r.json()), fetch('https://hacker-news.firebaseio.com/v0/newstories.json').then(r=>r.json())]);
+        const ids = [...new Set([...topIds.slice(0,20), ...newIds.slice(0,20)])];
+        const items = await Promise.all(ids.map(async id => {
+          try {
+            const it = await (await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`)).json();
+            if (!it?.title) return null;
+            return { source: 'Hacker News', platform: 'hackernews', title: it.title, url: it.url || `https://news.ycombinator.com/item?id=${it.id}`, score: it.score||0, comments: it.descendants||0, publishedAt: new Date(it.time*1000).toISOString() };
+          } catch(e) { return null; }
+        }));
+        return items.filter(Boolean);
+      } catch(e) { return []; }
+    }
+
+    async function fetchRSSGroup(group) {
+      const results = await Promise.allSettled(group.map(async src => {
+        const key = settings.rss2jsonKey || '', proxy = settings.proxyUrl || '';
+        try {
+          let items = null;
+          if (proxy) {
+            try {
+              const r = await fetchTimeout(`${proxy}?url=${encodeURIComponent(src.url)}&count=20`);
+              if (r.ok) { const d = await r.json(); if (d.items?.length) items = d.items; }
+            } catch(e) {}
+          }
+          if (!items) {
+            const params = new URLSearchParams({ rss_url: src.url, count: 20, order_by: 'pubDate', order_dir: 'desc' });
+            if (key) params.set('api_key', key);
+            const r = await fetchTimeout(`${RSS2JSON_URL}?${params}`);
+            if (r.ok) { const d = await r.json(); if (d.status === 'ok') items = d.items; }
+          }
+          if (!items) return [];
+          items.sort((a,b) => new Date(b.pubDate||0) - new Date(a.pubDate||0));
+          return items.map(item => ({ source: src.name, platform: 'rss', title: (item.title||'').replace(/<[^>]+>/g,''), url: item.link, description: (item.description||'').replace(/<[^>]+>/g,'').slice(0,200), publishedAt: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(), score: 0, comments: 0 }));
+        } catch(e) { return []; }
+      }));
+      return results.flatMap(r => r.status === 'fulfilled' ? r.value : []);
+    }
+
+    async function crawlAllSources(selected) {
+      const categoryResults = await Promise.allSettled(selected.map(async src => {
+        if (src === 'reddit') return await fetchReddit();
+        if (src === 'hackernews') return await fetchHN();
+        if (Array.isArray(ALL_SOURCES[src])) return await fetchRSSGroup(ALL_SOURCES[src]);
+        return [];
+      }));
+      const all = categoryResults.flatMap(r => r.status === 'fulfilled' ? r.value : []);
+      const map = new Map(); all.forEach(s => map.set(s.url, s)); return Array.from(map.values());
+    }
+
+    // ==================== UI RENDERING ====================
+    const emojiMap = { fear:'😨', anger:'😠', sadness:'😢', joy:'😄', surprise:'😲', neutral:'😐' };
+
+    function buildStoryCardHTML(s, hasBriefs) {
+      const emoji = emojiMap[s.emotion] || '😐';
+      const sentCls = s.sentiment === 'positive' ? 'badge-pos' : s.sentiment === 'negative' ? 'badge-neg' : 'badge-neutral';
+      return `<div class="story-card" data-url="${esc(s.url)}"><div class="card-top"><div class="emotion-dot">${emoji}</div><div class="card-body"><div class="card-meta"><span class="badge">${esc(s.source)}</span><span class="badge ${sentCls}">${esc(s.sentiment)||'neutral'}</span><span class="ts">${timeAgo(s.publishedAt)}</span></div><div class="card-title"><a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a></div>${s.explanation ? `<div class="card-explain">${esc(s.explanation)}</div>` : ''}<div class="card-kw">${(s.keywords||[]).slice(0,3).map(k=>`<span class="kw">${esc(k)}</span>`).join('')}</div><div class="conf-row"><span style="font-size:10px;color:var(--text-hint)">${Math.round((s.confidence||0.5)*100)}%</span><div class="conf-track"><div class="conf-fill" style="width:${Math.round((s.confidence||0.5)*100)}%"></div></div></div></div></div><div class="card-actions"><button class="act-btn brief-btn ${hasBriefs ? '' : 'locked-btn'}" data-url="${esc(s.url)}">📝 Brief${hasBriefs ? '' : ' 🔒'}</button><button class="act-btn open-btn" data-url="${esc(s.url)}">↗ Open</button></div></div>`;
+    }
+
+    function bindCardButtons(container) {
+      container.querySelectorAll('.brief-btn').forEach(btn => btn.addEventListener('click', async () => {
+        if (!await canUseBriefs()) { renderUpsellBanner('briefsContent', 'briefs'); document.querySelector('.db-tab[data-tab="briefs"]').click(); return; }
+        const story = stories.find(s => s.url === btn.dataset.url);
+        if (story) generateBrief(story);
+      }));
+      container.querySelectorAll('.open-btn').forEach(btn => btn.addEventListener('click', () => window.open(btn.dataset.url, '_blank', 'noopener')));
+    }
+
+    async function renderStories() {
+      const container = document.getElementById('storyList');
+      if (!container) return;
+      const hasBriefs = await canUseBriefs();
+      const sorted = applySortAndSlice(stories);
+      updateSortNote(sorted);
+      
+      let filtered = sorted;
+      if (activeFilter) {
+        filtered = filtered.filter(s => s.emotion === activeFilter);
+      }
+      if (activeKeywordFilter) {
+        const kwLower = activeKeywordFilter.toLowerCase();
+        filtered = filtered.filter(s => {
+          const title = (s.title || '').toLowerCase();
+          const desc = (s.description || '').toLowerCase();
+          const keywords = (s.keywords || []).map(k => k.toLowerCase());
+          return keywords.includes(kwLower) || title.includes(kwLower) || desc.includes(kwLower);
+        });
+      }
+      
+      if (!filtered.length) { container.innerHTML = '<div class="empty"><div class="empty-icon">📭</div>No stories match this filter.</div>'; return; }
+      container.innerHTML = filtered.map(s => buildStoryCardHTML(s, hasBriefs)).join('');
+      bindCardButtons(container);
+    }
+
+    async function appendStoryCard(story) {
+      const container = document.getElementById('storyList');
+      if (!container) return;
+      const hasBriefs = await canUseBriefs();
+      if (container.querySelector('.empty')) container.innerHTML = '';
+      const sorted = applySortAndSlice(stories);
+      
+      let filtered = sorted;
+      if (activeFilter) {
+        filtered = filtered.filter(s => s.emotion === activeFilter);
+      }
+      if (activeKeywordFilter) {
+        const kwLower = activeKeywordFilter.toLowerCase();
+        filtered = filtered.filter(s => {
+          const title = (s.title || '').toLowerCase();
+          const desc = (s.description || '').toLowerCase();
+          const keywords = (s.keywords || []).map(k => k.toLowerCase());
+          return keywords.includes(kwLower) || title.includes(kwLower) || desc.includes(kwLower);
+        });
+      }
+      
+      if (!filtered.find(s => s.url === story.url)) return;
+      const div = document.createElement('div');
+      div.innerHTML = buildStoryCardHTML(story, hasBriefs);
+      const card = div.firstElementChild;
+      container.appendChild(card);
+      bindCardButtons(card);
+    }
+
+    function renderStats() {
+      const strip = document.getElementById('statsStrip');
+      if (!strip || !stories.length) { if(strip) strip.style.display='none'; return; }
+      strip.style.display='grid';
+      const sorted = applySortAndSlice(stories);
+      const counts = { positive:0, negative:0, neutral:0 };
+      const emotions = {};
+      sorted.forEach(s => { counts[s.sentiment] = (counts[s.sentiment]||0)+1; emotions[s.emotion] = (emotions[s.emotion]||0)+1; });
+      const topE = Object.entries(emotions).sort((a,b)=>b[1]-a[1])[0];
+      strip.innerHTML = `<div class="stat-box"><div class="stat-value" style="color:var(--green)">${counts.positive}</div><div class="stat-label">Positive</div></div><div class="stat-box"><div class="stat-value" style="color:var(--red)">${counts.negative}</div><div class="stat-label">Negative</div></div><div class="stat-box"><div class="stat-value" style="color:var(--text-hint)">${counts.neutral}</div><div class="stat-label">Neutral</div></div><div class="stat-box"><div class="stat-value">${topE ? emojiMap[topE[0]]||'😐' : '—'}</div><div class="stat-label">Top emotion</div></div>`;
+    }
+
+    function renderFilterRow() {
+      const row = document.getElementById('filterRow');
+      if (!row || !stories.length) { if(row) row.style.display='none'; return; }
+      const sorted = applySortAndSlice(stories);
+      const emotions = [...new Set(sorted.map(s=>s.emotion))];
+      row.style.display='flex';
+      row.innerHTML = `<button class="filter-chip${!activeFilter ? ' active' : ''}" data-filter="">All Emotions</button>` + emotions.map(e=>`<button class="filter-chip${activeFilter===e ? ' active' : ''}" data-filter="${esc(e)}">${emojiMap[e]||''} ${esc(e)}</button>`).join('');
+      row.querySelectorAll('.filter-chip').forEach(chip => chip.addEventListener('click', () => {
+        activeFilter = chip.dataset.filter || null;
+        row.querySelectorAll('.filter-chip').forEach(c=>c.classList.toggle('active',c===chip));
+        renderStories();
+      }));
+    }
+
+    function renderKeywordFilterRow() {
+      const row = document.getElementById('keywordFilterRow');
+      if (!row) return;
+      if (!stories.length) { row.style.display = 'none'; return; }
+      
+      row.style.display = 'flex';
+      
+      const kwMap = {};
+      stories.forEach(s => {
+        (s.keywords || []).forEach(k => {
+          const kl = k.toLowerCase().trim();
+          if (kl && kl.length > 2) {
+            kwMap[kl] = (kwMap[kl] || 0) + 1;
+          }
+        });
+      });
+      
+      const topKw = Object.entries(kwMap)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([kw]) => kw);
+        
+      if (!topKw.length) {
+        row.style.display = 'none';
+        return;
+      }
+      
+      let html = `<span style="font-size:11px;color:var(--text-hint);align-self:center;margin-right:6px">Keywords:</span>`;
+      html += `<button class="filter-chip${!activeKeywordFilter ? ' active' : ''}" data-kw="">All</button>`;
+      topKw.forEach(kw => {
+        html += `<button class="filter-chip${activeKeywordFilter === kw ? ' active' : ''}" data-kw="${esc(kw)}">🏷️ ${esc(kw)}</button>`;
+      });
+      
+      row.innerHTML = html;
+      
+      row.querySelectorAll('.filter-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          activeKeywordFilter = chip.dataset.kw || null;
+          row.querySelectorAll('.filter-chip').forEach(c => c.classList.toggle('active', c === chip));
+          renderStories();
+        });
+      });
+    }
+
+    // ==================== BRIEF & DRAFT GENERATION ====================
+    async function generateBrief(story) {
+      if (!await canUseBriefs()) { renderUpsellBanner('briefsContent', 'briefs'); document.querySelector('.db-tab[data-tab="briefs"]').click(); return; }
+      const apiKey   = settings.aiProvider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
+      const briefsDiv = document.getElementById('briefsContent');
+      if (briefsDiv) briefsDiv.innerHTML = '<div class="empty"><span class="spinner"></span> Creating brief…</div>';
+      document.querySelector('.db-tab[data-tab="briefs"]').click();
+      const prompt = `Story: "${story.title.replace(/"/g, '\\"')}". Return ONLY JSON: {"headline":"","primaryKeyword":"","secondaryKeywords":[],"angle":"","outline":["s1","s2","s3","s4"],"audience":"","wordCount":1200,"keyPoints":[],"callToAction":""}`;
+      try {
+        const raw   = await callAIWithRetry({ prompt, maxTokens: 700, apiKey, provider: settings.aiProvider, retries: 2, delayMs: 800 });
+        const brief = safeJsonParse(raw, {});
+        currentBrief = Object.keys(brief).length > 2 ? brief : { headline: story.title.slice(0, 120), angle: `Analysis of "${story.title}"`, primaryKeyword: story.keywords?.[0] || 'news', secondaryKeywords: story.keywords?.slice(1, 4) || [], outline: ['Introduction', 'Main developments', 'Expert opinions', 'Conclusion'], audience: 'News readers', wordCount: 1000, keyPoints: [], callToAction: 'Read more' };
+        renderBrief(currentBrief);
+      } catch (e) { if (briefsDiv) briefsDiv.innerHTML = `<div class="error-msg">Brief error: ${esc(e.message)}</div>`; }
+    }
+
+    async function generateBriefFromTopic(topic) {
+      const apiKey   = settings.aiProvider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
+      const briefsDiv = document.getElementById('briefsContent');
+      if (!apiKey) { if (briefsDiv) briefsDiv.innerHTML = '<div class="error-msg">⚠️ Add your API key in Settings first.</div>'; document.querySelector('.db-tab[data-tab="settings"]').click(); return; }
+      if (briefsDiv) briefsDiv.innerHTML = `<div class="empty"><span class="spinner"></span> Generating brief for "${esc(topic)}"…</div>`;
+      document.querySelector('.db-tab[data-tab="briefs"]').click();
+      const escaped = topic.replace(/"/g, '\\"');
+      const prompt  = `Content brief for topic "${escaped}". Return ONLY JSON: {"headline":"","primaryKeyword":"${escaped}","secondaryKeywords":[],"angle":"","outline":["s1","s2","s3","s4"],"audience":"professionals","wordCount":1000,"keyPoints":[],"callToAction":""}`;
+      try {
+        const raw   = await callAIWithRetry({ prompt, maxTokens: 600, apiKey, provider: settings.aiProvider, retries: 2, delayMs: 800 });
+        const brief = safeJsonParse(raw, {});
+        if (!brief.headline || !brief.angle) throw new Error('Incomplete response');
+        currentBrief = brief; renderBrief(brief);
+      } catch (e) {
+        const fallback = { headline: `${topic} – Analysis`, angle: `Deep dive into ${topic}.`, primaryKeyword: topic, secondaryKeywords: [], outline: ['Introduction', 'Key facts', 'Developments', 'Conclusion'], audience: 'General readers', wordCount: 1000, keyPoints: [], callToAction: 'Learn more' };
+        currentBrief = fallback; renderBrief(fallback);
+      }
+    }
+
+    async function generateBriefFromTopicWithTone(topic, tone) {
+      const apiKey   = settings.aiProvider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
+      const briefsDiv = document.getElementById('briefsContent');
+      if (!apiKey) { if (briefsDiv) briefsDiv.innerHTML = '<div class="error-msg">⚠️ Add your API key in Settings first.</div>'; document.querySelector('.db-tab[data-tab="settings"]').click(); return; }
+      if (briefsDiv) briefsDiv.innerHTML = `<div class="empty"><span class="spinner"></span> Generating brief for "${esc(topic)}"…</div>`;
+      document.querySelector('.db-tab[data-tab="briefs"]').click();
+      const ctxStories = stories.filter(s => `${s.title} ${s.description}`.toLowerCase().includes(topic.toLowerCase())).slice(0, 4);
+      const context    = ctxStories.length ? '\nRelated:\n' + ctxStories.map(s => `- ${s.title} (${s.source})`).join('\n') : '';
+      const toneNote   = tone ? ` ${tone} tone.` : '';
+      const escaped    = topic.replace(/"/g, '\\"');
+      const prompt     = `You are an expert content strategist. Create a detailed article brief for: "${escaped}".${toneNote}${context}\nReturn ONLY valid JSON:\n{"headline":"","primaryKeyword":"${escaped}","secondaryKeywords":[],"angle":"","outline":["s1","s2","s3","s4","s5"],"audience":"","wordCount":1200,"keyPoints":[],"callToAction":"","tone":"${tone || 'neutral'}"}`;
+      try {
+        const raw   = await callAIWithRetry({ prompt, maxTokens: 700, apiKey, provider: settings.aiProvider, retries: 2, delayMs: 800 });
+        const brief = safeJsonParse(raw, {});
+        if (!brief.headline || !brief.angle) throw new Error('Incomplete response');
+        currentBrief = brief; renderBrief(brief);
+      } catch (e) {
+        const fallback = { headline: `${topic} – ${tone ? tone.toUpperCase() + ' ' : ''}Analysis`, angle: `A ${tone || 'balanced'} look at ${topic}.`, primaryKeyword: topic, secondaryKeywords: [], outline: ['Introduction', 'Background', 'Developments', 'Implications', 'Conclusion'], audience: 'General readers', wordCount: 1100, keyPoints: [], callToAction: 'Share your thoughts' };
+        currentBrief = fallback; renderBrief(fallback);
+      }
+    }
+
+    async function renderBrief(brief) {
+      const briefsDiv = document.getElementById('briefsContent');
+      if (!briefsDiv) return;
+      const hasDrafts = await canUseDrafts();
+      briefsDiv.innerHTML = `<div class="brief-card"><div class="brief-headline">${esc(brief.headline)}</div><div class="brief-angle">🎯 ${esc(brief.angle)}</div><div style="font-size:12px;margin-bottom:8px"><strong>Primary keyword:</strong> ${esc(brief.primaryKeyword)}</div><div style="font-size:12px;margin-bottom:6px"><strong>Outline:</strong></div><ol class="brief-outline">${(brief.outline || []).map(o => `<li>${esc(o)}</li>`).join('')}</ol><div class="card-actions"><button id="genDraftBtn" class="act-btn ${hasDrafts ? '' : 'locked-btn'}">✍️ Generate Draft${hasDrafts ? '' : ' 🔒'}</button><button id="copyBriefBtn" class="act-btn">⎘ Copy</button></div></div>`;
+      document.getElementById('genDraftBtn')?.addEventListener('click', async () => { if (!await canUseDrafts()) { renderUpsellBanner('draftContent', 'drafts'); document.querySelector('.db-tab[data-tab="draft"]').click(); return; } generateDraft(brief); });
+      document.getElementById('copyBriefBtn')?.addEventListener('click', () => navigator.clipboard?.writeText(JSON.stringify(brief, null, 2)));
+    }
+
+    async function generateDraft(brief) {
+      if (!await canUseDrafts()) { renderUpsellBanner('draftContent', 'drafts'); document.querySelector('.db-tab[data-tab="draft"]').click(); return; }
+      const apiKey   = settings.aiProvider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
+      if (!apiKey) { document.getElementById('draftContent').innerHTML = '<div class="error-msg">Add an API key in Settings first.</div>'; return; }
+      const draftDiv = document.getElementById('draftContent');
+      if (draftDiv) draftDiv.innerHTML = '<div class="empty"><span class="spinner"></span> Writing draft (30–60s)…</div>';
+      document.querySelector('.db-tab[data-tab="draft"]').click();
+      const prompt = `Write a ${brief.wordCount || 1000}-word AP-style article.\nHeadline: ${brief.headline}.\nKeyword: ${brief.primaryKeyword}.\nOutline: ${(brief.outline || []).join(', ')}.\nAngle: ${brief.angle}.\nAudience: ${brief.audience || 'general readers'}.\nUse engaging lede, short paragraphs, subheadings. No fabricated quotes.`;
+      try {
+        const draft = await callAIWithRetry({ prompt, maxTokens: 2500, apiKey, provider: settings.aiProvider, retries: 2, delayMs: 1200 });
+        const fname = `${(brief.primaryKeyword || 'draft').replace(/\s+/g, '-')}.md`;
+        if (draftDiv) { draftDiv.innerHTML = `<div class="draft-output">${esc(draft)}</div>${makeDraftActions(draft, fname)}`; bindDraftActions(draft, fname); }
+      } catch (e) { if (draftDiv) draftDiv.innerHTML = `<div class="error-msg">Draft error: ${esc(e.message)}</div>`; }
+    }
+
+    async function generateDraftFromPrompt(userPrompt, wordCount, style) {
+      const apiKey   = settings.aiProvider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
+      if (!apiKey) { document.getElementById('draftContent').innerHTML = '<div class="error-msg">Add an API key in Settings first.</div>'; return; }
+      const draftDiv = document.getElementById('draftContent');
+      if (draftDiv) draftDiv.innerHTML = '<div class="empty"><span class="spinner"></span> Writing draft (30–60s)…</div>';
+      document.querySelector('.db-tab[data-tab="draft"]').click();
+      const prompt = `Write a ${wordCount}-word article in ${style}.\nUser brief: ${userPrompt}\nRequirements:\n- Follow the brief exactly\n- Engaging lede/opening\n- Short paragraphs\n- Clear subheadings\n- Do NOT fabricate quotes or statistics\n- End with a strong conclusion`;
+      try {
+        const draft = await callAIWithRetry({ prompt, maxTokens: 2500, apiKey, provider: settings.aiProvider, retries: 2, delayMs: 1200 });
+        if (draftDiv) { draftDiv.innerHTML = `<div class="draft-output">${esc(draft)}</div>${makeDraftActions(draft, 'draft-' + Date.now() + '.md')}`; bindDraftActions(draft, 'draft-' + Date.now() + '.md'); }
+      } catch (e) { if (draftDiv) draftDiv.innerHTML = `<div class="error-msg">Draft error: ${esc(e.message)}</div>`; }
+    }
+
+    function makeDraftActions(text, filename) {
+      return `<div class="draft-actions"><button id="copyDraftBtn" class="act-btn">📋 Copy Draft</button><div class="tone-selector">🎭 Tone<select id="humanizerToneSelect"><option value="casual">Casual</option><option value="professional">Professional</option><option value="witty">Witty</option><option value="empathetic">Empathetic</option><option value="simple">Simple &amp; Clear</option></select></div><button id="humanizeDraftBtn" class="act-btn">✨ Humanize</button><button id="exportMdBtn" class="act-btn">⬇ Export MD</button></div>`;
+    }
+
+    function bindDraftActions(text, filename) {
+      document.getElementById('copyDraftBtn')?.addEventListener('click', () => navigator.clipboard?.writeText(text));
+      document.getElementById('exportMdBtn')?.addEventListener('click', () => { const blob = new Blob([text], { type: 'text/markdown' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename || `draft-${Date.now()}.md`; a.click(); });
+      document.getElementById('humanizeDraftBtn')?.addEventListener('click', () => {
+        const tone = document.getElementById('humanizerToneSelect')?.value || 'casual';
+        humanizeDraft(text, tone);
+      });
+    }
+
+    function stripMarkdown(text) {
+      if (!text) return '';
+      let r = text;
+      r = r.replace(/```[\s\S]*?```/g, '');
+      r = r.replace(/`([^`]+)`/g, '$1');
+      r = r.replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1');
+      r = r.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+      r = r.replace(/(\*\*|__)(.*?)\1/g, '$2');
+      r = r.replace(/(\*|_)(.*?)\1/g, '$2');
+      r = r.replace(/^[-\*_]{3,}\s*$/gm, '');
+      r = r.replace(/^#{1,6}\s+/gm, '');
+      r = r.replace(/^\s*[-*+]\s+/gm, '');
+      r = r.replace(/^\s*\d+\.\s+/gm, '');
+      r = r.replace(/\n{3,}/g, '\n\n');
+      return r.trim();
+    }
+
+    // ==================== ADVANCED HUMANIZER ====================
+    const HUMANIZER_BANNED   = ['delve','leverage','revolutionize','groundbreaking','unprecedented','game-changer','transformative','cutting-edge','holistic','synergy','paradigm','disruptive','innovative','robust','seamless','unlock','empower','streamline','optimize','utilize','harness','realm','moreover','furthermore','notably','consequently','accordingly','in conclusion','to summarize','it is important to note','needless to say',"in today's fast-paced world",'in the digital age','moving forward','going forward','dive deep'];
+    const HUMANIZER_PERSONAS = { journalist: { voice: 'seasoned investigative journalist with 15+ years experience', traits: ['Lead with the most surprising fact','Use inverted pyramid','Name real people specifically','Insert short punchy paragraphs','Challenge assumptions','Use em-dashes for asides','Occasionally address the reader'] }, blogger: { voice: 'enthusiastic personal blogger with deep knowledge', traits: ['Start with a personal anecdote','Use "I" occasionally','Ask rhetorical questions','Use casual connectors','Break into short paragraphs','Use parenthetical asides','Use "you" frequently'] }, expert: { voice: 'authoritative subject-matter expert', traits: ['Use precise terminology','Reference historical context','Acknowledge nuance','Use hedging language',"Be willing to say what others get wrong",'Short declarative sentences after complex ones'] }, storyteller: { voice: 'narrative journalist who makes dry topics compelling', traits: ['Open with a scene','Use sensory language','Build tension through sequencing','Vary sentence length dramatically','End paragraphs with a turn'] }, analyst: { voice: 'sharp business/policy analyst', traits: ['Lead with the key takeaway','Use numbered breakdowns','Contrast expectation vs reality','Reference real-world implications','Keep sentences tight','Be direct about uncertainty'] } };
+    const BYPASS_INSTRS      = { light: 'Make moderate changes: replace AI buzzwords, add contractions, vary sentence length. Target: ~30% reduction.', medium: 'Significantly rewrite while keeping all facts. Restructure 40%+ of sentences, add 3-5 natural human quirks. Target: ~65% reduction.', aggressive: 'Deeply transform — keep ONLY facts, data, named entities. Rewrite every sentence. Target: ~85% reduction.' };
+    const SEO_INSTRS         = { none: '', basic: '\n\nSEO (Basic): Use focus keyword naturally in first paragraph and 2+ other places. Active voice.', full: '\n\nSEO (Full): Keyword in first 100 words, a heading, and final paragraph. Include 3-5 LSI terms.' };
+
+    async function runAdvancedHumanizer({ text, persona, tone, bypassLevel, seoMode, focusKeyword, targetDiv, onComplete }) {
+      const apiKey = settings.aiProvider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
+      if (!apiKey) { if (targetDiv) targetDiv.innerHTML = '<div class="error-msg">⚠️ Add your API key in Settings first.</div>'; return null; }
+      const personaData = HUMANIZER_PERSONAS[persona] || HUMANIZER_PERSONAS.journalist;
+      const bypassInstr = BYPASS_INSTRS[bypassLevel] || BYPASS_INSTRS.medium;
+      const seoInstr    = SEO_INSTRS[seoMode] || '';
+      const bannedList  = HUMANIZER_BANNED.join('", "');
+      const keywordLine = focusKeyword ? `\nFOCUS KEYWORD: "${focusKeyword}"` : '';
+      const toneGuide   = { casual: 'warm, conversational — contractions, short paragraphs', professional: 'polished, authoritative, active voice', witty: 'sharp, clever, light humour', empathetic: 'warm, use "we" and "you", compassionate', simple: 'plain English, max 15-word sentences' };
+      const passes      = bypassLevel === 'light' ? 1 : bypassLevel === 'medium' ? 2 : 3;
+      const setProgress = (msg, pct) => { const p = document.getElementById('hzProgressMsg'); const f = document.getElementById('hzProgFill'); if (p) p.innerHTML = msg; if (f) f.style.width = pct + '%'; };
+      const addBadge    = (label, color) => { const badges = document.getElementById('hzPassBadges'); if (!badges) return; const b = document.createElement('span'); b.style.cssText = `font-size:10px;padding:2px 9px;border-radius:20px;background:${color}22;color:${color};border:1px solid ${color}44`; b.textContent = label; badges.appendChild(b); };
+      const passBadges  = document.getElementById('hzPassBadges');
+      if (passBadges) passBadges.innerHTML = '';
+      let current = text;
+      try {
+        setProgress('<span class="spinner"></span> Pass 1/' + passes + ': Restructuring & voice…', 10); addBadge('Pass 1: Structure', '#f5b042');
+        const p1 = `You are a ${personaData.voice}. Rewrite with a completely new structure and voice.\nPERSONA TRAITS:\n${personaData.traits.map((t, i) => `${i + 1}. ${t}`).join('\n')}\nTONE: ${toneGuide[tone] || toneGuide.casual}\nBYPASS LEVEL: ${bypassInstr}${keywordLine}\nABSOLUTE RULES:\n1. NEVER use: "${bannedList}"\n2. Keep ALL facts accurate\n3. Vary sentence length dramatically\n4. Return ONLY the rewritten article.\n\nARTICLE:\n${current}`;
+        current = await callAIWithRetry({ prompt: p1, maxTokens: 3200, apiKey, provider: settings.aiProvider, retries: 2, delayMs: 1200 });
+        setProgress('<span class="spinner"></span> Pass 1 complete.', 30);
+        if (passes >= 2) {
+          await new Promise(r => setTimeout(r, 500)); setProgress('<span class="spinner"></span> Pass 2/' + passes + ': Maximising burstiness…', 35); addBadge('Pass 2: Burstiness', '#8BC97F');
+          const p2 = `Expert editor specialising in making AI-written text undetectable.\nEDITING TASKS:\n1. Restructure at least 3 of the 5 longest sentences\n2. Replace predictable word choices\n3. Remove: "moreover","furthermore","however","therefore","thus","additionally"\n4. Add 2-3 natural imperfections: comma splice, sentence starting with "And"/"But"\n5. No two consecutive sentences similar length${seoInstr}\nReturn ONLY the edited article.\n\nARTICLE:\n${current}`;
+          current = await callAIWithRetry({ prompt: p2, maxTokens: 3200, apiKey, provider: settings.aiProvider, retries: 2, delayMs: 1200 });
+          setProgress('<span class="spinner"></span> Pass 2 complete.', 65);
+        }
+        if (passes >= 3) {
+          await new Promise(r => setTimeout(r, 500)); setProgress('<span class="spinner"></span> Pass 3/' + passes + ': Scrubbing AI fingerprints…', 70); addBadge('Pass 3: Fingerprint Scrub', '#9B7EDE');
+          const p3 = `Final AI fingerprint scrub.\nFINAL CHECKS:\n1. Any word used 3+ times? Vary with synonyms.\n2. 3+ consecutive sentences starting the same way? Fix.\n3. No two consecutive paragraphs the same length.\n4. Add if missing: mild surprise, mild opinion, short standalone sentence, rhetorical question.${focusKeyword ? `\n5. Confirm keyword "${focusKeyword}" appears in first 150 words.` : ''}\nReturn ONLY the final article.\n\nARTICLE:\n${current}`;
+          current = await callAIWithRetry({ prompt: p3, maxTokens: 3200, apiKey, provider: settings.aiProvider, retries: 2, delayMs: 1200 });
+          setProgress('✅ All passes complete.', 100); addBadge('✓ Done', '#f5b042');
+        } else { setProgress('✅ Humanization complete.', 100); }
+        setTimeout(() => { const p = document.getElementById('hzProgressMsg'); const f = document.getElementById('hzProgFill'); if (p) p.textContent = ''; if (f) f.style.width = '0%'; }, 3000);
+        if (onComplete) onComplete(current);
+        return current;
+      } catch (e) {
+        setProgress('', 0);
+        if (targetDiv) targetDiv.innerHTML = `<div class="error-msg">Humanizer error (${esc(e.message)}). Check your API key.</div>`;
+        return null;
+      }
+    }
+
+    async function humanizeDraft(text, tone = 'casual') {
+      const draftDiv = document.getElementById('draftContent');
+      if (draftDiv) draftDiv.innerHTML = '<div class="empty"><span class="spinner"></span> Humanizing draft…</div>';
+      const result = await runAdvancedHumanizer({ text, persona: 'journalist', tone, bypassLevel: 'medium', seoMode: 'basic', focusKeyword: '', targetDiv: draftDiv, onComplete: null });
+      if (!result) return;
+      if (draftDiv) {
+        const fname = `humanized-${Date.now()}.md`;
+        draftDiv.innerHTML = `<div class="draft-output">${esc(result)}</div>${makeDraftActions(result, fname)}`;
+        bindDraftActions(result, fname);
+      }
+    }
+
+    // ==================== SETTINGS & AUTH HELPERS ====================
+    async function getProfile() { return await window.loadProfile(); }
+    async function canUseBriefs() { const p = await getProfile(); return p?.canUseBriefs ?? false; }
+    async function canUseDrafts() { const p = await getProfile(); return p?.canUseDrafts ?? false; }
+
+    function renderUpsellBanner(containerId, feature) {
+      const el = document.getElementById(containerId);
+      if (!el) return;
+      el.innerHTML = `<div style="background:#2A1E0A;border:1px solid rgba(245,176,66,0.25);border-radius:12px;padding:28px;text-align:center;margin-top:8px"><div style="font-size:1.3rem;margin-bottom:8px">🔒 ${feature === 'briefs' ? 'Briefs & Drafts' : 'Crawl limit reached'}</div><div style="font-size:12px;color:var(--text-sec);margin-bottom:18px">Upgrade to Pro for unlimited crawls, AI briefs, drafts, and all sources.</div><a href="pricing.html"><button class="run-btn" style="margin:0 auto">⚡ Upgrade to Pro</button></a></div>`;
+    }
+
+    async function renderSourceChips() {
+      const profile = await getProfile();
+      const row = document.getElementById('sourceChipsRow');
+      if (!row) return;
+      const allowedSrcs = profile?.allSources ? Object.keys(SOURCE_LABELS) : ['world','tech','hackernews'];
+      row.innerHTML = Object.keys(SOURCE_LABELS).map(src => {
+        const allowed = allowedSrcs.includes(src);
+        const isDefault = src === 'world';
+        return `<button class="source-chip${allowed ? (isDefault ? ' active' : '') : ' locked'}" data-src="${src}" ${!allowed ? 'disabled title="Upgrade to Pro"' : ''}>${SOURCE_LABELS[src]}${!allowed ? ' 🔒' : ''}</button>`;
+      }).join('');
+      row.querySelectorAll('.source-chip:not(.locked)').forEach(c => c.addEventListener('click', () => c.classList.toggle('active')));
+      row.querySelectorAll('.source-chip.locked').forEach(c => c.addEventListener('click', () => window.location.href = 'pricing.html'));
+    }
+
+    async function loadSettingsUI() {
+      const remote = await window.loadSettings();
+      settings.aiProvider = remote.aiProvider || 'mistral';
+      settings.proxyUrl = remote.proxyUrl || '';
+      settings.aiKeywords = remote.aiKeywordsEnabled !== false;
+      const el = id => document.getElementById(id);
+      if (el('proxyUrl')) el('proxyUrl').value = settings.proxyUrl || '';
+      const et = el('aiEnrichToggle');
+      if (et) et.classList.toggle('on', settings.aiKeywords);
+      if (settings.aiProvider === 'mistral') {
+        el('providerMistral')?.classList.add('active');
+        el('providerAnthropic')?.classList.remove('active');
+        if (el('groupMistralKey')) el('groupMistralKey').style.display = 'block';
+        if (el('groupAnthropicKey')) el('groupAnthropicKey').style.display = 'none';
+      } else {
+        el('providerAnthropic')?.classList.add('active');
+        el('providerMistral')?.classList.remove('active');
+        if (el('groupAnthropicKey')) el('groupAnthropicKey').style.display = 'block';
+        if (el('groupMistralKey')) el('groupMistralKey').style.display = 'none';
+      }
+
+      // Load decrypted API keys from Supabase (server-side decryption)
+      const keyLoads = [];
+      if (remote.anthropicKeySet) {
+        keyLoads.push(window.getApiKey('anthropic').then(k => { if (k) settings.anthropicKey = k; }));
+      }
+      if (remote.mistralKeySet) {
+        keyLoads.push(window.getApiKey('mistral').then(k => { if (k) settings.mistralKey = k; }));
+      }
+      if (remote.rss2jsonKeySet) {
+        keyLoads.push(window.getApiKey('rss2json').then(k => { if (k) settings.rss2jsonKey = k; }));
+      }
+      await Promise.allSettled(keyLoads);
+
+      if (remote.anthropicKeySet && el('anthropicKeyStatus')) {
+        el('anthropicKeyStatus').style.display = 'flex';
+        el('anthropicKeyStatusIcon').innerHTML = '✓';
+        el('anthropicKeyStatusText').textContent = 'Key saved';
+      }
+      if (remote.mistralKeySet && el('mistralKeyStatus')) {
+        el('mistralKeyStatus').style.display = 'flex';
+        el('mistralKeyStatusIcon').innerHTML = '✓';
+        el('mistralKeyStatusText').textContent = 'Key saved';
+      }
+      if (remote.rss2jsonKeySet && el('rss2jsonKeyStatus')) {
+        el('rss2jsonKeyStatus').style.display = 'flex';
+        el('rss2jsonKeyStatusIcon').innerHTML = '✓';
+        el('rss2jsonKeyStatusText').textContent = 'Key saved';
+      }
+    }
+
+    async function saveSettingsHandler() {
+      const el = id => document.getElementById(id);
+      const newAnthropicKey = el('anthropicKey')?.value.trim() || '';
+      const newMistralKey   = el('mistralKey')?.value.trim()   || '';
+      const newRss2jsonKey  = el('rss2jsonKey')?.value.trim()  || '';
+      
+      if (newAnthropicKey) settings.anthropicKey = newAnthropicKey;
+      if (newMistralKey)   settings.mistralKey   = newMistralKey;
+      if (newRss2jsonKey)  settings.rss2jsonKey  = newRss2jsonKey;
+      settings.proxyUrl   = el('proxyUrl')?.value.trim()                   || '';
+      settings.aiKeywords = el('aiEnrichToggle')?.classList.contains('on') || false;
+      
+      const saveBtn = el('saveSettingsBtn');
+      const originalText = saveBtn?.textContent || '💾 Save settings';
+      if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; }
+      
+      try {
+        await window.saveSettings({ 
+          aiProvider: settings.aiProvider, 
+          proxyUrl: settings.proxyUrl, 
+          aiKeywordsEnabled: settings.aiKeywords, 
+          anthropicKey: newAnthropicKey, 
+          mistralKey: newMistralKey, 
+          rss2jsonKey: newRss2jsonKey 
+        });
+        showSettingsMessage('✓ Settings saved successfully!', false);
+        if (newAnthropicKey && el('anthropicKey')) el('anthropicKey').value = '';
+        if (newMistralKey && el('mistralKey')) el('mistralKey').value = '';
+        if (newRss2jsonKey && el('rss2jsonKey')) el('rss2jsonKey').value = '';
+        if (newAnthropicKey && el('anthropicKeyStatus')) {
+          el('anthropicKeyStatus').style.display = 'flex';
+          el('anthropicKeyStatusIcon').innerHTML = '✓';
+          el('anthropicKeyStatusText').textContent = 'Key saved';
+        }
+        if (newMistralKey && el('mistralKeyStatus')) {
+          el('mistralKeyStatus').style.display = 'flex';
+          el('mistralKeyStatusIcon').innerHTML = '✓';
+          el('mistralKeyStatusText').textContent = 'Key saved';
+        }
+        if (newRss2jsonKey && el('rss2jsonKeyStatus')) {
+          el('rss2jsonKeyStatus').style.display = 'flex';
+          el('rss2jsonKeyStatusIcon').innerHTML = '✓';
+          el('rss2jsonKeyStatusText').textContent = 'Key saved';
+        }
+        await window.loadSettings(true);
+      } catch (err) {
+        console.error('Save error:', err);
+        showSettingsMessage('✗ ' + (err.message || 'Failed to save settings'), true);
+      } finally {
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = originalText; }
+      }
+    }
+
+    async function renderAccountPane(user) { 
+      const accountCard = document.getElementById('accountCard'); 
+      if(accountCard) {
+        const profile = await getProfile();
+        const name = profile?.name || user.email.split('@')[0];
+        const initials = name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+        accountCard.innerHTML = `<div class="account-row"><div class="account-avatar">${esc(initials)}</div><div><div style="font-weight:700">${esc(name)}</div><div style="font-size:12px;color:var(--text-sec)">${esc(user.email)}</div></div></div><button class="sh-btn" id="accountSignOutBtn">Sign out</button>`;
+        document.getElementById('accountSignOutBtn')?.addEventListener('click', () => window.logout());
+      }
+    }
+
+    async function renderKeywords() {
+      const container = document.getElementById('kwContent');
+      if (!container) return;
+      if (!stories.length) { container.innerHTML = '<div class="empty"><div class="empty-icon">🔑</div>Run a crawl first to see keyword intelligence.</div>'; return; }
+      const hasBriefs = await canUseBriefs();
+      const STOP = new Set(['this','that','with','from','have','been','will','were','they','their','what','when','which','about','after','before','into','over','under','just','more','also','then','than','like','some','most','time','year','news','says','said','using','make','made','gets','its','are','was','has','had','can','the','and','for','not','but']);
+      const wordMap = {};
+      stories.forEach(s => {
+        (s.keywords || []).filter(k => k && k.length > 2).forEach(k => { const kl = k.toLowerCase().trim(); if (kl) wordMap[kl] = (wordMap[kl] || 0) + 2; });
+        s.title.toLowerCase().replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(w => w.length >= 4 && !STOP.has(w)).forEach(w => { wordMap[w] = (wordMap[w] || 0) + 1; });
+      });
+      const minCount = stories.length < 15 ? 1 : 2;
+      const topKw    = Object.entries(wordMap).filter(([, c]) => c >= minCount).sort((a, b) => b[1] - a[1]).slice(0, 40);
+      if (!topKw.length) { container.innerHTML = '<div class="empty">Not enough data yet — try crawling more sources.</div>'; return; }
+      if (!hasBriefs) {
+        container.innerHTML = `<div class="section-label">🔥 Trending keywords</div><div class="kw-grid">${topKw.map(([k, c]) => `<span class="kw-tag">${esc(k)} <span style="opacity:0.5">${c}</span></span>`).join('')}</div><div style="background:#2A1E0A;border:1px solid rgba(245,176,66,0.25);border-radius:12px;padding:24px;text-align:center;margin-top:16px"><div style="font-size:1rem;margin-bottom:8px">🔒 AI keyword intelligence is a Pro feature</div><div style="font-size:12px;color:var(--text-sec);margin-bottom:16px">Upgrade for AI-powered keyword clusters, content gaps and topic briefs.</div><a href="pricing.html"><button class="run-btn" style="margin:0 auto">View Pro Plan →</button></a></div>`;
+        return;
+      }
+      container.innerHTML = `<div class="section-label">🔥 Trending keywords</div><div class="kw-grid">${topKw.map(([k, c]) => `<span class="kw-tag" data-term="${esc(k)}">${esc(k)} <span style="opacity:0.5">${c}</span></span>`).join('')}</div><div class="section-label" style="margin-top:16px">🧠 Click any keyword to generate a topic brief</div><div id="kwAiSection" style="margin-top:20px"><div style="text-align:center;padding:24px;color:var(--text-hint)"><span class="spinner"></span> Loading AI keyword intelligence…</div></div>`;
+      container.querySelectorAll('.kw-tag').forEach(el => el.addEventListener('click', () => generateBriefFromTopic(el.dataset.term)));
+      const apiKey = settings.aiProvider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
+      if (!apiKey) { document.getElementById('kwAiSection').innerHTML = `<div style="color:var(--text-hint);font-size:12px;text-align:center;padding:16px">Add an API key in Settings to enable AI keyword enrichment.</div>`; return; }
+      const phraseMap = {};
+      stories.forEach(s => {
+        const words = s.title.toLowerCase().replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(w => w.length >= 4 && !['this','that','with','from','have','been','will','were','they','their','what','when','which','about','after','before'].includes(w));
+        for (let i = 0; i < words.length - 1; i++) { const b = `${words[i]} ${words[i+1]}`; phraseMap[b] = (phraseMap[b] || 0) + 1; }
+      });
+      const topPhrases = Object.entries(phraseMap).filter(([, c]) => c >= 2).sort((a, b) => b[1] - a[1]).slice(0, 15);
+      const qWords     = ['how','why','what','when','who','which','will','can','should'];
+      const questions  = stories.filter(s => qWords.some(q => s.title.toLowerCase().startsWith(q))).slice(0, 8);
+      const prompt     = `You are a senior SEO content strategist. Analyze these trending keywords.\nTOP KEYWORDS:\n${topKw.slice(0, 20).map(([k, c]) => `- "${k}" (${c})`).join('\n')}\nReturn ONLY JSON:\n{"clusters":[{"theme":"","intent":"informational|news|opinion","urgency":"breaking|trending|evergreen","keywords":["k1"],"competition":"low|medium|high","potential":"low|medium|high","summary":""}],"gaps":[{"keyword":"","reason":"","angle":""}],"questions":[{"question":"","why":""}],"avoid":[{"keyword":"","reason":""}]}`;
+      try {
+        const raw  = await callAIWithRetry({ prompt, maxTokens: 2000, apiKey, provider: settings.aiProvider, retries: 3, delayMs: 1500 });
+        const data = safeJsonParse(raw, { clusters: [], gaps: [], questions: [], avoid: [] });
+        renderAiKeywordSection(data, topPhrases, questions);
+      } catch (e) {
+        const kwAi = document.getElementById('kwAiSection');
+        if (kwAi) kwAi.innerHTML = `<div class="error-msg">AI keyword enrichment failed: ${esc(e.message)}</div>`;
+      }
+    }
+
+    function renderAiKeywordSection(data, phrases, questions) {
+      const sec = document.getElementById('kwAiSection');
+      if (!sec) return;
+      let h = '';
+      if (phrases.length) h += `<div class="section-label">📌 Trending phrases</div><div class="kw-grid">` + phrases.map(([p]) => `<button class="kw-tag" data-term="${esc(p)}" style="color:var(--accent);border-color:rgba(245,176,66,0.3)">${esc(p)}</button>`).join('') + `</div>`;
+      if (data.clusters?.length) {
+        h += `<div class="section-label" style="margin-top:18px">🤖 AI keyword clusters</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:6px">`;
+        data.clusters.forEach(c => { const uc = { breaking: '#E07A5F', trending: '#f5b042', evergreen: '#8BC97F' }[c.urgency] || '#f5b042'; h += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-weight:700;font-size:13px;flex:1">${esc(c.theme)}</span><span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(0,0,0,0.3);color:${uc};border:1px solid ${uc}33">${esc(c.urgency)}</span></div><div style="font-size:12px;color:var(--text-sec);margin-bottom:10px;line-height:1.5">${esc(c.summary)}</div><div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">${(c.keywords||[]).map(k=>`<button class="kw-tag" data-term="${esc(k)}" style="padding:2px 9px;font-size:11px">${esc(k)}</button>`).join('')}</div><div style="font-size:11px;color:var(--text-hint)">Competition: ${esc(c.competition)} · Potential: ${esc(c.potential)}</div></div>`; });
+        h += `</div>`;
+      }
+      if (data.gaps?.length) {
+        h += `<div class="section-label" style="margin-top:18px">🎯 Content gap opportunities</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:6px">`;
+        data.gaps.forEach(g => { h += `<div style="background:var(--surface);border:1px solid rgba(245,176,66,0.15);border-radius:12px;padding:14px"><div style="font-weight:700;font-size:13px;margin-bottom:6px;color:var(--accent)">${esc(g.keyword)}</div><div style="font-size:12px;color:var(--text-sec);margin-bottom:8px;line-height:1.5">${esc(g.reason)}</div><div style="font-size:11px;color:var(--text-hint);font-style:italic;margin-bottom:10px">${esc(g.angle)}</div><button class="kw-tag" data-term="${esc(g.keyword)}" style="font-size:11px;padding:4px 12px;color:var(--accent);border-color:rgba(245,176,66,0.3)">📝 Generate brief →</button></div>`; });
+        h += `</div>`;
+      }
+      sec.innerHTML = h;
+      sec.querySelectorAll('[data-term]').forEach(el => el.addEventListener('click', () => generateBriefFromTopic(el.dataset.term)));
+    }
+
+    // ==================== AI DISCOVERY PIPELINE ====================
+    async function fetchSingleRSSFeedWithRetry(feedUrl, feedName, retries = 3, baseDelay = 2000) {
+      for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+          const items = await fetchFeedItems(feedUrl);
+          if (items && items.length > 0) {
+            items.sort((a,b) => new Date(b.pubDate||0) - new Date(a.pubDate||0));
+            return items.slice(0, 10).map(item => ({
+              source: feedName,
+              platform: 'rss',
+              title: item.title,
+              url: item.link,
+              description: item.description,
+              publishedAt: item.pubDate,
+              score: 0,
+              comments: 0
+            }));
+          }
+          throw new Error('No items');
+        } catch(e) {
+          if (attempt === retries) return [];
+          await new Promise(resolve => setTimeout(resolve, baseDelay * attempt));
+        }
+      }
+      return [];
+    }
+
+    async function discoverFeedsForTopic(topic) {
+      const provider = settings.aiProvider;
+      const apiKey = provider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
+      if (!apiKey) throw new Error('API key missing');
+      const prompt = `You are a professional news aggregator. For the topic: "${topic}", find 8 to 12 high-quality, active RSS feeds from reputable news websites, blogs, or publications that regularly cover this topic. Return ONLY a valid JSON array of objects with keys: "name" (string, human readable site name) and "url" (string, full RSS feed URL). Do not include any explanation or markdown. Example: [{"name":"TechCrunch AI","url":"https://techcrunch.com/tag/artificial-intelligence/feed/"}].`;
+      let raw = await callAIWithRetry({ prompt, maxTokens: 1200, apiKey, provider, retries: 2, delayMs: 1000 });
+      let cleaned = raw.replace(/```json\s*|```\s*$/g, '').trim();
+      const match = cleaned.match(/\[[\s\S]*\]/);
+      if (match) cleaned = match[0];
+      const feeds = JSON.parse(cleaned);
+      if (!Array.isArray(feeds) || feeds.length === 0) throw new Error('AI did not return any feeds.');
+      return feeds.filter(f => f.url && f.url.startsWith('http')).slice(0,12);
+    }
+
+    function getGoogleNewsTimeframeQuery() {
+      if (timeframeMs === 86400000) return ' when:1d';
+      if (timeframeMs === 604800000) return ' when:7d';
+      if (timeframeMs === 2592000000) return ' when:1m';
+      if (timeframeMs === 31536000000) return ' when:1y';
+      return '';
+    }
+
+    function calculateRelevanceScore(article, topic) {
+      if (!topic) return 0;
+      const t = topic.toLowerCase();
+      const title = (article.title || '').toLowerCase();
+      const desc = (article.description || '').toLowerCase();
+      
+      let score = 0;
+      if (title.includes(t)) {
+        score += 150;
+      } else {
+        const keywords = t.split(/\s+/).filter(k => k.length > 2);
+        let matchCount = 0;
+        keywords.forEach(kw => {
+          if (title.includes(kw)) matchCount += 35;
+          if (desc.includes(kw)) matchCount += 15;
+        });
+        score += matchCount;
+      }
+      
+      if (article.platform === 'reddit' || article.platform === 'hackernews') {
+        score += (article.score || 0) * 0.1;
+      }
+      return score;
+    }
+
+    async function crawlSearchSources(topic) {
+      // 1. Google News search with timeframe parameters
+      const timeframeQuery = getGoogleNewsTimeframeQuery();
+      const googleNewsUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(topic + timeframeQuery)}&hl=en-US&gl=US&ceid=US:en`;
+      const googleNewsPromise = fetchSingleRSSFeedWithRetry(googleNewsUrl, 'Google News Search', 3, 1500)
+        .then(items => items.map(item => ({ ...item, platform: 'google_news' })));
+
+      // 2. Reddit Search
+      let redditTime = 'all';
+      if (timeframeMs === 86400000) redditTime = 'day';
+      else if (timeframeMs === 604800000) redditTime = 'week';
+      else if (timeframeMs === 2592000000) redditTime = 'month';
+      else if (timeframeMs === 31536000000) redditTime = 'year';
+      
+      const redditSort = sortMode === 'popular' ? 'relevance' : 'new';
+      const redditUrl = `https://www.reddit.com/search.json?q=${encodeURIComponent(topic)}&sort=${redditSort}&t=${redditTime}&limit=25`;
+      const redditPromise = fetchTimeout(redditUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } })
+        .then(r => r.json())
+        .then(d => (d.data?.children || []).filter(c => !c.data.stickied).map(c => ({
+          source: `r/${c.data.subreddit}`,
+          platform: 'reddit',
+          title: c.data.title,
+          url: c.data.url,
+          score: c.data.score || 0,
+          comments: c.data.num_comments || 0,
+          description: (c.data.selftext || '').slice(0, 250),
+          publishedAt: new Date(c.data.created_utc * 1000).toISOString()
+        })))
+        .catch(e => { console.warn('[Crawl] Reddit search failed:', e); return []; });
+
+      // 3. Hacker News Search via Algolia API
+      let hnUrl = `https://hn.algolia.com/api/v1/search${sortMode === 'newest' ? '_by_date' : ''}?query=${encodeURIComponent(topic)}&tags=story&hitsPerPage=20`;
+      if (timeframeMs > 0) {
+        const minTimeSec = Math.floor((Date.now() - timeframeMs) / 1000);
+        hnUrl += `&numericFilters=created_at_i>${minTimeSec}`;
+      }
+      const hnPromise = fetchTimeout(hnUrl)
+        .then(r => r.json())
+        .then(d => (d.hits || []).map(hit => ({
+          source: 'Hacker News',
+          platform: 'hackernews',
+          title: hit.title,
+          url: hit.url || `https://news.ycombinator.com/item?id=${hit.objectID}`,
+          score: hit.points || 0,
+          comments: hit.num_comments || 0,
+          description: hit.story_text || '',
+          publishedAt: new Date(hit.created_at_i * 1000).toISOString()
+        })))
+        .catch(e => { console.warn('[Crawl] HN search failed:', e); return []; });
+
+      // 4. AI-discovered niche publication feeds (capped to prevent rate limits)
+      const aiFeedsPromise = (async () => {
+        try {
+          const feeds = await discoverFeedsForTopic(topic);
+          const slicedFeeds = feeds.slice(0, 4);
+          const articles = [];
+          for (const feed of slicedFeeds) {
+            const feedArticles = await fetchSingleRSSFeedWithRetry(feed.url, feed.name, 2, 1000);
+            articles.push(...feedArticles);
+            await new Promise(r => setTimeout(r, 800));
+          }
+          return articles;
+        } catch (e) {
+          console.warn('[Crawl] AI feed discovery/fetch failed:', e);
+          return [];
+        }
+      })();
+
+      const results = await Promise.allSettled([googleNewsPromise, redditPromise, hnPromise, aiFeedsPromise]);
+      const allArticles = results.flatMap(r => r.status === 'fulfilled' ? r.value : []);
+      
+      const uniqueMap = new Map();
+      allArticles.forEach(a => {
+        if (a.url && !uniqueMap.has(a.url)) {
+          uniqueMap.set(a.url, a);
+        }
+      });
+      return Array.from(uniqueMap.values());
+    }
+
+    async function runAIDiscoveryPipeline() {
+      const topicInput = document.getElementById('aiTopicInput');
+      const topic = topicInput?.value.trim();
+      if (!topic) {
+        document.getElementById('aiDiscoveryStatus').innerHTML = '<span style="color:var(--red)">⚠️ Please enter a topic.</span>';
+        return;
+      }
+      if (Date.now() - _lastPipelineRun < 60000) {
+        document.getElementById('aiDiscoveryStatus').innerHTML = '<span style="color:var(--accent)">⏳ Please wait before re-crawling (rate limit).</span>';
+        return;
+      }
+      const crawlCheck = await window.canCrawl();
+      if (!crawlCheck.ok) { renderUpsellBanner('storyList', 'crawl'); return; }
+
+      let provider = settings.aiProvider;
+      let apiKey = provider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
+      if (!apiKey) {
+        const remote = await window.loadSettings();
+        const keyType = provider === 'anthropic' ? 'anthropic' : 'mistral';
+        const keyIsSaved = provider === 'anthropic' ? remote.anthropicKeySet : remote.mistralKeySet;
+        if (keyIsSaved) {
+          const fetchedKey = await window.getApiKey(keyType);
+          if (fetchedKey) {
+            if (provider === 'anthropic') settings.anthropicKey = fetchedKey;
+            else settings.mistralKey = fetchedKey;
+            apiKey = fetchedKey;
+          }
+        }
+        if (!apiKey) {
+          document.getElementById('aiDiscoveryStatus').innerHTML = '<span style="color:var(--red)">⚠️ Set your API key in Settings first.</span>';
+          document.querySelector('.db-tab[data-tab="settings"]').click();
+          return;
+        }
+      }
+
+      const discoverBtn = document.getElementById('aiDiscoverBtn');
+      const crawlBtn = document.getElementById('crawlBtn');
+      const progressDiv = document.getElementById('progressMsg');
+      const progFill = document.getElementById('progFill');
+      const statusDiv = document.getElementById('aiDiscoveryStatus');
+
+      discoverBtn.disabled = true;
+      if (crawlBtn) crawlBtn.disabled = true;
+      if (progressDiv) progressDiv.innerHTML = '<span class="spinner"></span> AI discovering sources...';
+      if (progFill) progFill.style.width = '5%';
+      statusDiv.innerHTML = '🤖 AI is analyzing topic and querying search engines...';
+
+      // Reset filters for new crawl
+      activeFilter = null;
+      activeKeywordFilter = null;
+
+      try {
+        const rawArticles = await crawlSearchSources(topic);
+        if (rawArticles.length === 0) throw new Error('No articles found matching the search topic.');
+
+        statusDiv.innerHTML = `✅ Found ${rawArticles.length} raw articles. Selecting the most relevant and applying filters...`;
+        if (progFill) progFill.style.width = '35%';
+
+        await window.incrementCrawlCount();
+        _lastPipelineRun = Date.now();
+        renderUsageBar();
+
+        rawArticles.forEach(a => {
+          a.relevance = calculateRelevanceScore(a, topic);
+        });
+
+        let sortedArticles = applySortAndSlice(rawArticles);
+        if (sortedArticles.length === 0) {
+          throw new Error('No articles match the selected timeframe/filters. Try selecting a broader timeframe.');
+        }
+
+        if (progressDiv) progressDiv.innerHTML = `<span class="spinner"></span> AI analyzing ${sortedArticles.length} articles...`;
+        if (progFill) progFill.style.width = '45%';
+
+        const storyContainer = document.getElementById('storyList');
+        stories = [];
+        if (storyContainer) storyContainer.innerHTML = `<div class="empty"><span class="spinner"></span> AI analyzing ${sortedArticles.length} articles...</div>`;
+
+        const CONCURRENCY = provider === 'mistral' ? 2 : 3;
+        let doneCount = 0;
+        const analysisTasks = sortedArticles.map(article => async () => {
+          const analysis = await analyzeArticle(article, apiKey, provider);
+          return { ...article, ...analysis, analyzed: true };
+        });
+
+        await runConcurrent(analysisTasks, CONCURRENCY, async (idx, result) => {
+          if (!result) return;
+          stories.push(result);
+          doneCount++;
+          const pct = 45 + Math.round((doneCount / sortedArticles.length) * 55);
+          if (progFill) progFill.style.width = pct + '%';
+          if (progressDiv) progressDiv.textContent = `Analyzed ${doneCount} / ${sortedArticles.length}...`;
+          await appendStoryCard(result);
+          if (doneCount % 5 === 0 || doneCount === sortedArticles.length) { 
+            renderStats(); 
+            renderFilterRow(); 
+            renderKeywordFilterRow();
+          }
+        });
+
+        await renderStories();
+        renderStats();
+        renderFilterRow();
+        renderKeywordFilterRow();
+        
+        if (settings.aiKeywords) await renderKeywords();
+        if (progFill) progFill.style.width = '100%';
+        if (progressDiv) progressDiv.textContent = `✅ AI search & discovery complete — ${stories.length} articles analyzed.`;
+        statusDiv.innerHTML = `🎯 Success! Crawled and analyzed search results for "${esc(topic)}".`;
+        setTimeout(() => { if (progressDiv) progressDiv.textContent = ''; if (progFill) progFill.style.width = '0%'; }, 3000);
+      } catch (err) {
+        console.error(err);
+        statusDiv.innerHTML = `<span style="color:var(--red)">❌ Discovery error: ${esc(err.message)}</span>`;
+        if (progressDiv) progressDiv.innerHTML = '';
+      } finally {
+        discoverBtn.disabled = false;
+        if (crawlBtn) crawlBtn.disabled = false;
+      }
+    }
+
+    // ==================== ORIGINAL CRAWL PIPELINE ====================
+    async function runPipeline() {
+      const now = Date.now();
+      if (now - _lastPipelineRun < PIPELINE_COOLDOWN_MS) {
+        const secsLeft = Math.ceil((PIPELINE_COOLDOWN_MS - (now - _lastPipelineRun)) / 1000);
+        const storyDiv = document.getElementById('storyList');
+        if (storyDiv) storyDiv.innerHTML = `<div class="error-msg">⏳ Please wait <strong>${secsLeft}s</strong> before re-crawling (rate limit).</div>`;
+        const crawlBtn2 = document.getElementById('crawlBtn');
+        if (crawlBtn2) crawlBtn2.disabled = true;
+        setTimeout(() => {
+          if (crawlBtn2) crawlBtn2.disabled = false;
+          const sd = document.getElementById('storyList');
+          if (sd && sd.querySelector('.error-msg')?.textContent.includes('rate limit'))
+            sd.innerHTML = '<div class="empty"><div class="empty-icon">📡</div>Ready — click Crawl to fetch stories.</div>';
+        }, PIPELINE_COOLDOWN_MS - (now - _lastPipelineRun));
+        return;
+      }
+      const crawlCheck = await window.canCrawl();
+      if (!crawlCheck.ok) { renderUpsellBanner('storyList', 'crawl'); return; }
+
+      let provider = settings.aiProvider;
+      let apiKey = provider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
+      if (!apiKey) {
+        // Try to fetch the decrypted key from Supabase on the fly
+        const remote = await window.loadSettings();
+        const keyType = provider === 'anthropic' ? 'anthropic' : 'mistral';
+        const keyIsSaved = provider === 'anthropic' ? remote.anthropicKeySet : remote.mistralKeySet;
+        if (keyIsSaved) {
+          const storyDiv = document.getElementById('storyList');
+          if (storyDiv) storyDiv.innerHTML = '<div class="error-msg"><span class="spinner"></span> Loading your API key…</div>';
+          const fetchedKey = await window.getApiKey(keyType);
+          if (fetchedKey) {
+            if (provider === 'anthropic') settings.anthropicKey = fetchedKey;
+            else settings.mistralKey = fetchedKey;
+            apiKey = fetchedKey;
+          }
+        }
+        if (!apiKey) {
+          const storyDiv = document.getElementById('storyList');
+          if (storyDiv) storyDiv.innerHTML = `<div class="error-msg">⚠ Please enter your ${provider === 'anthropic' ? 'Anthropic' : 'Mistral'} API key in Settings.</div>`;
+          document.querySelector('.db-tab[data-tab="settings"]').click();
+          return;
+        }
+      }
+
+      const selected = [...document.querySelectorAll('.source-chip.active:not(.locked)')].map(c => c.dataset.src);
+      if (!selected.length) {
+        const storyDiv = document.getElementById('storyList');
+        if (storyDiv) storyDiv.innerHTML = '<div class="error-msg">Select at least one source category.</div>';
+        return;
+      }
+
+      const crawlBtn = document.getElementById('crawlBtn');
+      const progressDiv = document.getElementById('progressMsg');
+      const progFill = document.getElementById('progFill');
+      if (crawlBtn) crawlBtn.disabled = true;
+      if (progressDiv) progressDiv.innerHTML = '<span class="spinner"></span> Crawling sources…';
+      if (progFill) progFill.style.width = '5%';
+
+      try {
+        await window.incrementCrawlCount();
+      } catch (e) {
+        if (crawlBtn) crawlBtn.disabled = false;
+        if (progressDiv) progressDiv.textContent = '';
+        if (progFill) progFill.style.width = '0%';
+        renderUpsellBanner('storyList', 'crawl');
+        return;
+      }
+      _lastPipelineRun = Date.now();
+      renderUsageBar();
+
+      // Reset filters for new crawl
+      activeFilter = null;
+      activeKeywordFilter = null;
+
+      if (progressDiv) progressDiv.innerHTML = '<span class="spinner"></span> Fetching articles from all sources…';
+      let raw = await crawlAllSources(selected);
+      raw = applySortAndSlice(raw);
+      updateSortNote(raw);
+      if (progFill) progFill.style.width = '25%';
+
+      stories = [];
+      const storyContainer = document.getElementById('storyList');
+      if (storyContainer) storyContainer.innerHTML = `<div class="empty"><span class="spinner"></span> Analyzing ${raw.length} articles — results appear as they're ready…</div>`;
+      if (progressDiv) progressDiv.textContent = `Analyzing 0 / ${raw.length}…`;
+
+      const CONCURRENCY = provider === 'mistral' ? 3 : 5;
+      let doneCount = 0;
+      const analysisTasks = raw.map(article => async () => {
+        const analysis = await analyzeArticle(article, apiKey, provider);
+        return { ...article, ...analysis, analyzed: true };
+      });
+
+      await runConcurrent(analysisTasks, CONCURRENCY, async (idx, result) => {
+        if (!result) return;
+        stories.push(result);
+        doneCount++;
+        const pct = 25 + Math.round((doneCount / raw.length) * 70);
+        if (progFill) progFill.style.width = pct + '%';
+        if (progressDiv) progressDiv.textContent = `Analyzed ${doneCount} / ${raw.length}…`;
+        await appendStoryCard(result);
+        if (doneCount % 5 === 0 || doneCount === raw.length) { 
+          renderStats(); 
+          renderFilterRow(); 
+          renderKeywordFilterRow();
+        }
+      });
+
+      await renderStories();
+      renderStats();
+      renderFilterRow();
+      renderKeywordFilterRow();
+      
+      if (settings.aiKeywords) await renderKeywords();
+      if (progFill) progFill.style.width = '100%';
+      if (progressDiv) progressDiv.textContent = `✅ Done — ${stories.length} articles analyzed`;
+      setTimeout(() => { if (progressDiv) progressDiv.textContent = ''; if (progFill) progFill.style.width = '0%'; }, 2500);
+      if (crawlBtn) crawlBtn.disabled = false;
+    }
+
+    async function renderUsageBar() {
+      const profile = await getProfile();
+      const bar = document.getElementById('usageBar');
+      if (!bar) return;
+      if (!profile || profile.crawlLimit === Infinity || profile.crawlLimit >= 2000000) { bar.style.display = 'none'; return; }
+      bar.style.display = 'flex';
+      const count = await window.getCrawlCount();
+      const pct   = Math.min((count / profile.crawlLimit) * 100, 100);
+      const fill  = document.getElementById('usageFill');
+      const cnt   = document.getElementById('usageCount');
+      if (fill) { fill.style.width = pct + '%'; fill.style.background = pct >= 90 ? 'var(--red)' : 'var(--accent)'; }
+      if (cnt)  cnt.textContent = `${count} / ${profile.crawlLimit}`;
+    }
+
+    function updateSortUI() {
+      const isPopular = (sortMode === 'popular');
+      document.getElementById('sortPopular')?.classList.toggle('active', isPopular);
+      document.getElementById('sortNewest')?.classList.toggle('active', !isPopular);
+      document.getElementById('timeframeChips')?.classList.toggle('visible', isPopular);
+    }
+
+    // ==================== INIT ====================
+    async function initDashboard(user) {
+      await Promise.all([
+        loadSettingsUI(),
+        renderSourceChips(),
+        renderUsageBar(),
+        renderTabLocks(),
+        renderAccountPane(user),
+        renderSettingsTrialNote(),
+        window.renderTrialBanner('trialBannerContainer')
+      ]);
+
+      // Event listeners
+      document.getElementById('crawlBtn')?.addEventListener('click', runPipeline);
+      document.getElementById('refreshBtn')?.addEventListener('click', runPipeline);
+      document.getElementById('settingsBtn')?.addEventListener('click', () => document.querySelector('.db-tab[data-tab="settings"]').click());
+      document.getElementById('saveSettingsBtn')?.addEventListener('click', saveSettingsHandler);
+      document.getElementById('aiEnrichToggle')?.addEventListener('click', e => e.currentTarget.classList.toggle('on'));
+      document.getElementById('aiDiscoverBtn')?.addEventListener('click', runAIDiscoveryPipeline);
+      document.getElementById('aiTopicInput')?.addEventListener('keypress', e => { if(e.key === 'Enter') document.getElementById('aiDiscoverBtn')?.click(); });
+
+      // Provider switching
+      document.getElementById('providerMistral')?.addEventListener('click', () => {
+        settings.aiProvider = 'mistral';
+        document.getElementById('providerMistral')?.classList.add('active');
+        document.getElementById('providerAnthropic')?.classList.remove('active');
+        document.getElementById('groupMistralKey').style.display = 'block';
+        document.getElementById('groupAnthropicKey').style.display = 'none';
+        showSettingsMessage('Switched to Mistral. Save settings to persist.', false);
+      });
+      document.getElementById('providerAnthropic')?.addEventListener('click', () => {
+        settings.aiProvider = 'anthropic';
+        document.getElementById('providerAnthropic')?.classList.add('active');
+        document.getElementById('providerMistral')?.classList.remove('active');
+        document.getElementById('groupAnthropicKey').style.display = 'block';
+        document.getElementById('groupMistralKey').style.display = 'none';
+        showSettingsMessage('Switched to Anthropic. Save settings to persist.', false);
+      });
+
+      // Sort mode toggles
+      updateSortUI();
+      document.getElementById('sortNewest')?.addEventListener('click', () => {
+        sortMode = 'newest';
+        updateSortUI();
+        renderStories();
+      });
+      document.getElementById('sortPopular')?.addEventListener('click', () => {
+        sortMode = 'popular';
+        updateSortUI();
+        renderStories();
+      });
+      document.querySelectorAll('.tf-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          document.querySelectorAll('.tf-chip').forEach(c => c.classList.remove('active'));
+          chip.classList.add('active');
+          timeframeMs = Number(chip.dataset.ms);
+          renderStories();
+        });
+      });
+
+      const slider = document.getElementById('articleCountSlider');
+      const sliderVal = document.getElementById('articleCountVal');
+      slider?.addEventListener('input', () => { if(sliderVal) sliderVal.textContent = slider.value; });
+
+      // Tab switching
+      document.querySelectorAll('.db-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.db-tab').forEach(t => t.classList.remove('active'));
+          document.querySelectorAll('.db-pane').forEach(p => p.classList.remove('active'));
+          tab.classList.add('active');
+          document.getElementById(`pane-${tab.dataset.tab}`)?.classList.add('active');
+        });
+      });
+
+      // Brief and draft manual buttons
+      document.getElementById('briefManualBtn')?.addEventListener('click', async () => {
+        if (!await canUseBriefs()) { renderUpsellBanner('briefsContent', 'briefs'); return; }
+        const topic = document.getElementById('briefTopicInput')?.value.trim();
+        const tone = document.getElementById('briefToneInput')?.value || '';
+        if (!topic) { document.getElementById('briefsContent').innerHTML = '<div class="error-msg">Please enter a topic or keyword.</div>'; return; }
+        generateBriefFromTopicWithTone(topic, tone);
+      });
+      document.getElementById('briefTopicInput')?.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('briefManualBtn')?.click(); });
+
+      document.getElementById('draftManualBtn')?.addEventListener('click', async () => {
+        if (!await canUseDrafts()) { renderUpsellBanner('draftContent', 'drafts'); document.querySelector('.db-tab[data-tab="draft"]').click(); return; }
+        const prompt = document.getElementById('draftPromptInput')?.value.trim();
+        const wordCount = document.getElementById('draftWordCount')?.value || '1000';
+        const style = document.getElementById('draftStyleInput')?.value || 'AP style';
+        if (!prompt) { document.getElementById('draftContent').innerHTML = '<div class="error-msg">Please describe the article you want to write.</div>'; return; }
+        generateDraftFromPrompt(prompt, wordCount, style);
+      });
+
+      // Humanizer
+      document.getElementById('hzRunBtn')?.addEventListener('click', async () => {
+        if (!await canUseDrafts()) { renderUpsellBanner('hzOutput', 'drafts'); document.getElementById('hzOutput').style.display = 'block'; return; }
+        const text = document.getElementById('hzInput')?.value.trim();
+        if (!text || text.length < 50) { document.getElementById('hzProgressMsg').textContent = '⚠️ Please paste an article (min 50 chars).'; return; }
+        const persona = document.getElementById('hzPersona')?.value || 'journalist';
+        const tone = document.getElementById('hzTone')?.value || 'casual';
+        const bypassLevel = document.getElementById('hzBypassLevel')?.value || 'medium';
+        const seoMode = document.getElementById('hzSeoMode')?.value || 'basic';
+        const focusKeyword = document.getElementById('hzKeyword')?.value.trim() || '';
+        const hzRunBtn = document.getElementById('hzRunBtn');
+        const hzOutput = document.getElementById('hzOutput');
+        if (hzRunBtn) hzRunBtn.disabled = true;
+        if (hzOutput) hzOutput.style.display = 'none';
+        const result = await runAdvancedHumanizer({ text, persona, tone, bypassLevel, seoMode, focusKeyword, targetDiv: hzOutput, onComplete: null });
+        if (hzRunBtn) hzRunBtn.disabled = false;
+        if (result) {
+          const outputText = document.getElementById('hzOutputText');
+          if (outputText) outputText.textContent = result;
+          if (hzOutput) hzOutput.style.display = 'block';
+          const sentences = result.match(/[^.!?]+[.!?]+/g) || [];
+          const lens = sentences.map(s => s.trim().split(/\s+/).length);
+          const avg = lens.reduce((a, b) => a + b, 0) / (lens.length || 1);
+          const variance = lens.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / (lens.length || 1);
+          const burstScore = Math.min(Math.round(Math.sqrt(variance) * 5), 99);
+          const boosts = { aggressive: 20, medium: 10, light: 5 };
+          const passScore = Math.min(burstScore + (boosts[bypassLevel] || 10), 99);
+          const passCount = { light: '1', medium: '2', aggressive: '3' }[bypassLevel] || '2';
+          const scoreBadges = document.getElementById('hzScoreBadges');
+          if (scoreBadges) scoreBadges.innerHTML = `<span style="font-size:11px;padding:3px 10px;border-radius:20px;background:rgba(139,201,127,0.15);color:#8BC97F;border:1px solid rgba(139,201,127,0.3)">Burstiness: ${burstScore}%</span><span style="font-size:11px;padding:3px 10px;border-radius:20px;background:rgba(245,176,66,0.15);color:var(--accent);border:1px solid rgba(245,176,66,0.3)">Human Score: ~${passScore}%</span><span style="font-size:11px;padding:3px 10px;border-radius:20px;background:rgba(155,126,222,0.15);color:#9B7EDE;border:1px solid rgba(155,126,222,0.3)">${passCount}-pass</span>`;
+          ['hzCopyBtn','hzExportBtn','hzRehumanizeBtn'].forEach(id => document.getElementById(id)?.replaceWith(document.getElementById(id).cloneNode(true)));
+          document.getElementById('hzCopyBtn')?.addEventListener('click', () => navigator.clipboard?.writeText(result));
+          document.getElementById('hzExportBtn')?.addEventListener('click', () => { const blob = new Blob([result], { type: 'text/markdown' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `humanized-${Date.now()}.md`; a.click(); });
+          document.getElementById('hzRehumanizeBtn')?.addEventListener('click', () => { const input = document.getElementById('hzInput'); if (input) input.value = result; document.getElementById('hzRunBtn')?.click(); });
+        }
+      });
+
+      document.getElementById('hzStripMarkdownBtn')?.addEventListener('click', () => {
+        const outputDiv = document.getElementById('hzOutputText');
+        if (!outputDiv) return;
+        outputDiv.textContent = stripMarkdown(outputDiv.textContent);
+        const msg = document.getElementById('hzProgressMsg');
+        if (msg) { msg.textContent = '✓ Markdown removed'; setTimeout(() => { msg.textContent = ''; }, 2000); }
+      });
+
+      console.log('Dashboard initialised');
+    }
+
+    async function renderTabLocks() {
+      const profile   = await getProfile();
+      const hasBriefs = profile?.canUseBriefs ?? false;
+      const hasDrafts = profile?.canUseDrafts ?? false;
+      const el = id => document.getElementById(id);
+      if (el('briefsTabLock'))    el('briefsTabLock').textContent    = hasBriefs ? '' : '🔒';
+      if (el('draftTabLock'))     el('draftTabLock').textContent     = hasDrafts ? '' : '🔒';
+      if (el('humanizerTabLock')) el('humanizerTabLock').textContent = hasDrafts ? '' : '🔒';
+      if (el('enrichPlanNote'))   el('enrichPlanNote').textContent   = (profile?.allSources) ? '' : '(Pro)';
+    }
+
+    async function renderSettingsTrialNote() {
+      const profile = await getProfile();
+      const el = document.getElementById('trialSettingsNote');
+      if (!el) return;
+      if (profile?.plan === 'trial' && profile.trialExpiresAt) {
+        const days = Math.max(0, Math.ceil((new Date(profile.trialExpiresAt) - Date.now()) / 86400000));
+        el.innerHTML = `<div class="trial-expiry-warning">⚡ Trial active — ${days} day${days !== 1 ? 's' : ''} remaining. <a href="pricing.html" style="color:var(--accent);font-weight:600">Upgrade to keep Pro access →</a></div>`;
+      }
+    }
+
+    window.onAuthStateChecked = (user, profile) => {
+      const authGate = document.getElementById('authGate');
+      const userDash = document.getElementById('userDashboard');
+      if (user) {
+        if (authGate) authGate.style.display = 'none';
+        if (userDash) userDash.style.display = 'block';
+        if (!window._dashboardInitialized) {
+          window._dashboardInitialized = true;
+          initDashboard(user);
+        }
+      } else {
+        if (authGate) authGate.style.display = 'block';
+        if (userDash) userDash.style.display = 'none';
+        window._dashboardInitialized = false;
+      }
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('signInPromptBtn')?.addEventListener('click', () => window.showAuthModal('login'));
+      document.getElementById('registerPromptBtn')?.addEventListener('click', () => window.showAuthModal('register'));
+    });

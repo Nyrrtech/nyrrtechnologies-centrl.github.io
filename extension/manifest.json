@@ -1,0 +1,67 @@
+{
+  "manifest_version": 3,
+  "name": "News Sentiment Radar",
+  "version": "1.0.0",
+  "description": "AI-powered news intelligence — crawl trending stories, detect emotion & bias, and generate briefs & drafts in seconds.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_title": "News Sentiment Radar"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://mpwbiaquisxwgugejfra.supabase.co/*",
+    "https://api.anthropic.com/*",
+    "https://api.mistral.ai/*",
+    "https://api.rss2json.com/*",
+    "https://feeds.bbci.co.uk/*",
+    "https://feeds.reuters.com/*",
+    "https://www.aljazeera.com/*",
+    "https://www.theguardian.com/*",
+    "https://feeds.npr.org/*",
+    "https://rss.dw.com/*",
+    "https://rsshub.app/*",
+    "http://rss.cnn.com/*",
+    "https://feeds.nbcnews.com/*",
+    "https://abcnews.go.com/*",
+    "https://api.axios.com/*",
+    "https://www.cbsnews.com/*",
+    "https://rss.politico.com/*",
+    "https://techcrunch.com/*",
+    "https://www.theverge.com/*",
+    "https://www.wired.com/*",
+    "https://feeds.arstechnica.com/*",
+    "https://www.engadget.com/*",
+    "https://www.technologyreview.com/*",
+    "https://www.sciencedaily.com/*",
+    "https://phys.org/*",
+    "https://www.newscientist.com/*",
+    "https://www.space.com/*",
+    "https://www.cnbc.com/*",
+    "https://feeds.businessinsider.com/*",
+    "https://www.forbes.com/*",
+    "https://feeds.marketwatch.com/*",
+    "https://www.reddit.com/*",
+    "https://hacker-news.firebaseio.com/*",
+    "https://hn.algolia.com/*",
+    "https://news.google.com/*",
+    "https://corsproxy.io/*",
+    "https://api.allorigins.win/*",
+    "https://insideclimatenews.org/*",
+    "https://www.carbonbrief.org/*",
+    "https://api.ipify.org/*"
+  ]
+}

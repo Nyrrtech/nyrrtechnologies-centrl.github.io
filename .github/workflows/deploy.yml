@@ -3,7 +3,7 @@ name: Deploy to Hostinger
 on:
   push:
     branches:
-      - basit
+      - main
   workflow_dispatch:
 
 concurrency:

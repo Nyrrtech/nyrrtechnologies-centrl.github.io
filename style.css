@@ -58,7 +58,7 @@ button { font-family: var(--font); }
   text-decoration: none;
 }
 .logo-brand img {
-  height: 48px;
+  height: 64px;
   width: auto;
   display: block;
 }

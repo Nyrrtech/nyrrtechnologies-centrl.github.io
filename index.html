@@ -3,29 +3,30 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>scryweb.com | AI News Sentiment Analysis</title>
-  <meta name="description" content="scryweb.com crawls trending news, analyzes sentiment and emotion, and generates editorial briefs and AP-style drafts for content teams.">
+
+  <!-- Primary SEO -->
+  <title>ScryWeb — AI News Intelligence, Sentiment Analysis &amp; Editorial Workflow Platform</title>
+  <meta name="description" content="ScryWeb crawls 8+ news and social sources, classifies sentiment and emotion, extracts keywords, and generates AI editorial briefs, AP-style drafts, and humanized content for newsrooms and content teams.">
+  <meta name="keywords" content="AI news intelligence, news sentiment analysis, news crawler, editorial brief generation, AI draft generation, content humanizer, AI removal tool, markdown export, news monitoring platform, keyword intelligence, AP-style drafts, news crawling software">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://scryweb.com/">
-  <link rel="icon" type="image/png" href="/Scryweb-Logo.png">
-  <link rel="apple-touch-icon" href="/Scryweb-Logo.png">
+
+  <!-- Open Graph -->
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="scryweb.com">
-  <meta property="og:title" content="scryweb.com | AI News Sentiment Analysis">
-  <meta property="og:description" content="Crawl trending news, detect sentiment and emotion, and generate editorial briefs and AP-style drafts from one newsroom dashboard.">
+  <meta property="og:site_name" content="ScryWeb">
+  <meta property="og:title" content="ScryWeb — AI News Intelligence, Sentiment Analysis &amp; Editorial Workflow Platform">
+  <meta property="og:description" content="Crawl trending news across 8+ sources, analyze sentiment and emotion, and generate editorial briefs, AP-style drafts, and humanized content from one dashboard.">
   <meta property="og:url" content="https://scryweb.com/">
-  <meta property="og:image" content="https://scryweb.com/Scryweb-Logo.png">
-  <meta property="og:image:secure_url" content="https://scryweb.com/Scryweb-Logo.png">
-  <meta property="og:image:type" content="image/png">
-  <meta property="og:image:width" content="3508">
-  <meta property="og:image:height" content="2481">
-  <meta property="og:image:alt" content="ScryWeb logo for News Sentiment Radar">
+  <meta property="og:image" content="https://scryweb.com/logo.png">
+
+  <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="scryweb.com | AI News Sentiment Analysis">
-  <meta name="twitter:description" content="Crawl trending news, detect sentiment and emotion, and generate editorial briefs and AP-style drafts from one newsroom dashboard.">
-  <meta name="twitter:image" content="https://scryweb.com/Scryweb-Logo.png">
-  <meta name="twitter:image:alt" content="ScryWeb logo for News Sentiment Radar">
+  <meta name="twitter:title" content="ScryWeb — AI News Intelligence &amp; Editorial Workflow Platform">
+  <meta name="twitter:description" content="Crawl trending news, classify sentiment and emotion, generate editorial briefs, AP-style drafts, and humanized content from one AI-powered dashboard.">
+  <meta name="twitter:image" content="https://scryweb.com/logo.png">
+
   <meta name="theme-color" content="#0a0c10">
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
@@ -33,124 +34,224 @@
   <link rel="preload" href="auth.js" as="script">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+
+  <!-- Structured Data -->
   <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@graph": [
-        {
-          "@type": "Organization",
-          "@id": "https://scryweb.com/#organization",
-          "name": "scryweb.com",
-          "alternateName": "News Sentiment Radar",
-          "url": "https://scryweb.com/",
-          "logo": "https://scryweb.com/Scryweb-Logo.png",
-          "contactPoint": {
-            "@type": "ContactPoint",
-            "contactType": "sales and support",
-            "url": "https://scryweb.com/contact.html"
-          }
-        },
-        {
-          "@type": "WebSite",
-          "@id": "https://scryweb.com/#website",
-          "name": "scryweb.com",
-          "alternateName": "News Sentiment Radar",
-          "url": "https://scryweb.com/",
-          "publisher": {
-            "@id": "https://scryweb.com/#organization"
-          },
-          "potentialAction": {
-            "@type": "SearchAction",
-            "target": "https://scryweb.com/dashboard.html?topic={search_term_string}",
-            "query-input": "required name=search_term_string"
-          }
-        },
-        {
-          "@type": "SoftwareApplication",
-          "@id": "https://scryweb.com/#software",
-          "name": "News Sentiment Radar",
-          "alternateName": "scryweb.com",
-          "applicationCategory": "BusinessApplication",
-          "operatingSystem": "Web",
-          "url": "https://scryweb.com/",
-          "description": "AI-powered news crawling, sentiment analysis, emotion detection, keyword intelligence, editorial brief generation, and AP-style draft creation for content teams.",
-          "publisher": {
-            "@id": "https://scryweb.com/#organization"
-          },
-          "offers": [
-            {
-              "@type": "Offer",
-              "name": "Free",
-              "price": "0",
-              "priceCurrency": "USD",
-              "description": "Free plan with up to 50 story crawls per month, basic sentiment and emotion analysis, three source categories, keyword extraction, and community support."
-            },
-            {
-              "@type": "Offer",
-              "name": "Pro",
-              "price": "19",
-              "priceCurrency": "USD",
-              "description": "Pro plan with unlimited story crawls, full AI sentiment analysis, all eight sources plus custom RSS, AI-generated briefs, full drafts, priority email support, and Markdown or JSON export."
-            },
-            {
-              "@type": "Offer",
-              "name": "Enterprise",
-              "price": "Custom",
-              "priceCurrency": "USD",
-              "description": "Enterprise plan with Pro features, team accounts, SSO, on-premise AI deployment, custom sentiment models, SLAs, dedicated support, and API whitelabeling."
-            }
-          ]
-        },
-        {
-          "@type": "FAQPage",
-          "mainEntity": [
-            {
-              "@type": "Question",
-              "name": "What is news sentiment analysis?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "News sentiment analysis is the use of AI to classify whether news coverage is positive, negative, or neutral while also identifying emotions such as anger, fear, joy, and surprise, so editorial teams can understand how a story is framed before they write or respond. In scryweb.com, that analysis is paired with source context, confidence scoring, and keyword extraction for planning briefs and drafts."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "How does this help SEO and content planning?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "News sentiment analysis helps SEO and content teams choose timely topics by showing which stories are trending, which keywords are recurring, which emotional frames are gaining attention, and where original coverage can answer user questions before a brief or article is written. Teams can use those signals to prioritize original angles, avoid over-served narratives, and write answer-ready content."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "Can the app generate article briefs?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Yes, scryweb.com can generate structured editorial briefs from a story or topic, including a headline, angle, primary keyword, outline, key points, and context, so writers have a reviewed starting point before drafting or assigning coverage to an editor or reporter. Pro workflows can also turn those briefs into AP-style article drafts while keeping human editorial review in the process."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "Which teams use this kind of tool?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "News sentiment tools are used by newsrooms, publishers, agencies, content marketers, analysts, and research teams that need to monitor fast-moving narratives, compare source framing, detect sentiment shifts, and convert trend signals into timely editorial work for search and audience planning. scryweb.com supports those teams with crawling, sentiment analysis, keyword intelligence, briefs, drafts, and export workflows."
-              }
-            }
-          ]
-        },
-        {
-          "@type": "BreadcrumbList",
-          "itemListElement": [
-            {
-              "@type": "ListItem",
-              "position": 1,
-              "name": "Home",
-              "item": "https://scryweb.com/"
-            }
-          ]
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://scryweb.com/#organization",
+        "name": "ScryWeb",
+        "url": "https://scryweb.com/",
+        "logo": "https://scryweb.com/logo.png",
+        "sameAs": ["https://scryweb.com/"],
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "contactType": "Sales and Support",
+          "url": "https://scryweb.com/contact.html"
         }
-      ]
-    }
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://scryweb.com/#website",
+        "name": "ScryWeb",
+        "url": "https://scryweb.com/",
+        "description": "AI news intelligence, sentiment analysis, editorial brief generation, AP-style draft creation, content humanizer, and markdown export platform for newsrooms and content teams.",
+        "publisher": { "@id": "https://scryweb.com/#organization" },
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": "https://scryweb.com/dashboard.html?topic={search_term_string}",
+          "query-input": "required name=search_term_string"
+        }
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://scryweb.com/#software",
+        "name": "ScryWeb",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web, Chrome Extension",
+        "url": "https://scryweb.com/",
+        "description": "ScryWeb is an AI-powered news intelligence platform that crawls trending news and social sources, performs sentiment and emotion analysis, extracts keywords, generates structured editorial briefs and AP-style article drafts, humanizes AI-generated content, and exports to Markdown or JSON for content teams, newsrooms, publishers, and analysts.",
+        "featureList": [
+          "Multi-source news crawling across Reddit, Hacker News, BBC, Reuters, and custom RSS",
+          "AI sentiment analysis: positive, negative, neutral classification",
+          "Emotion detection: joy, anger, fear, surprise, sadness",
+          "Keyword intelligence and SEO gap identification",
+          "Structured editorial brief generation with headline, angle, outline, and context",
+          "AP-style article draft generation for human editorial review",
+          "AI content humanizer and AI-signal removal",
+          "Markdown export and JSON export",
+          "Chrome browser extension for per-article analysis",
+          "Enterprise SSO, team accounts, on-premise AI deployment"
+        ],
+        "publisher": { "@id": "https://scryweb.com/#organization" },
+        "offers": [
+          {
+            "@type": "Offer",
+            "name": "Free",
+            "price": "0",
+            "priceCurrency": "USD",
+            "description": "Up to 50 news crawls per month, basic sentiment and emotion analysis, three source categories, keyword extraction, and community support."
+          },
+          {
+            "@type": "Offer",
+            "name": "Pro",
+            "price": "19",
+            "priceCurrency": "USD",
+            "description": "Unlimited news crawls, full AI sentiment analysis, all eight source categories plus custom RSS, AI-generated editorial briefs, AP-style drafts, content humanizer, Markdown and JSON export, and priority support."
+          },
+          {
+            "@type": "Offer",
+            "name": "Enterprise",
+            "price": "Custom",
+            "priceCurrency": "USD",
+            "description": "Everything in Pro plus team accounts, SSO, on-premise AI deployment, custom sentiment models, dedicated SLAs, and API whitelabeling."
+          }
+        ]
+      },
+      {
+        "@type": "HowTo",
+        "name": "How to generate an AI editorial brief with ScryWeb",
+        "description": "The ScryWeb workflow for turning trending news into a reviewed editorial brief and draft article.",
+        "step": [
+          {
+            "@type": "HowToStep",
+            "position": 1,
+            "name": "Select sources and crawl",
+            "text": "Choose source categories including World News, Technology, Reddit, Hacker News, and custom RSS feeds, then initiate a crawl from the ScryWeb dashboard."
+          },
+          {
+            "@type": "HowToStep",
+            "position": 2,
+            "name": "Analyze sentiment and emotion",
+            "text": "ScryWeb's AI classifies each crawled story as positive, negative, or neutral and identifies emotional signals such as joy, anger, fear, and surprise with confidence scoring."
+          },
+          {
+            "@type": "HowToStep",
+            "position": 3,
+            "name": "Extract keywords and identify gaps",
+            "text": "The keyword intelligence layer surfaces recurring topics, content gaps, and SEO opportunities across all crawled sources."
+          },
+          {
+            "@type": "HowToStep",
+            "position": 4,
+            "name": "Generate an editorial brief",
+            "text": "Select a story and generate a structured editorial brief containing a headline, angle, primary keyword, content outline, key points, and supporting source context."
+          },
+          {
+            "@type": "HowToStep",
+            "position": 5,
+            "name": "Generate an AP-style draft",
+            "text": "Pro users can convert the brief into a full AP-style article draft for human editorial review and publication."
+          },
+          {
+            "@type": "HowToStep",
+            "position": 6,
+            "name": "Humanize and export",
+            "text": "Run the draft through the AI content humanizer to reduce detectable AI signals, then export to Markdown or JSON for your CMS or publishing workflow."
+          }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is ScryWeb?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "ScryWeb is an AI news intelligence platform that crawls trending news and social sources, classifies sentiment and emotion in each story, extracts keywords, and generates structured editorial briefs, AP-style article drafts, and humanized content for newsrooms, publishers, agencies, content marketers, and research teams."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What is news sentiment analysis?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "News sentiment analysis is the automated classification of news coverage as positive, negative, or neutral using AI, combined with emotion detection for signals such as anger, fear, joy, and surprise. It helps editorial teams understand how a story is framed across sources before writing or responding. ScryWeb pairs sentiment analysis with confidence scoring, keyword extraction, and source context for planning briefs and article drafts."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What is a news crawler and how does ScryWeb use one?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "A news crawler is a tool that automatically retrieves articles from multiple news sources, RSS feeds, and social platforms on demand. ScryWeb's crawling engine supports Reddit, Hacker News, BBC, Reuters, and custom RSS sources, returning story titles, content, publication metadata, and source context for downstream AI analysis, sentiment classification, and brief generation."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How does ScryWeb generate editorial briefs?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "ScryWeb generates structured editorial briefs from a selected story or topic using AI. Each brief includes a recommended headline, editorial angle, primary keyword, content outline, key supporting points, and source context so writers and editors have a reviewed starting point before drafting or assigning coverage. Pro plan users can extend any brief into a full AP-style article draft."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What is the AI content humanizer in ScryWeb?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "The AI content humanizer in ScryWeb is a post-generation pass that rewrites AI-generated drafts to reduce detectable AI signals such as repetitive phrasing, uniform sentence rhythm, and AI-specific vocabulary patterns. The result is editorial copy that reads naturally and passes AI-detection review before publication."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can ScryWeb remove AI signals from generated content?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. After generating an AP-style draft, ScryWeb's humanizer layer processes the text to reduce common AI detection signals, including formulaic structure, repeated transitional phrases, and unnatural sentence uniformity. The humanized output is intended for human editorial review before publication."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does ScryWeb support Markdown export?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Pro plan users can export editorial briefs and article drafts to Markdown or JSON. Markdown export allows direct integration with CMS platforms, static site generators, and documentation tools. JSON export supports API-driven publishing workflows and content pipelines."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Which teams use ScryWeb?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "ScryWeb is used by newsrooms, digital publishers, content agencies, SEO teams, market analysts, and research teams that need to monitor fast-moving news narratives, compare sentiment across sources, identify keyword opportunities, and convert trend signals into reviewed editorial output at scale."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How does ScryWeb help with SEO and AEO content planning?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "ScryWeb surfaces trending keywords, recurring topics, and content gaps from across crawled sources so SEO and content teams can identify timely angles that have not yet been addressed by existing coverage. The structured brief format produces direct, answer-ready content headings and outlines suited to both traditional search ranking and answer engine citation."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does ScryWeb offer a Chrome extension?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. ScryWeb provides a Chrome browser extension that detects whether the active browser tab is an article page or a news listing page and runs per-article sentiment analysis and keyword extraction directly in the browser, extending the dashboard workflow to individual URLs."
+            }
+          }
+        ]
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "https://scryweb.com/"
+          }
+        ]
+      }
+    ]
+  }
   </script>
 </head>
 <body>
@@ -168,111 +269,226 @@
   </div>
 </header>
 
-
-
 <main>
+
+  <!-- Hero -->
   <div class="container hero">
-    <div class="hero-eyebrow">AI-Powered News Intelligence</div>
-    <h1>Analyze trending news sentiment across <span>8+ sources</span></h1>
-    <p>scryweb.com's News Sentiment Radar crawls trending news and social sources, classifies sentiment and emotion, extracts keywords, and generates editorial briefs and AP-style drafts for content teams.</p>
-    <div class="hero-proof-grid" aria-label="Product highlights">
-      <div><strong>50</strong><span>free crawls/month</span></div>
-      <div><strong>8+</strong><span>news and social sources</span></div>
-      <div><strong>AI</strong><span>briefs, drafts, keywords</span></div>
+    <div class="hero-eyebrow">AI News Intelligence Platform</div>
+    <h1>News sentiment analysis, editorial briefs, and <span>AI-powered drafts</span> from one dashboard</h1>
+    <p>ScryWeb crawls trending news and social sources, classifies sentiment and emotion, extracts keyword intelligence, and generates structured editorial briefs, AP-style article drafts, and humanized content for newsrooms, publishers, and content teams.</p>
+    <div class="hero-proof-grid" aria-label="Platform highlights">
+      <div><strong>8+</strong><span>News and social sources</span></div>
+      <div><strong>6</strong><span>Workflow steps: crawl to draft</span></div>
+      <div><strong>Free</strong><span>50 crawls per month, no card required</span></div>
     </div>
     <div class="hero-buttons">
       <button class="btn" id="heroDashboardBtn" type="button">Open Dashboard</button>
       <a href="pricing.html" class="btn btn-outline">View Plans</a>
-      <a href="extension.zip" download="news-sentiment-radar-ext.zip" class="btn btn-outline" style="border-color: #8BC97F; color: #8BC97F;">Chrome Extension</a>
+      <a href="extension.zip" download="scryweb-chrome-extension.zip" class="btn btn-outline" style="border-color:#8BC97F;color:#8BC97F;">Chrome Extension</a>
     </div>
-    <div class="hero-social-proof">Used by <span>500+</span> content creators · Free tier includes 50 story crawls per month</div>
+    <div class="hero-social-proof">Used by <span>500+</span> content creators and editorial teams — Free plan includes 50 news crawls per month</div>
   </div>
 
+  <!-- What ScryWeb Is -->
   <div class="container section">
-    <div class="section-eyebrow">What's included</div>
-    <h2 class="section-title">Six newsroom workflows in one AI dashboard</h2>
-    <p class="section-sub">News Sentiment Radar combines source crawling, sentiment analysis, emotion detection, keyword intelligence, briefs, drafts, and team/API options in one web app.</p>
+    <div class="section-eyebrow">Platform overview</div>
+    <h2 class="section-title">What is ScryWeb?</h2>
+    <p class="section-sub">ScryWeb is an AI news intelligence platform that connects source crawling, sentiment and emotion analysis, keyword extraction, editorial brief generation, AP-style draft creation, AI content humanization, and Markdown export in a single web application. It is designed for editorial teams that need to move from raw news signals to reviewed, publishable content without switching between multiple tools.</p>
+  </div>
+
+  <!-- Features -->
+  <div class="container section">
+    <div class="section-eyebrow">Core capabilities</div>
+    <h2 class="section-title">Eight capabilities in one AI news intelligence workflow</h2>
+    <p class="section-sub">From news crawling to humanized, export-ready content — ScryWeb covers every step of the editorial intelligence pipeline.</p>
     <div class="features-grid">
-      <div class="feature-card"><div class="feature-icon">🌐</div><h3>Multi-source crawling</h3><p>Multi-source crawling tracks Reddit, Hacker News, major RSS feeds, and custom RSS feeds from one dashboard.</p><span class="feature-lock lock-free">Free</span></div>
-      <div class="feature-card"><div class="feature-icon">🧠</div><h3>Sentiment & emotion AI</h3><p>Sentiment and emotion analysis labels each story as positive, negative, or neutral and identifies emotions such as joy, anger, fear, and surprise with confidence scores.</p><span class="feature-lock lock-free">Free (50/mo)</span></div>
-      <div class="feature-card"><div class="feature-icon">✍️</div><h3>One-click briefs & drafts</h3><p>Brief and draft generation turns a selected story into a structured editorial brief and an AP-style draft article for human review.</p><span class="feature-lock lock-pro">Pro</span></div>
-      <div class="feature-card"><div class="feature-icon">📊</div><h3>Keyword intelligence</h3><p>Keyword intelligence surfaces recurring topics, content gaps, and SEO opportunities across crawled sources.</p><span class="feature-lock lock-pro">Pro</span></div>
-      <div class="feature-card"><div class="feature-icon">⚡</div><h3>Unlimited crawls</h3><p>The Pro plan removes the Free plan's 50-story monthly crawl limit and unlocks all source categories.</p><span class="feature-lock lock-pro">Pro</span></div>
-      <div class="feature-card"><div class="feature-icon">🏢</div><h3>Team & API access</h3><p>Enterprise access adds multi-seat accounts, SSO, custom sentiment models, on-premise AI deployment, and whitelabel API options.</p><span class="feature-lock lock-ent">Enterprise</span></div>
+
+      <div class="feature-card">
+        <div class="feature-icon"></div>
+        <h3>Multi-source news crawling</h3>
+        <p>ScryWeb's news crawler retrieves stories from Reddit, Hacker News, BBC, Reuters, and custom RSS feeds. Source selection, crawl frequency, and topic filtering are all managed from the dashboard.</p>
+        <span class="feature-lock lock-free">Free</span>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon"></div>
+        <h3>Sentiment and emotion analysis</h3>
+        <p>Each crawled story is classified as positive, negative, or neutral and scored for emotional signals including joy, anger, fear, and surprise. Confidence scores accompany every classification for editorial review.</p>
+        <span class="feature-lock lock-free">Free (50/mo)</span>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon"></div>
+        <h3>Keyword intelligence</h3>
+        <p>The keyword intelligence layer surfaces recurring topics, underserved content angles, and SEO gap opportunities across all crawled sources, giving teams data to prioritize coverage before writing.</p>
+        <span class="feature-lock lock-free">Free</span>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon"></div>
+        <h3>Editorial brief generation</h3>
+        <p>Select any crawled story and generate a structured editorial brief containing a headline, editorial angle, primary keyword, content outline, key supporting points, and source context for editorial review and assignment.</p>
+        <span class="feature-lock lock-pro">Pro</span>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon"></div>
+        <h3>AP-style draft generation</h3>
+        <p>Pro users can convert any editorial brief into a full AP-style article draft. Drafts are intended for human editorial review, fact-checking, and revision before publication.</p>
+        <span class="feature-lock lock-pro">Pro</span>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon"></div>
+        <h3>AI content humanizer</h3>
+        <p>The AI humanizer processes generated drafts to reduce detectable AI signals — including formulaic sentence rhythm, repeated transitional phrases, and uniform paragraph structure — producing editorial copy that reads naturally.</p>
+        <span class="feature-lock lock-pro">Pro</span>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon"></div>
+        <h3>Markdown and JSON export</h3>
+        <p>Briefs and drafts export to Markdown for CMS and static site integrations, or to JSON for API-driven publishing pipelines. Markdown formatting is clean and stripped of AI-specific artifact patterns before export.</p>
+        <span class="feature-lock lock-pro">Pro</span>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon"></div>
+        <h3>Team accounts and API access</h3>
+        <p>Enterprise tier adds multi-seat team accounts, SSO, on-premise AI deployment, custom sentiment models, dedicated SLAs, and whitelabel API access for platform integrations.</p>
+        <span class="feature-lock lock-ent">Enterprise</span>
+      </div>
+
     </div>
   </div>
 
+  <!-- How it works -->
   <div class="container section">
-    <div class="section-eyebrow">How it works</div>
-    <h2 class="section-title">Four-step workflow from crawl to draft</h2>
-    <p class="section-sub" style="margin-bottom: 40px;">The workflow is crawl, analyze, brief, and draft, so teams can move from source monitoring to reviewed editorial output without switching tools.</p>
+    <div class="section-eyebrow">Workflow</div>
+    <h2 class="section-title">From news crawl to humanized draft in six steps</h2>
+    <p class="section-sub" style="margin-bottom:40px;">ScryWeb's editorial intelligence workflow is designed to eliminate the manual steps between source monitoring and publishable content.</p>
     <div class="steps">
-      <div class="step"><div class="step-number">1</div><h3>Crawl</h3><p>Select source categories such as World, Tech, Reddit, and Hacker News, then run a crawl.</p></div>
-      <div class="step"><div class="step-number">2</div><h3>Analyze</h3><p>The app assigns sentiment, emotion, confidence, and keywords to each crawled story.</p></div>
-      <div class="step"><div class="step-number">3</div><h3>Brief</h3><p>A selected story can become a structured editorial brief with headline, angle, outline, and keyword context.</p></div>
-      <div class="step"><div class="step-number">4</div><h3>Draft</h3><p>Pro users can generate an AP-style draft article that editors review before publication.</p></div>
+      <div class="step">
+        <div class="step-number">1</div>
+        <h3>Crawl</h3>
+        <p>Select source categories — World, Technology, Reddit, Hacker News, and custom RSS — and run a news crawl to retrieve current stories.</p>
+      </div>
+      <div class="step">
+        <div class="step-number">2</div>
+        <h3>Analyze</h3>
+        <p>Each story receives a sentiment classification, emotion labels, a confidence score, and keyword extraction for editorial review.</p>
+      </div>
+      <div class="step">
+        <div class="step-number">3</div>
+        <h3>Brief</h3>
+        <p>Generate a structured editorial brief — headline, angle, primary keyword, outline, and supporting context — from any crawled story.</p>
+      </div>
+      <div class="step">
+        <div class="step-number">4</div>
+        <h3>Draft</h3>
+        <p>Convert the brief into a full AP-style article draft for human editorial review, fact-checking, and revision.</p>
+      </div>
+      <div class="step">
+        <div class="step-number">5</div>
+        <h3>Humanize</h3>
+        <p>Pass the draft through the AI humanizer to reduce detectable AI signals and produce copy that reads as natural editorial prose.</p>
+      </div>
+      <div class="step">
+        <div class="step-number">6</div>
+        <h3>Export</h3>
+        <p>Export the reviewed draft to Markdown or JSON for direct integration with your CMS, static site generator, or publishing pipeline.</p>
+      </div>
     </div>
   </div>
 
+  <!-- AEO / LLM Visibility Section -->
   <div class="container section answer-section">
-    <div class="section-eyebrow">Answer-ready intelligence</div>
-    <h2 class="section-title">Built for SEO, AEO, and AI search workflows</h2>
-    <p class="section-sub">Answer engines cite pages that define terms clearly, answer specific questions, and provide source-aware context. News Sentiment Radar helps teams collect those inputs before writing.</p>
+    <div class="section-eyebrow">Search and answer engine optimization</div>
+    <h2 class="section-title">Built for traditional search, answer engines, and LLM visibility</h2>
+    <p class="section-sub">Answer engines and large language models — including Claude, ChatGPT, and Gemini — surface platforms that define their capabilities clearly, answer questions directly, and demonstrate specific, verifiable value. ScryWeb is built with that standard in mind.</p>
     <div class="answer-grid">
       <div class="answer-item">
-        <h3>Find the question behind the trend</h3>
-        <p>The app compares source framing and sentiment so teams can turn emerging topics into direct answers, explainers, briefs, and timely article drafts.</p>
+        <h3>Identify the question behind the trend</h3>
+        <p>ScryWeb compares sentiment and framing across sources so editorial teams can identify which trending stories still lack a definitive, authoritative answer — the most citable content position for both search and AI-generated responses.</p>
       </div>
       <div class="answer-item">
-        <h3>Prioritize useful content angles</h3>
-        <p>Sentiment, emotion, keywords, and source context help teams decide which topics deserve coverage and which angles are already over-served.</p>
+        <h3>Structure content for machine readability</h3>
+        <p>Briefs generated by ScryWeb include direct headings, outlined key points, and source-attributed context — the structural pattern that answer engines extract when composing cited responses to user queries.</p>
       </div>
       <div class="answer-item">
-        <h3>Write for humans and answer engines</h3>
-        <p>Structured briefs include headlines, angles, key points, and supporting context so editors can publish clearer, more helpful content.</p>
+        <h3>Prioritize underserved content angles</h3>
+        <p>Keyword intelligence and sentiment comparison reveal which angles in a topic are over-represented and which remain open. Teams that address open angles produce content with higher probability of appearing in AI-generated answers.</p>
       </div>
     </div>
   </div>
 
+  <!-- FAQ -->
   <div class="container section faq-section">
-    <div class="section-eyebrow">Questions</div>
-    <h2 class="section-title">News Sentiment Radar FAQ</h2>
+    <div class="section-eyebrow">Frequently asked questions</div>
+    <h2 class="section-title">ScryWeb — questions and answers</h2>
     <div class="faq-grid">
+
+      <div class="faq-item">
+        <h3>What is ScryWeb?</h3>
+        <p>ScryWeb is an AI news intelligence platform that crawls trending news and social sources, classifies sentiment and emotion, extracts keywords, and generates editorial briefs, AP-style article drafts, and humanized content for newsrooms, publishers, and content teams. It is accessible via a web dashboard and a Chrome browser extension.</p>
+      </div>
+
       <div class="faq-item">
         <h3>What is news sentiment analysis?</h3>
-        <p>News sentiment analysis is the use of AI to classify whether news coverage is positive, negative, or neutral while also identifying emotions such as anger, fear, joy, and surprise, so editorial teams can understand how a story is framed before they write or respond. In scryweb.com, that analysis is paired with source context, confidence scoring, and keyword extraction for planning briefs and drafts.</p>
+        <p>News sentiment analysis is the automated classification of news coverage as positive, negative, or neutral using AI models, combined with emotion detection for signals including anger, fear, joy, and surprise. Editorial teams use it to understand how a story is framed across sources before writing, assigning, or responding to coverage. ScryWeb pairs each classification with confidence scoring and keyword extraction for downstream brief and draft generation.</p>
       </div>
+
       <div class="faq-item">
-        <h3>How does this help SEO and content planning?</h3>
-        <p>News sentiment analysis helps SEO and content teams choose timely topics by showing which stories are trending, which keywords are recurring, which emotional frames are gaining attention, and where original coverage can answer user questions before a brief or article is written. Teams can use those signals to prioritize original angles, avoid over-served narratives, and write answer-ready content.</p>
+        <h3>How does the AI content humanizer work?</h3>
+        <p>After generating an AP-style draft, ScryWeb's AI humanizer performs a multi-pass rewrite targeting detectable AI signals: formulaic sentence rhythm, uniform paragraph length, repeated transitional phrases, and AI-specific vocabulary patterns. The result is editorial prose that reads naturally and is suited to human editorial review before publication.</p>
       </div>
+
       <div class="faq-item">
-        <h3>Can the app generate article briefs?</h3>
-        <p>Yes, scryweb.com can generate structured editorial briefs from a story or topic, including a headline, angle, primary keyword, outline, key points, and context, so writers have a reviewed starting point before drafting or assigning coverage to an editor or reporter. Pro workflows can also turn those briefs into AP-style article drafts while keeping human editorial review in the process.</p>
+        <h3>Does ScryWeb support Markdown export?</h3>
+        <p>Yes. Pro users can export any editorial brief or article draft to clean Markdown or JSON. The Markdown output is formatted for direct use in CMS platforms, static site generators, and documentation tools, and is processed to remove AI formatting artifacts such as excessive heading nesting and redundant bullet structures before export.</p>
       </div>
+
       <div class="faq-item">
-        <h3>Which teams use this kind of tool?</h3>
-        <p>News sentiment tools are used by newsrooms, publishers, agencies, content marketers, analysts, and research teams that need to monitor fast-moving narratives, compare source framing, detect sentiment shifts, and convert trend signals into timely editorial work for search and audience planning. scryweb.com supports those teams with crawling, sentiment analysis, keyword intelligence, briefs, drafts, and export workflows.</p>
+        <h3>How does ScryWeb generate editorial briefs?</h3>
+        <p>Selecting any crawled story triggers ScryWeb's brief generation pipeline, which produces a structured document containing a recommended headline, editorial angle, primary keyword, content outline, key supporting points, and source context. The brief gives writers and editors a reviewed starting point before drafting or assigning coverage.</p>
+      </div>
+
+      <div class="faq-item">
+        <h3>Which news sources does ScryWeb crawl?</h3>
+        <p>ScryWeb's news crawler supports Reddit, Hacker News, BBC, Reuters, and up to eight source categories including World, Technology, Business, and Science. Pro users can add unlimited custom RSS feeds. The Free plan includes three source categories and up to 50 crawls per month.</p>
+      </div>
+
+      <div class="faq-item">
+        <h3>How does ScryWeb improve content visibility in LLMs like Claude, ChatGPT, and Gemini?</h3>
+        <p>ScryWeb helps editorial teams produce content that matches the structural and informational patterns that large language models extract and cite. By identifying open questions in trending topics, structuring briefs with clear headings and direct answers, and exporting clean Markdown, ScryWeb increases the likelihood that published content is surfaced by AI-generated responses across major platforms.</p>
+      </div>
+
+      <div class="faq-item">
+        <h3>Which teams use ScryWeb?</h3>
+        <p>ScryWeb is used by newsrooms, digital publishers, content agencies, SEO teams, market researchers, and enterprise communications teams that need to monitor news narratives, compare source sentiment, identify keyword opportunities, and produce reviewed editorial output at scale.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div class="container section" style="border-top:none;padding-top:0;">
+    <div class="dashboard-cta">
+      <h2>Start monitoring news intelligence today</h2>
+      <p>The Free plan includes 50 news crawls per month, sentiment and emotion analysis, keyword extraction, and no credit card requirement. Pro unlocks editorial briefs, AP-style drafts, the AI humanizer, and Markdown export.</p>
+      <div class="cta-buttons">
+        <button class="btn" id="ctaDashboardBtn" type="button">Open Dashboard Free</button>
+        <a href="pricing.html" class="btn btn-outline">Compare all plans</a>
       </div>
     </div>
   </div>
 
-  <div class="container section" style="border-top:none; padding-top: 0;">
-    <div class="dashboard-cta">
-      <h2>Ready to monitor news sentiment?</h2>
-      <p>Join 500+ content creators using a Free plan with 50 story crawls per month and no credit card requirement.</p>
-      <div class="cta-buttons">
-        <button class="btn" id="ctaDashboardBtn" type="button">Open Dashboard Free</button>
-        <a href="pricing.html" class="btn btn-outline">See all plans</a>
-      </div>
-    </div>
-  </div>
 </main>
 
 <footer class="footer">
   <div class="container">
-    <p>© 2026 News Sentiment Radar &nbsp;·&nbsp; <a href="privacy.html">Privacy</a> &nbsp;·&nbsp; <a href="terms.html">Terms</a> &nbsp;·&nbsp; <a href="contact.html">Contact</a></p>
-    <div class="footer-tagline">Navigate Your News Reality – Sentiment Ready</div>
+    <p>© 2026 ScryWeb &nbsp;·&nbsp; <a href="privacy.html">Privacy</a> &nbsp;·&nbsp; <a href="terms.html">Terms</a> &nbsp;·&nbsp; <a href="contact.html">Contact</a></p>
+    <div class="footer-tagline">AI News Intelligence — Sentiment, Briefs, Drafts, and Humanized Content</div>
   </div>
 </footer>
 

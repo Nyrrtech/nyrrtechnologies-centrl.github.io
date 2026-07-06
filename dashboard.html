@@ -1831,9 +1831,10 @@
           const scoreBadges = document.getElementById('hzScoreBadges');
           if (scoreBadges) scoreBadges.innerHTML = `<span style="font-size:11px;padding:3px 10px;border-radius:20px;background:rgba(139,201,127,0.15);color:#8BC97F;border:1px solid rgba(139,201,127,0.3)">Burstiness: ${burstScore}%</span><span style="font-size:11px;padding:3px 10px;border-radius:20px;background:rgba(245,176,66,0.15);color:var(--accent);border:1px solid rgba(245,176,66,0.3)">Human Score: ~${passScore}%</span><span style="font-size:11px;padding:3px 10px;border-radius:20px;background:rgba(155,126,222,0.15);color:#9B7EDE;border:1px solid rgba(155,126,222,0.3)">${passCount}-pass</span>`;
           ['hzCopyBtn','hzExportBtn','hzRehumanizeBtn'].forEach(id => document.getElementById(id)?.replaceWith(document.getElementById(id).cloneNode(true)));
-          document.getElementById('hzCopyBtn')?.addEventListener('click', () => navigator.clipboard?.writeText(result));
-          document.getElementById('hzExportBtn')?.addEventListener('click', () => { const blob = new Blob([result], { type: 'text/markdown' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `humanized-${Date.now()}.md`; a.click(); });
-          document.getElementById('hzRehumanizeBtn')?.addEventListener('click', () => { const input = document.getElementById('hzInput'); if (input) input.value = result; document.getElementById('hzRunBtn')?.click(); });
+          const currentOutputText = () => document.getElementById('hzOutputText')?.textContent ?? result;
+          document.getElementById('hzCopyBtn')?.addEventListener('click', () => navigator.clipboard?.writeText(currentOutputText()));
+          document.getElementById('hzExportBtn')?.addEventListener('click', () => { const blob = new Blob([currentOutputText()], { type: 'text/markdown' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `humanized-${Date.now()}.md`; a.click(); });
+          document.getElementById('hzRehumanizeBtn')?.addEventListener('click', () => { const input = document.getElementById('hzInput'); if (input) input.value = currentOutputText(); document.getElementById('hzRunBtn')?.click(); });
         }
       });
 

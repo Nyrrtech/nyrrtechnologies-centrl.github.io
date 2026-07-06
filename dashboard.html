@@ -195,7 +195,12 @@
             <div><span class="settings-label">Detection Bypass Level</span><select id="hzBypassLevel" class="settings-input"><option value="light">Light — Minimal changes</option><option value="medium" selected>Medium — Balanced rewrite</option><option value="aggressive">Aggressive — Deep rewrite</option></select></div>
             <div><span class="settings-label">SEO Optimization</span><select id="hzSeoMode" class="settings-input"><option value="none">No SEO adjustments</option><option value="basic" selected>Basic — Headings + NLP terms</option><option value="full">Full — Entities + semantic depth</option></select></div>
           </div>
+          <div style="margin-bottom:14px;display:flex;align-items:center;gap:8px">
+            <input type="checkbox" id="hzPreserveVoice" style="width:16px;height:16px;cursor:pointer;flex:none">
+            <label for="hzPreserveVoice" style="font-size:12px;color:var(--text-sec);cursor:pointer">Preserve the article's existing tone &amp; persona (ignores the Persona/Tone selectors above)</label>
+          </div>
           <div style="margin-bottom:14px"><span class="settings-label">Focus Keyword <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></span><input id="hzKeyword" class="settings-input" type="text" placeholder="e.g. climate policy, AI regulation…"></div>
+          <div style="margin-bottom:14px"><span class="settings-label">Custom instructions <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></span><textarea id="hzCustomInstructions" class="settings-input" rows="2" placeholder="e.g. Keep it under 600 words, don't mention competitors, keep the closing quote intact…" style="resize:vertical;line-height:1.6"></textarea></div>
           <div style="margin-bottom:6px"><span class="settings-label">Paste your article</span><textarea id="hzInput" class="settings-input" rows="10" placeholder="Paste your AI-generated article here…" style="resize:vertical;line-height:1.6"></textarea></div>
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px">
             <button id="hzRunBtn" class="run-btn" style="margin-left:0">✨ Humanize Article</button>
@@ -1018,7 +1023,7 @@
     const BYPASS_INSTRS      = { light: 'Make moderate changes: replace AI buzzwords, add contractions, vary sentence length. Target: ~30% reduction.', medium: 'Significantly rewrite while keeping all facts. Restructure 40%+ of sentences, add 3-5 natural human quirks. Target: ~65% reduction.', aggressive: 'Deeply transform — keep ONLY facts, data, named entities. Rewrite every sentence. Target: ~85% reduction.' };
     const SEO_INSTRS         = { none: '', basic: '\n\nSEO (Basic): Use focus keyword naturally in first paragraph and 2+ other places. Active voice.', full: '\n\nSEO (Full): Keyword in first 100 words, a heading, and final paragraph. Include 3-5 LSI terms.' };
 
-    async function runAdvancedHumanizer({ text, persona, tone, bypassLevel, seoMode, focusKeyword, targetDiv, onComplete }) {
+    async function runAdvancedHumanizer({ text, persona, tone, bypassLevel, seoMode, focusKeyword, preserveVoice = false, customInstructions = '', targetDiv, onComplete }) {
       const apiKey = settings.aiProvider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
       if (!apiKey) { if (targetDiv) targetDiv.innerHTML = '<div class="error-msg">⚠️ Add your API key in Settings first.</div>'; return null; }
       const personaData = HUMANIZER_PERSONAS[persona] || HUMANIZER_PERSONAS.journalist;
@@ -1026,7 +1031,11 @@
       const seoInstr    = SEO_INSTRS[seoMode] || '';
       const bannedList  = HUMANIZER_BANNED.join('", "');
       const keywordLine = focusKeyword ? `\nFOCUS KEYWORD: "${focusKeyword}"` : '';
+      const customLine  = customInstructions ? `\nUSER INSTRUCTIONS (follow these throughout every pass): ${customInstructions}` : '';
       const toneGuide   = { casual: 'warm, conversational — contractions, short paragraphs', professional: 'polished, authoritative, active voice', witty: 'sharp, clever, light humour', empathetic: 'warm, use "we" and "you", compassionate', simple: 'plain English, max 15-word sentences' };
+      const voiceInstr  = preserveVoice
+        ? `You are editing this article while carefully preserving its EXISTING tone, voice, and persona exactly as written. Identify the author's current style, formality level, and point of view, then keep that intact — do not adopt a new persona and do not shift the tone.`
+        : `You are a ${personaData.voice}. Rewrite with a completely new structure and voice.\nPERSONA TRAITS:\n${personaData.traits.map((t, i) => `${i + 1}. ${t}`).join('\n')}\nTONE: ${toneGuide[tone] || toneGuide.casual}`;
       const passes      = bypassLevel === 'light' ? 1 : bypassLevel === 'medium' ? 2 : 3;
       const setProgress = (msg, pct) => { const p = document.getElementById('hzProgressMsg'); const f = document.getElementById('hzProgFill'); if (p) p.innerHTML = msg; if (f) f.style.width = pct + '%'; };
       const addBadge    = (label, color) => { const badges = document.getElementById('hzPassBadges'); if (!badges) return; const b = document.createElement('span'); b.style.cssText = `font-size:10px;padding:2px 9px;border-radius:20px;background:${color}22;color:${color};border:1px solid ${color}44`; b.textContent = label; badges.appendChild(b); };
@@ -1035,18 +1044,18 @@
       let current = text;
       try {
         setProgress('<span class="spinner"></span> Pass 1/' + passes + ': Restructuring & voice…', 10); addBadge('Pass 1: Structure', '#f5b042');
-        const p1 = `You are a ${personaData.voice}. Rewrite with a completely new structure and voice.\nPERSONA TRAITS:\n${personaData.traits.map((t, i) => `${i + 1}. ${t}`).join('\n')}\nTONE: ${toneGuide[tone] || toneGuide.casual}\nBYPASS LEVEL: ${bypassInstr}${keywordLine}\nABSOLUTE RULES:\n1. NEVER use: "${bannedList}"\n2. Keep ALL facts accurate\n3. Vary sentence length dramatically\n4. Return ONLY the rewritten article.\n\nARTICLE:\n${current}`;
+        const p1 = `${voiceInstr}\nBYPASS LEVEL: ${bypassInstr}${keywordLine}${customLine}\nABSOLUTE RULES:\n1. NEVER use: "${bannedList}"\n2. Keep ALL facts accurate\n3. Vary sentence length dramatically\n4. Return ONLY the rewritten article.\n\nARTICLE:\n${current}`;
         current = await callAIWithRetry({ prompt: p1, maxTokens: 3200, apiKey, provider: settings.aiProvider, retries: 2, delayMs: 1200 });
         setProgress('<span class="spinner"></span> Pass 1 complete.', 30);
         if (passes >= 2) {
           await new Promise(r => setTimeout(r, 500)); setProgress('<span class="spinner"></span> Pass 2/' + passes + ': Maximising burstiness…', 35); addBadge('Pass 2: Burstiness', '#8BC97F');
-          const p2 = `Expert editor specialising in making AI-written text undetectable.\nEDITING TASKS:\n1. Restructure at least 3 of the 5 longest sentences\n2. Replace predictable word choices\n3. Remove: "moreover","furthermore","however","therefore","thus","additionally"\n4. Add 2-3 natural imperfections: comma splice, sentence starting with "And"/"But"\n5. No two consecutive sentences similar length${seoInstr}\nReturn ONLY the edited article.\n\nARTICLE:\n${current}`;
+          const p2 = `Expert editor specialising in making AI-written text undetectable.${preserveVoice ? ' Keep the article\'s existing tone, voice, and persona intact while you edit.' : ''}\nEDITING TASKS:\n1. Restructure at least 3 of the 5 longest sentences\n2. Replace predictable word choices\n3. Remove: "moreover","furthermore","however","therefore","thus","additionally"\n4. Add 2-3 natural imperfections: comma splice, sentence starting with "And"/"But"\n5. No two consecutive sentences similar length${seoInstr}${customLine}\nReturn ONLY the edited article.\n\nARTICLE:\n${current}`;
           current = await callAIWithRetry({ prompt: p2, maxTokens: 3200, apiKey, provider: settings.aiProvider, retries: 2, delayMs: 1200 });
           setProgress('<span class="spinner"></span> Pass 2 complete.', 65);
         }
         if (passes >= 3) {
           await new Promise(r => setTimeout(r, 500)); setProgress('<span class="spinner"></span> Pass 3/' + passes + ': Scrubbing AI fingerprints…', 70); addBadge('Pass 3: Fingerprint Scrub', '#9B7EDE');
-          const p3 = `Final AI fingerprint scrub.\nFINAL CHECKS:\n1. Any word used 3+ times? Vary with synonyms.\n2. 3+ consecutive sentences starting the same way? Fix.\n3. No two consecutive paragraphs the same length.\n4. Add if missing: mild surprise, mild opinion, short standalone sentence, rhetorical question.${focusKeyword ? `\n5. Confirm keyword "${focusKeyword}" appears in first 150 words.` : ''}\nReturn ONLY the final article.\n\nARTICLE:\n${current}`;
+          const p3 = `Final AI fingerprint scrub.${preserveVoice ? ' Keep the article\'s existing tone, voice, and persona intact.' : ''}\nFINAL CHECKS:\n1. Any word used 3+ times? Vary with synonyms.\n2. 3+ consecutive sentences starting the same way? Fix.\n3. No two consecutive paragraphs the same length.\n4. Add if missing: mild surprise, mild opinion, short standalone sentence, rhetorical question.${focusKeyword ? `\n5. Confirm keyword "${focusKeyword}" appears in first 150 words.` : ''}${customLine}\nReturn ONLY the final article.\n\nARTICLE:\n${current}`;
           current = await callAIWithRetry({ prompt: p3, maxTokens: 3200, apiKey, provider: settings.aiProvider, retries: 2, delayMs: 1200 });
           setProgress('✅ All passes complete.', 100); addBadge('✓ Done', '#f5b042');
         } else { setProgress('✅ Humanization complete.', 100); }
@@ -1791,16 +1800,26 @@
         const bypassLevel = document.getElementById('hzBypassLevel')?.value || 'medium';
         const seoMode = document.getElementById('hzSeoMode')?.value || 'basic';
         const focusKeyword = document.getElementById('hzKeyword')?.value.trim() || '';
+        const preserveVoice = document.getElementById('hzPreserveVoice')?.checked || false;
+        const customInstructions = document.getElementById('hzCustomInstructions')?.value.trim() || '';
         const hzRunBtn = document.getElementById('hzRunBtn');
         const hzOutput = document.getElementById('hzOutput');
+        const hzOutputText = document.getElementById('hzOutputText');
+        const hzScoreBadges = document.getElementById('hzScoreBadges');
         if (hzRunBtn) hzRunBtn.disabled = true;
-        if (hzOutput) hzOutput.style.display = 'none';
-        const result = await runAdvancedHumanizer({ text, persona, tone, bypassLevel, seoMode, focusKeyword, targetDiv: hzOutput, onComplete: null });
+        if (hzScoreBadges) hzScoreBadges.innerHTML = '';
+        if (hzOutputText) hzOutputText.innerHTML = '<div class="empty"><span class="spinner"></span> Humanizing…</div>';
+        if (hzOutput) hzOutput.style.display = 'block';
+        // NOTE: target the inner hzOutputText node (not the hzOutput wrapper) so that an
+        // error message never overwrites the surrounding badges/action-button markup —
+        // that was the cause of the "Humanize Article" button appearing stuck/unresponsive
+        // after any failed run (missing API key, rate limit, network hiccup, etc.).
+        const result = await runAdvancedHumanizer({ text, persona, tone, bypassLevel, seoMode, focusKeyword, preserveVoice, customInstructions, targetDiv: hzOutputText, onComplete: null });
         if (hzRunBtn) hzRunBtn.disabled = false;
+        if (hzOutput) hzOutput.style.display = 'block';
         if (result) {
           const outputText = document.getElementById('hzOutputText');
           if (outputText) outputText.textContent = result;
-          if (hzOutput) hzOutput.style.display = 'block';
           const sentences = result.match(/[^.!?]+[.!?]+/g) || [];
           const lens = sentences.map(s => s.trim().split(/\s+/).length);
           const avg = lens.reduce((a, b) => a + b, 0) / (lens.length || 1);
@@ -1816,6 +1835,14 @@
           document.getElementById('hzExportBtn')?.addEventListener('click', () => { const blob = new Blob([result], { type: 'text/markdown' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `humanized-${Date.now()}.md`; a.click(); });
           document.getElementById('hzRehumanizeBtn')?.addEventListener('click', () => { const input = document.getElementById('hzInput'); if (input) input.value = result; document.getElementById('hzRunBtn')?.click(); });
         }
+      });
+
+      document.getElementById('hzPreserveVoice')?.addEventListener('change', (e) => {
+        const disable = e.target.checked;
+        const p = document.getElementById('hzPersona');
+        const t = document.getElementById('hzTone');
+        if (p) p.disabled = disable;
+        if (t) t.disabled = disable;
       });
 
       document.getElementById('hzStripMarkdownBtn')?.addEventListener('click', () => {

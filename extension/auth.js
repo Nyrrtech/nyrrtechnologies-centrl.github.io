@@ -740,8 +740,8 @@ async function renderHeader() {
           <span class="plan-badge ${meta.badgeClass}">${meta.label}</span>
         </div>
         <div class="user-dropdown-divider"></div>
-        <a href="dashboard.html" class="user-dropdown-item" role="menuitem">📊 Dashboard</a>
-        <a href="pricing.html"   class="user-dropdown-item" role="menuitem">💰 Upgrade plan</a>
+        <a href="/dashboard" class="user-dropdown-item" role="menuitem">📊 Dashboard</a>
+        <a href="/pricing"   class="user-dropdown-item" role="menuitem">💰 Upgrade plan</a>
         <div class="user-dropdown-divider"></div>
         <button class="user-dropdown-item user-dropdown-logout" id="headerLogoutBtn" role="menuitem">🚪 Sign out</button>
       </div>

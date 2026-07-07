@@ -728,7 +728,7 @@
     function renderUpsellBanner(containerId, feature) {
       const el = document.getElementById(containerId);
       if (!el) return;
-      el.innerHTML = `<div style="background:#2A1E0A;border:1px solid rgba(245,176,66,0.25);border-radius:12px;padding:28px;text-align:center;margin-top:8px"><div style="font-size:1.3rem;margin-bottom:8px">🔒 ${feature === 'briefs' ? 'Briefs & Drafts' : 'Crawl limit reached'}</div><div style="font-size:12px;color:var(--text-sec);margin-bottom:18px">Upgrade to Pro for unlimited crawls, AI briefs, drafts, and all sources.</div><a href="pricing.html"><button class="run-btn" style="margin:0 auto">⚡ Upgrade to Pro</button></a></div>`;
+      el.innerHTML = `<div style="background:#2A1E0A;border:1px solid rgba(245,176,66,0.25);border-radius:12px;padding:28px;text-align:center;margin-top:8px"><div style="font-size:1.3rem;margin-bottom:8px">🔒 ${feature === 'briefs' ? 'Briefs & Drafts' : 'Crawl limit reached'}</div><div style="font-size:12px;color:var(--text-sec);margin-bottom:18px">Upgrade to Pro for unlimited crawls, AI briefs, drafts, and all sources.</div><a href="/pricing"><button class="run-btn" style="margin:0 auto">⚡ Upgrade to Pro</button></a></div>`;
     }
 
     async function renderSourceChips() {
@@ -875,7 +875,7 @@
       const topKw    = Object.entries(wordMap).filter(([, c]) => c >= minCount).sort((a, b) => b[1] - a[1]).slice(0, 40);
       if (!topKw.length) { container.innerHTML = '<div class="empty">Not enough data yet — try crawling more sources.</div>'; return; }
       if (!hasBriefs) {
-        container.innerHTML = `<div class="section-label">🔥 Trending keywords</div><div class="kw-grid">${topKw.map(([k, c]) => `<span class="kw-tag">${esc(k)} <span style="opacity:0.5">${c}</span></span>`).join('')}</div><div style="background:#2A1E0A;border:1px solid rgba(245,176,66,0.25);border-radius:12px;padding:24px;text-align:center;margin-top:16px"><div style="font-size:1rem;margin-bottom:8px">🔒 AI keyword intelligence is a Pro feature</div><div style="font-size:12px;color:var(--text-sec);margin-bottom:16px">Upgrade for AI-powered keyword clusters, content gaps and topic briefs.</div><a href="pricing.html"><button class="run-btn" style="margin:0 auto">View Pro Plan →</button></a></div>`;
+        container.innerHTML = `<div class="section-label">🔥 Trending keywords</div><div class="kw-grid">${topKw.map(([k, c]) => `<span class="kw-tag">${esc(k)} <span style="opacity:0.5">${c}</span></span>`).join('')}</div><div style="background:#2A1E0A;border:1px solid rgba(245,176,66,0.25);border-radius:12px;padding:24px;text-align:center;margin-top:16px"><div style="font-size:1rem;margin-bottom:8px">🔒 AI keyword intelligence is a Pro feature</div><div style="font-size:12px;color:var(--text-sec);margin-bottom:16px">Upgrade for AI-powered keyword clusters, content gaps and topic briefs.</div><a href="/pricing"><button class="run-btn" style="margin:0 auto">View Pro Plan →</button></a></div>`;
         return;
       }
       container.innerHTML = `<div class="section-label">🔥 Trending keywords</div><div class="kw-grid">${topKw.map(([k, c]) => `<span class="kw-tag" data-term="${esc(k)}">${esc(k)} <span style="opacity:0.5">${c}</span></span>`).join('')}</div><div class="section-label" style="margin-top:16px">🧠 Click any keyword to generate a topic brief</div><div id="kwAiSection" style="margin-top:20px"><div style="text-align:center;padding:24px;color:var(--text-hint)"><span class="spinner"></span> Loading AI keyword intelligence…</div></div>`;
@@ -1493,7 +1493,7 @@
       if (!el) return;
       if (profile?.plan === 'trial' && profile.trialExpiresAt) {
         const days = Math.max(0, Math.ceil((new Date(profile.trialExpiresAt) - Date.now()) / 86400000));
-        el.innerHTML = `<div class="trial-expiry-warning">⚡ Trial active — ${days} day${days !== 1 ? 's' : ''} remaining. <a href="pricing.html" style="color:var(--accent);font-weight:600">Upgrade to keep Pro access →</a></div>`;
+        el.innerHTML = `<div class="trial-expiry-warning">⚡ Trial active — ${days} day${days !== 1 ? 's' : ''} remaining. <a href="/pricing" style="color:var(--accent);font-weight:600">Upgrade to keep Pro access →</a></div>`;
       }
     }
 

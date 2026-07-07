@@ -47,12 +47,12 @@
         "@id": "https://scryweb.com/#organization",
         "name": "ScryWeb",
         "url": "https://scryweb.com/",
-        "logo": "https://scryweb.com/logo.png",
+        "logo": "https://scryweb.com/Scryweb-Logo.png",
         "sameAs": ["https://scryweb.com/"],
         "contactPoint": {
           "@type": "ContactPoint",
           "contactType": "Sales and Support",
-          "url": "https://scryweb.com/contact.html"
+          "url": "https://scryweb.com/contact"
         }
       },
       {
@@ -64,7 +64,7 @@
         "publisher": { "@id": "https://scryweb.com/#organization" },
         "potentialAction": {
           "@type": "SearchAction",
-          "target": "https://scryweb.com/dashboard.html?topic={search_term_string}",
+          "target": "https://scryweb.com/dashboard?topic={search_term_string}",
           "query-input": "required name=search_term_string"
         }
       },
@@ -260,12 +260,12 @@
 
 <header class="header">
   <div class="container header-inner">
-    <a href="index.html" class="logo-brand"><img src="Scryweb-Logo.png" alt="ScryWeb logo"><span class="logo-text">ScryWeb</span></a>
+    <a href="/" class="logo-brand"><img src="Scryweb-Logo.png" alt="ScryWeb logo"><span class="logo-text">ScryWeb</span></a>
     <nav class="nav" aria-label="Primary navigation">
-      <a href="index.html" class="active">Home</a>
-      <a href="dashboard.html" id="navDashboardLink" style="display:none;">Dashboard</a>
-      <a href="pricing.html">Pricing</a>
-      <a href="contact.html">Contact</a>
+      <a href="/" class="active">Home</a>
+      <a href="/dashboard" id="navDashboardLink" style="display:none;">Dashboard</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/contact">Contact</a>
     </nav>
     <div class="header-auth" id="headerAuth"></div>
   </div>
@@ -285,7 +285,7 @@
     </div>
     <div class="hero-buttons">
       <button class="btn" id="heroDashboardBtn" type="button">Open Dashboard</button>
-      <a href="pricing.html" class="btn btn-outline">View Plans</a>
+      <a href="/pricing" class="btn btn-outline">View Plans</a>
       <a href="extension.zip" download="scryweb-chrome-extension.zip" class="btn btn-outline" style="border-color:#8BC97F;color:#8BC97F;">Chrome Extension</a>
     </div>
     <div class="hero-social-proof">Used by <span>500+</span> content creators and editorial teams — Free plan includes 50 news crawls per month</div>
@@ -480,7 +480,7 @@
       <p>The Free plan includes 50 news crawls per month, sentiment and emotion analysis, keyword extraction, and no credit card requirement. Pro unlocks editorial briefs, AP-style drafts, the AI humanizer, and Markdown export.</p>
       <div class="cta-buttons">
         <button class="btn" id="ctaDashboardBtn" type="button">Open Dashboard Free</button>
-        <a href="pricing.html" class="btn btn-outline">Compare all plans</a>
+        <a href="/pricing" class="btn btn-outline">Compare all plans</a>
       </div>
     </div>
   </div>
@@ -489,7 +489,7 @@
 
 <footer class="footer">
   <div class="container">
-    <p>© 2026 ScryWeb &nbsp;·&nbsp; <a href="privacy.html">Privacy</a> &nbsp;·&nbsp; <a href="terms.html">Terms</a> &nbsp;·&nbsp; <a href="contact.html">Contact</a></p>
+    <p>© 2026 ScryWeb &nbsp;·&nbsp; <a href="/privacy">Privacy</a> &nbsp;·&nbsp; <a href="/terms">Terms</a> &nbsp;·&nbsp; <a href="/contact">Contact</a></p>
     <div class="footer-tagline">AI News Intelligence — Sentiment, Briefs, Drafts, and Humanized Content</div>
   </div>
 </footer>
@@ -498,10 +498,10 @@
 <script src="auth.js" defer></script>
 <script>
   document.getElementById('heroDashboardBtn')?.addEventListener('click', () => {
-    window.checkAuthAndRedirect?.('dashboard.html');
+    window.checkAuthAndRedirect?.('/dashboard');
   });
   document.getElementById('ctaDashboardBtn')?.addEventListener('click', () => {
-    window.checkAuthAndRedirect?.('dashboard.html');
+    window.checkAuthAndRedirect?.('/dashboard');
   });
 </script>
 </body>

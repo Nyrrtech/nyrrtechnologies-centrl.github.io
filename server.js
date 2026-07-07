@@ -72,15 +72,32 @@ function securityHeaders() {
 http.createServer((req, res) => {
   // Reject any path-traversal attempts
   let rawPath;
+  let queryString = '';
   try {
-    rawPath = decodeURIComponent(req.url.split('?')[0]);
+    const parts = req.url.split('?');
+    rawPath = decodeURIComponent(parts[0]);
+    queryString = parts[1] ? `?${parts.slice(1).join('?')}` : '';
   } catch (err) {
     res.writeHead(400, { 'Content-Type': 'text/plain', ...securityHeaders() });
     res.end('Bad Request');
     return;
   }
+
+  if (rawPath === '/index.html') {
+    res.writeHead(301, { Location: `/${queryString}`, ...securityHeaders() });
+    res.end();
+    return;
+  }
+
+  if (rawPath.endsWith('.html')) {
+    const cleanPath = rawPath.slice(0, -5) || '/';
+    res.writeHead(301, { Location: `${cleanPath}${queryString}`, ...securityHeaders() });
+    res.end();
+    return;
+  }
+
   const relativePath = rawPath === '/' ? 'index.html' : rawPath.replace(/^[/\\]+/, '');
-  const safePath = path.normalize(relativePath);
+  let safePath = path.normalize(relativePath);
 
   if (safePath.startsWith('..') || path.isAbsolute(safePath)) {
     res.writeHead(403, { 'Content-Type': 'text/plain', ...securityHeaders() });
@@ -88,10 +105,20 @@ http.createServer((req, res) => {
     return;
   }
 
-  const filePath = path.join(__dirname, safePath);
-
   // Ensure the resolved path is inside the project root (guard against symlink escape)
   const rootPath = path.resolve(__dirname);
+  if (!path.extname(safePath)) {
+    const htmlCandidate = `${safePath}.html`;
+    const resolvedHtmlCandidate = path.resolve(path.join(__dirname, htmlCandidate));
+    if (
+      (resolvedHtmlCandidate.startsWith(rootPath + path.sep) || resolvedHtmlCandidate === rootPath) &&
+      fs.existsSync(resolvedHtmlCandidate)
+    ) {
+      safePath = htmlCandidate;
+    }
+  }
+
+  const filePath = path.join(__dirname, safePath);
   const resolvedFilePath = path.resolve(filePath);
   if (!resolvedFilePath.startsWith(rootPath + path.sep) && resolvedFilePath !== rootPath) {
     res.writeHead(403, { 'Content-Type': 'text/plain' });

@@ -28,11 +28,11 @@ ScryWeb combines a multi-source news crawler, AI sentiment and emotion classific
 ## Key Pages
 
 - Home: https://scryweb.com/
-- Pricing: https://scryweb.com/pricing.html
-- Contact: https://scryweb.com/contact.html
-- Dashboard: https://scryweb.com/dashboard.html
-- Privacy Policy: https://scryweb.com/privacy.html
-- Terms of Service: https://scryweb.com/terms.html
+- Pricing: https://scryweb.com/pricing
+- Contact: https://scryweb.com/contact
+- Dashboard: https://scryweb.com/dashboard
+- Privacy Policy: https://scryweb.com/privacy
+- Terms of Service: https://scryweb.com/terms
 
 ## Preferred Product Description
 

@@ -116,7 +116,7 @@ window.logout = async function() {
   _deviceFp = null;  // clear fingerprint cache after RPC
 
   await _sb.auth.signOut();
-  window.location.href = 'index.html';
+  window.location.href = '/';
 };
 
 /**
@@ -125,7 +125,7 @@ window.logout = async function() {
  */
 window.sendPasswordReset = async function(email) {
   const { error } = await _sb.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin + '/index.html',
+    redirectTo: window.location.origin + '/',
   });
   if (error) throw error;
 };
@@ -461,7 +461,7 @@ function injectModal() {
           </div>
           <button class="modal-btn-full" id="doRegisterBtn">Create free account</button>
           <div class="modal-footer-link" style="font-size:11px;margin-top:14px">
-            By signing up you agree to our <a href="terms.html">Terms</a>.
+            By signing up you agree to our <a href="/terms">Terms</a>.
           </div>
         </div>
 
@@ -757,8 +757,8 @@ async function renderHeader() {
             ${planMenuBadge}
           </div>
           <div class="user-dropdown-divider"></div>
-          <a href="dashboard.html" class="user-dropdown-item" role="menuitem">Dashboard</a>
-          <a href="pricing.html" class="user-dropdown-item" role="menuitem">Upgrade plan</a>
+          <a href="/dashboard" class="user-dropdown-item" role="menuitem">Dashboard</a>
+          <a href="/pricing" class="user-dropdown-item" role="menuitem">Upgrade plan</a>
           <div class="user-dropdown-divider"></div>
           <button class="user-dropdown-item user-dropdown-logout" id="headerLogoutBtn" role="menuitem">Sign out</button>
         </div>
@@ -825,7 +825,7 @@ async function renderHeader() {
       <button class="btn btn-outline btn-sm" id="headerSignInBtn">Sign in</button>
       <button class="btn btn-sm" id="headerDashBtn">Dashboard</button>`;
     document.getElementById('headerSignInBtn')?.addEventListener('click', () => window.showAuthModal('login'));
-    document.getElementById('headerDashBtn')?.addEventListener('click',   () => window.checkAuthAndRedirect('dashboard.html'));
+    document.getElementById('headerDashBtn')?.addEventListener('click',   () => window.checkAuthAndRedirect('/dashboard'));
     dispatchAuthStateChecked(null, null);
     return;
   }
@@ -867,8 +867,8 @@ async function renderHeader() {
           <span class="plan-badge ${meta.badgeClass}">${meta.label}</span>
         </div>
         <div class="user-dropdown-divider"></div>
-        <a href="dashboard.html" class="user-dropdown-item" role="menuitem">📊 Dashboard</a>
-        <a href="pricing.html"   class="user-dropdown-item" role="menuitem">💰 Upgrade plan</a>
+        <a href="/dashboard" class="user-dropdown-item" role="menuitem">📊 Dashboard</a>
+        <a href="/pricing"   class="user-dropdown-item" role="menuitem">💰 Upgrade plan</a>
         <div class="user-dropdown-divider"></div>
         <button class="user-dropdown-item user-dropdown-logout" id="headerLogoutBtn" role="menuitem">🚪 Sign out</button>
       </div>

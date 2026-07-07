@@ -7,17 +7,17 @@
   <title>ScryWeb Dashboard — AI News Intelligence</title>
   <meta name="description" content="Use the ScryWeb dashboard to crawl news, analyze sentiment and emotion, discover keywords, and generate editorial briefs and drafts.">
   <meta name="robots" content="noindex, nofollow">
-  <link rel="canonical" href="https://scryweb.com/dashboard.html">
+  <link rel="canonical" href="https://scryweb.com/dashboard">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="ScryWeb">
   <meta property="og:title" content="ScryWeb Dashboard — AI News Intelligence">
   <meta property="og:description" content="Authenticated dashboard for AI news crawling, sentiment analysis, keyword intelligence, briefs, and drafts.">
-  <meta property="og:url" content="https://scryweb.com/dashboard.html">
-  <meta property="og:image" content="https://scryweb.com/logo.png">
+  <meta property="og:url" content="https://scryweb.com/dashboard">
+  <meta property="og:image" content="https://scryweb.com/Scryweb-Logo.png">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="ScryWeb Dashboard — AI News Intelligence">
   <meta name="twitter:description" content="Authenticated dashboard for AI news crawling, sentiment analysis, keyword intelligence, briefs, and drafts.">
-  <meta name="twitter:image" content="https://scryweb.com/logo.png">
+  <meta name="twitter:image" content="https://scryweb.com/Scryweb-Logo.png">
   <link rel="icon" type="image/png" sizes="32x32" href="Scryweb-Logo.png">
   <link rel="apple-touch-icon" href="Scryweb-Logo.png">
   <meta name="theme-color" content="#0a0c10">
@@ -43,7 +43,7 @@
           "@type": "ListItem",
           "position": 2,
           "name": "Dashboard",
-          "item": "https://scryweb.com/dashboard.html"
+          "item": "https://scryweb.com/dashboard"
         }
       ]
     }
@@ -54,12 +54,12 @@
 
   <header class="header">
     <div class="container header-inner">
-      <a href="index.html" class="logo-brand"><img src="Scryweb-Logo.png" alt="ScryWeb logo"><span class="logo-text">ScryWeb</span></a>
+      <a href="/" class="logo-brand"><img src="Scryweb-Logo.png" alt="ScryWeb logo"><span class="logo-text">ScryWeb</span></a>
       <nav class="nav" aria-label="Primary navigation">
-        <a href="index.html">Home</a>
-        <a href="dashboard.html" id="navDashboardLink" class="active">Dashboard</a>
-        <a href="pricing.html">Pricing</a>
-        <a href="contact.html">Contact</a>
+        <a href="/">Home</a>
+        <a href="/dashboard" id="navDashboardLink" class="active">Dashboard</a>
+        <a href="/pricing">Pricing</a>
+        <a href="/contact">Contact</a>
       </nav>
       <div class="header-auth" id="headerAuth"></div>
     </div>
@@ -86,7 +86,7 @@
         <span class="usage-label">📊 Monthly crawls</span>
         <div class="usage-track"><div class="usage-fill" id="usageFill"></div></div>
         <span class="usage-count" id="usageCount"></span>
-        <a href="pricing.html" class="usage-upgrade">Upgrade for unlimited →</a>
+        <a href="/pricing" class="usage-upgrade">Upgrade for unlimited →</a>
       </div>
 
       <div class="db-topbar">
@@ -257,7 +257,7 @@
     </div>
   </div>
 
-  <footer class="footer"><div class="container"><p>© 2026 ScryWeb – <a href="privacy.html">Privacy</a> | <a href="terms.html">Terms</a></p></div></footer>
+  <footer class="footer"><div class="container"><p>© 2026 ScryWeb – <a href="/privacy">Privacy</a> | <a href="/terms">Terms</a></p></div></footer>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="auth.js"></script>
@@ -1108,7 +1108,7 @@
     function renderUpsellBanner(containerId, feature) {
       const el = document.getElementById(containerId);
       if (!el) return;
-      el.innerHTML = `<div style="background:#2A1E0A;border:1px solid rgba(245,176,66,0.25);border-radius:12px;padding:28px;text-align:center;margin-top:8px"><div style="font-size:1.3rem;margin-bottom:8px">🔒 ${feature === 'briefs' ? 'Briefs & Drafts' : 'Crawl limit reached'}</div><div style="font-size:12px;color:var(--text-sec);margin-bottom:18px">Upgrade to Pro for unlimited crawls, AI briefs, drafts, and all sources.</div><a href="pricing.html" class="run-btn" style="margin:0 auto;width:max-content">⚡ Upgrade to Pro</a></div>`;
+      el.innerHTML = `<div style="background:#2A1E0A;border:1px solid rgba(245,176,66,0.25);border-radius:12px;padding:28px;text-align:center;margin-top:8px"><div style="font-size:1.3rem;margin-bottom:8px">🔒 ${feature === 'briefs' ? 'Briefs & Drafts' : 'Crawl limit reached'}</div><div style="font-size:12px;color:var(--text-sec);margin-bottom:18px">Upgrade to Pro for unlimited crawls, AI briefs, drafts, and all sources.</div><a href="/pricing" class="run-btn" style="margin:0 auto;width:max-content">⚡ Upgrade to Pro</a></div>`;
     }
 
     async function renderSourceChips() {
@@ -1122,7 +1122,7 @@
         return `<button class="source-chip${allowed ? (isDefault ? ' active' : '') : ' locked'}" data-src="${src}" ${!allowed ? 'disabled title="Upgrade to Pro"' : ''}>${SOURCE_LABELS[src]}${!allowed ? ' 🔒' : ''}</button>`;
       }).join('');
       row.querySelectorAll('.source-chip:not(.locked)').forEach(c => c.addEventListener('click', () => c.classList.toggle('active')));
-      row.querySelectorAll('.source-chip.locked').forEach(c => c.addEventListener('click', () => window.location.href = 'pricing.html'));
+      row.querySelectorAll('.source-chip.locked').forEach(c => c.addEventListener('click', () => window.location.href = '/pricing'));
     }
 
     async function loadSettingsUI() {
@@ -1255,7 +1255,7 @@
       const topKw    = Object.entries(wordMap).filter(([, c]) => c >= minCount).sort((a, b) => b[1] - a[1]).slice(0, 40);
       if (!topKw.length) { container.innerHTML = '<div class="empty">Not enough data yet — try crawling more sources.</div>'; return; }
       if (!hasBriefs) {
-        container.innerHTML = `<div class="section-label">🔥 Trending keywords</div><div class="kw-grid">${topKw.map(([k, c]) => `<span class="kw-tag">${esc(k)} <span style="opacity:0.5">${c}</span></span>`).join('')}</div><div style="background:#2A1E0A;border:1px solid rgba(245,176,66,0.25);border-radius:12px;padding:24px;text-align:center;margin-top:16px"><div style="font-size:1rem;margin-bottom:8px">🔒 AI keyword intelligence is a Pro feature</div><div style="font-size:12px;color:var(--text-sec);margin-bottom:16px">Upgrade for AI-powered keyword clusters, content gaps and topic briefs.</div><a href="pricing.html" class="run-btn" style="margin:0 auto;width:max-content">View Pro Plan →</a></div>`;
+        container.innerHTML = `<div class="section-label">🔥 Trending keywords</div><div class="kw-grid">${topKw.map(([k, c]) => `<span class="kw-tag">${esc(k)} <span style="opacity:0.5">${c}</span></span>`).join('')}</div><div style="background:#2A1E0A;border:1px solid rgba(245,176,66,0.25);border-radius:12px;padding:24px;text-align:center;margin-top:16px"><div style="font-size:1rem;margin-bottom:8px">🔒 AI keyword intelligence is a Pro feature</div><div style="font-size:12px;color:var(--text-sec);margin-bottom:16px">Upgrade for AI-powered keyword clusters, content gaps and topic briefs.</div><a href="/pricing" class="run-btn" style="margin:0 auto;width:max-content">View Pro Plan →</a></div>`;
         return;
       }
       container.innerHTML = `<div class="section-label">🔥 Trending keywords</div><div class="kw-grid">${topKw.map(([k, c]) => `<span class="kw-tag" data-term="${esc(k)}">${esc(k)} <span style="opacity:0.5">${c}</span></span>`).join('')}</div><div class="section-label" style="margin-top:16px">🧠 Click any keyword to generate a topic brief</div><div id="kwAiSection" style="margin-top:20px"><div style="text-align:center;padding:24px;color:var(--text-hint)"><span class="spinner"></span> Loading AI keyword intelligence…</div></div>`;
@@ -1893,7 +1893,7 @@
       if (!el) return;
       if (profile?.plan === 'trial' && profile.trialExpiresAt) {
         const days = Math.max(0, Math.ceil((new Date(profile.trialExpiresAt) - Date.now()) / 86400000));
-        el.innerHTML = `<div class="trial-expiry-warning">⚡ Trial active — ${days} day${days !== 1 ? 's' : ''} remaining. <a href="pricing.html" style="color:var(--accent);font-weight:600">Upgrade to keep Pro access →</a></div>`;
+        el.innerHTML = `<div class="trial-expiry-warning">⚡ Trial active — ${days} day${days !== 1 ? 's' : ''} remaining. <a href="/pricing" style="color:var(--accent);font-weight:600">Upgrade to keep Pro access →</a></div>`;
       }
     }
 

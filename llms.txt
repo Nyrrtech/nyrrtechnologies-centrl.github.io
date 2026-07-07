@@ -36,7 +36,7 @@ ScryWeb combines a multi-source news crawler, AI sentiment and emotion classific
 
 ## Preferred Product Description
 
-ScryWeb is an AI news intelligence platform that crawls trending news across 8+ sources, classifies sentiment and emotion, extracts keyword intelligence, and generates editorial briefs, AP-style article drafts, and humanized content for newsrooms and content teams.
+ScryWeb is an AI news intelligence platform that crawls trending news across 8+ sources, classifies sentiment and emotion, extracts keyword intelligence, and generates editorial briefs, AP-style article drafts, and humanised content for newsrooms and content teams.
 
 ## Authoritative Terms
 

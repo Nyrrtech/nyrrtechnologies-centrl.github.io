@@ -7,17 +7,17 @@
   <title>ScryWeb Dashboard — AI News Intelligence</title>
   <meta name="description" content="Use the ScryWeb dashboard to crawl news, analyze sentiment and emotion, discover keywords, and generate editorial briefs and drafts.">
   <meta name="robots" content="noindex, nofollow">
-  <link rel="canonical" href="https://scryweb.com/dashboard">
+  <link rel="canonical" href="https://scryweb.com/dashboard.html">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="ScryWeb">
   <meta property="og:title" content="ScryWeb Dashboard — AI News Intelligence">
   <meta property="og:description" content="Authenticated dashboard for AI news crawling, sentiment analysis, keyword intelligence, briefs, and drafts.">
-  <meta property="og:url" content="https://scryweb.com/dashboard">
-  <meta property="og:image" content="https://scryweb.com/Scryweb-Logo.png">
+  <meta property="og:url" content="https://scryweb.com/dashboard.html">
+  <meta property="og:image" content="https://scryweb.com/logo.png">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="ScryWeb Dashboard — AI News Intelligence">
   <meta name="twitter:description" content="Authenticated dashboard for AI news crawling, sentiment analysis, keyword intelligence, briefs, and drafts.">
-  <meta name="twitter:image" content="https://scryweb.com/Scryweb-Logo.png">
+  <meta name="twitter:image" content="https://scryweb.com/logo.png">
   <link rel="icon" type="image/png" sizes="32x32" href="Scryweb-Logo.png">
   <link rel="apple-touch-icon" href="Scryweb-Logo.png">
   <meta name="theme-color" content="#0a0c10">
@@ -43,7 +43,7 @@
           "@type": "ListItem",
           "position": 2,
           "name": "Dashboard",
-          "item": "https://scryweb.com/dashboard"
+          "item": "https://scryweb.com/dashboard.html"
         }
       ]
     }
@@ -54,12 +54,12 @@
 
   <header class="header">
     <div class="container header-inner">
-      <a href="/" class="logo-brand"><img src="Scryweb-Logo.png" alt="ScryWeb logo"><span class="logo-text">ScryWeb</span></a>
+      <a href="index.html" class="logo-brand"><img src="Scryweb-Logo.png" alt="ScryWeb logo"><span class="logo-text">ScryWeb</span></a>
       <nav class="nav" aria-label="Primary navigation">
-        <a href="/">Home</a>
-        <a href="/dashboard" id="navDashboardLink" class="active">Dashboard</a>
-        <a href="/pricing">Pricing</a>
-        <a href="/contact">Contact</a>
+        <a href="index.html">Home</a>
+        <a href="dashboard.html" id="navDashboardLink" class="active">Dashboard</a>
+        <a href="pricing.html">Pricing</a>
+        <a href="contact.html">Contact</a>
       </nav>
       <div class="header-auth" id="headerAuth"></div>
     </div>
@@ -86,7 +86,7 @@
         <span class="usage-label">📊 Monthly crawls</span>
         <div class="usage-track"><div class="usage-fill" id="usageFill"></div></div>
         <span class="usage-count" id="usageCount"></span>
-        <a href="/pricing" class="usage-upgrade">Upgrade for unlimited →</a>
+        <a href="pricing.html" class="usage-upgrade">Upgrade for unlimited →</a>
       </div>
 
       <div class="db-topbar">
@@ -257,7 +257,7 @@
     </div>
   </div>
 
-  <footer class="footer"><div class="container"><p>© 2026 ScryWeb – <a href="/privacy">Privacy</a> | <a href="/terms">Terms</a></p></div></footer>
+  <footer class="footer"><div class="container"><p>© 2026 ScryWeb – <a href="privacy.html">Privacy</a> | <a href="terms.html">Terms</a></p></div></footer>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="auth.js"></script>
@@ -1020,14 +1020,22 @@
     // ==================== ADVANCED HUMANIZER ====================
     const HUMANIZER_BANNED   = ['delve','leverage','revolutionize','groundbreaking','unprecedented','game-changer','transformative','cutting-edge','holistic','synergy','paradigm','disruptive','innovative','robust','seamless','unlock','empower','streamline','optimize','utilize','harness','realm','moreover','furthermore','notably','consequently','accordingly','in conclusion','to summarize','it is important to note','needless to say',"in today's fast-paced world",'in the digital age','moving forward','going forward','dive deep','not only','but also','when it comes to','it goes without saying','at the end of the day','plays a crucial role','plays a vital role',"let's dive in",'in this article','on the other hand','when all is said and done','in a world where','it is worth noting','stands as a testament','underscores the importance','serves as a reminder'];
     const HUMANIZER_PERSONAS = { journalist: { voice: 'seasoned investigative journalist with 15+ years experience', traits: ['Lead with the most surprising fact','Use inverted pyramid','Name real people specifically','Insert short punchy paragraphs','Challenge assumptions','Use parenthetical asides sparingly (commas or plain parentheses, not dashes)','Occasionally address the reader'] }, blogger: { voice: 'enthusiastic personal blogger with deep knowledge', traits: ['Start with a personal anecdote','Use "I" occasionally','Ask rhetorical questions','Use casual connectors','Break into short paragraphs','Use parenthetical asides','Use "you" frequently'] }, expert: { voice: 'authoritative subject-matter expert', traits: ['Use precise terminology','Reference historical context','Acknowledge nuance','Use hedging language',"Be willing to say what others get wrong",'Short declarative sentences after complex ones'] }, storyteller: { voice: 'narrative journalist who makes dry topics compelling', traits: ['Open with a scene','Use sensory language','Build tension through sequencing','Vary sentence length dramatically','End paragraphs with a turn'] }, analyst: { voice: 'sharp business/policy analyst', traits: ['Lead with the key takeaway','Use numbered breakdowns','Contrast expectation vs reality','Reference real-world implications','Keep sentences tight','Be direct about uncertainty'] } };
-    const AI_FINGERPRINT_RULES = 'Avoid known AI-writing fingerprints: do NOT use the em-dash character (—) or en-dash-as-punctuation (–) AT ALL — zero tolerance, not "sparingly." Replace every instance with a comma, period, parentheses, or a colon depending on what reads naturally. Avoid neatly parallel triads ("X, Y, and Z" lists used more than once). Avoid "not only... but also" constructions. Vary punctuation style across sentences (mix periods, occasional semicolons, the rare fragment) instead of uniform comma-heavy sentences. Avoid symmetric paragraph lengths. Do not end the piece with a tidy summary sentence ("In the end...", "Ultimately...") — end on a concrete detail, quote, or fact instead. Vary sentence openers so no more than two consecutive sentences start with the same word type (no back-to-back "The..." or "This..." openers). Let at least one sentence per few paragraphs be mildly imperfect or run slightly long, the way an unedited human draft would read, rather than uniformly clean and balanced.';
+    const AI_FINGERPRINT_RULES = 'Avoid known AI-writing fingerprints: use at most one or two em-dashes in the ENTIRE piece, only where it reads truly naturally — do not eliminate them completely, since a total absence of any dash is itself an artificial, over-corrected pattern; the goal is rarity, not zero. Vary how pauses are punctuated: some as commas, some as new sentences, some as parentheses — do not convert everything to the same substitute, since uniform substitution just creates a different flat rhythm. Avoid neatly parallel triads ("X, Y, and Z" lists used more than once). Avoid "not only... but also" constructions. Vary punctuation style across sentences (mix periods, occasional semicolons, the rare fragment) instead of uniform comma-heavy sentences. Avoid symmetric paragraph lengths. Do not end the piece with a tidy summary sentence ("In the end...", "Ultimately...") — end on a concrete detail, quote, or fact instead. Vary sentence openers so no more than two consecutive sentences start with the same word type (no back-to-back "The..." or "This..." openers). Let at least one sentence per few paragraphs be mildly imperfect or run slightly long, the way an unedited human draft would read, rather than uniformly clean and balanced.';
     function stripDashArtifacts(str) {
       if (!str) return str;
-      return str
-        .replace(/\s*[\u2014\u2013]{1,2}\s*/g, ', ')   // em dash / en dash (and doubled) -> comma
-        .replace(/\s+--\s+/g, ', ')                     // "text -- text" double-hyphen dash -> comma
-        .replace(/,\s*,/g, ',')                          // collapse any accidental double commas
-        .replace(/,\s*\./g, '.');                        // collapse ", ." artifacts
+      const wordCount = str.split(/\s+/).length;
+      const allowed = Math.max(1, Math.round(wordCount / 500)); // let one or two natural dashes survive rather than zeroing them all out
+      let seen = 0;
+      let out = str.replace(/\s*[\u2014\u2013]{1,2}\s*/g, (m) => {
+        seen++;
+        if (seen <= allowed) return m; // keep a rare, natural dash
+        return (seen % 3 === 0) ? '. ' : ', '; // vary the substitute instead of always using a comma
+      });
+      return out
+        .replace(/,\s*,/g, ',')
+        .replace(/,\s*\./g, '.')
+        .replace(/\.\s*\./g, '.')
+        .replace(/([.!?])\s+([a-z])/g, (m, p, c) => p + ' ' + c.toUpperCase()); // capitalize after any newly-introduced sentence break
     }
     const BYPASS_INSTRS      = { light: 'Make moderate changes: replace AI buzzwords, add contractions, vary sentence length. Target: ~30% reduction.', medium: 'Significantly rewrite while keeping all facts. Restructure 40%+ of sentences, add 3-5 natural human quirks. Target: ~65% reduction.', aggressive: 'Deeply transform — keep ONLY facts, data, named entities. Rewrite every sentence. Target: ~85% reduction.' };
     const SEO_INSTRS         = { none: '', basic: '\n\nSEO (Basic): Use focus keyword naturally in first paragraph and 2+ other places. Active voice.', full: '\n\nSEO (Full): Keyword in first 100 words, a heading, and final paragraph. Include 3-5 LSI terms.' };
@@ -1035,6 +1043,14 @@
     async function runAdvancedHumanizer({ text, persona, tone, bypassLevel, seoMode, focusKeyword, preserveVoice = false, customInstructions = '', targetDiv, onComplete }) {
       const apiKey = settings.aiProvider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
       if (!apiKey) { if (targetDiv) targetDiv.innerHTML = '<div class="error-msg">⚠️ Add your API key in Settings first.</div>'; return null; }
+      // Build a rotation pool of every provider the user has a key for. Running every pass through
+      // one model keeps a single, consistent statistical fingerprint end to end — alternating models
+      // per pass means no single model's token-probability signature dominates the final text.
+      const providerPool = [];
+      if (settings.anthropicKey) providerPool.push({ provider: 'anthropic', apiKey: settings.anthropicKey });
+      if (settings.mistralKey)   providerPool.push({ provider: 'mistral',   apiKey: settings.mistralKey });
+      if (!providerPool.length) providerPool.push({ provider: settings.aiProvider, apiKey });
+      const forPass = (passIndex) => providerPool[passIndex % providerPool.length];
       const personaData = HUMANIZER_PERSONAS[persona] || HUMANIZER_PERSONAS.journalist;
       const bypassInstr = BYPASS_INSTRS[bypassLevel] || BYPASS_INSTRS.medium;
       const seoInstr    = SEO_INSTRS[seoMode] || '';
@@ -1052,29 +1068,33 @@
       if (passBadges) passBadges.innerHTML = '';
       let current = text;
       try {
-        setProgress('<span class="spinner"></span> Pass 1/' + passes + ': Restructuring & voice…', 10); addBadge('Pass 1: Structure', '#f5b042');
+        const m1 = forPass(0);
+        setProgress('<span class="spinner"></span> Pass 1/' + passes + ': Restructuring & voice (' + m1.provider + ')…', 10); addBadge('Pass 1: Structure · ' + m1.provider, '#f5b042');
         const p1 = `${voiceInstr}\nBYPASS LEVEL: ${bypassInstr}${keywordLine}${customLine}\n${AI_FINGERPRINT_RULES}\nABSOLUTE RULES:\n1. NEVER use: "${bannedList}"\n2. Keep ALL facts accurate\n3. Vary sentence length dramatically\n4. Return ONLY the rewritten article.\n\nARTICLE:\n${current}`;
-        current = await callAIWithRetry({ prompt: p1, maxTokens: 3200, apiKey, provider: settings.aiProvider, retries: 2, delayMs: 1200 });
+        current = await callAIWithRetry({ prompt: p1, maxTokens: 3200, apiKey: m1.apiKey, provider: m1.provider, retries: 2, delayMs: 1200 });
         current = stripDashArtifacts(current);
         setProgress('<span class="spinner"></span> Pass 1 complete.', 20);
         if (passes >= 2) {
-          await new Promise(r => setTimeout(r, 500)); setProgress('<span class="spinner"></span> Pass 2/' + passes + ': Maximising burstiness…', 35); addBadge('Pass 2: Burstiness', '#8BC97F');
+          const m2 = forPass(1);
+          await new Promise(r => setTimeout(r, 500)); setProgress('<span class="spinner"></span> Pass 2/' + passes + ': Maximising burstiness (' + m2.provider + ')…', 35); addBadge('Pass 2: Burstiness · ' + m2.provider, '#8BC97F');
           const p2 = `Expert editor specialising in making AI-written text undetectable.${preserveVoice ? ' Keep the article\'s existing tone, voice, and persona intact while you edit.' : ''}\nEDITING TASKS:\n1. Restructure at least 3 of the 5 longest sentences\n2. Replace predictable word choices\n3. Remove: "moreover","furthermore","however","therefore","thus","additionally"\n4. Add 2-3 natural imperfections: comma splice, sentence starting with "And"/"But"\n5. No two consecutive sentences similar length${seoInstr}${customLine}\n${AI_FINGERPRINT_RULES}\nReturn ONLY the edited article.\n\nARTICLE:\n${current}`;
-          current = await callAIWithRetry({ prompt: p2, maxTokens: 3200, apiKey, provider: settings.aiProvider, retries: 2, delayMs: 1200 });
+          current = await callAIWithRetry({ prompt: p2, maxTokens: 3200, apiKey: m2.apiKey, provider: m2.provider, retries: 2, delayMs: 1200 });
           current = stripDashArtifacts(current);
           setProgress('<span class="spinner"></span> Pass 2 complete.', 50);
         }
         if (passes >= 3) {
-          await new Promise(r => setTimeout(r, 500)); setProgress('<span class="spinner"></span> Pass 3/' + passes + ': Scrubbing AI fingerprints…', 60); addBadge('Pass 3: Fingerprint Scrub', '#9B7EDE');
+          const m3 = forPass(2);
+          await new Promise(r => setTimeout(r, 500)); setProgress('<span class="spinner"></span> Pass 3/' + passes + ': Scrubbing AI fingerprints (' + m3.provider + ')…', 60); addBadge('Pass 3: Fingerprint Scrub · ' + m3.provider, '#9B7EDE');
           const p3 = `Final AI fingerprint scrub.${preserveVoice ? ' Keep the article\'s existing tone, voice, and persona intact.' : ''}\nFINAL CHECKS:\n1. Any word used 3+ times? Vary with synonyms.\n2. 3+ consecutive sentences starting the same way? Fix.\n3. No two consecutive paragraphs the same length.\n4. Add if missing: mild surprise, mild opinion, short standalone sentence, rhetorical question.${focusKeyword ? `\n5. Confirm keyword "${focusKeyword}" appears in first 150 words.` : ''}${customLine}\n${AI_FINGERPRINT_RULES}\nReturn ONLY the final article.\n\nARTICLE:\n${current}`;
-          current = await callAIWithRetry({ prompt: p3, maxTokens: 3200, apiKey, provider: settings.aiProvider, retries: 2, delayMs: 1200 });
+          current = await callAIWithRetry({ prompt: p3, maxTokens: 3200, apiKey: m3.apiKey, provider: m3.provider, retries: 2, delayMs: 1200 });
           current = stripDashArtifacts(current);
           setProgress('<span class="spinner"></span> Pass 3 complete.', 75);
         }
         if (passes >= 4) {
-          await new Promise(r => setTimeout(r, 500)); setProgress('<span class="spinner"></span> Pass 4/' + passes + ': Detector-specific scrub…', 80); addBadge('Pass 4: Detector Scrub', '#6FA8DC');
-          const p4 = `You are doing a specialised pass whose ONLY job is defeating modern classifier-based AI detectors (the kind used by tools like GPTZero and Copyleaks, which key on token-predictability patterns, not just sentence-length variety).${preserveVoice ? ' Keep the article\'s existing tone, voice, and persona intact.' : ''}\nTASKS:\n1. Count em-dashes. If there is more than one per ~150 words, convert extras to commas, periods, or parentheses.\n2. Find any list or clause structured as neat parallel triads ("X, Y, and Z" appearing more than once) and break the symmetry — combine two items, or restate as a sentence.\n3. Vary punctuation rhythm: introduce at least one semicolon and one short sentence fragment somewhere natural, and make sure not all sentences end with simple periods after uniform commas.\n4. Reduce any remaining uniformity in paragraph length — no two adjacent paragraphs should be within one sentence of the same length.\n5. Keep every fact, name, number, and quote exactly as given.${customLine}\nReturn ONLY the final article, no notes or explanation.\n\nARTICLE:\n${current}`;
-          current = await callAIWithRetry({ prompt: p4, maxTokens: 3200, apiKey, provider: settings.aiProvider, retries: 2, delayMs: 1200 });
+          const m4 = forPass(3);
+          await new Promise(r => setTimeout(r, 500)); setProgress('<span class="spinner"></span> Pass 4/' + passes + ': Detector-specific scrub (' + m4.provider + ')…', 80); addBadge('Pass 4: Detector Scrub · ' + m4.provider, '#6FA8DC');
+          const p4 = `You are doing a specialised pass whose ONLY job is defeating modern classifier-based AI detectors (the kind used by tools like GPTZero and Copyleaks, which key on token-predictability patterns, not just sentence-length variety).${preserveVoice ? ' Keep the article\'s existing tone, voice, and persona intact.' : ''}\nTASKS:\n1. Em-dashes should already be rare — leave at most one or two, don't add more.\n2. Find any list or clause structured as neat parallel triads ("X, Y, and Z" appearing more than once) and break the symmetry — combine two items, or restate as a sentence.\n3. Vary punctuation rhythm: introduce at least one semicolon and one short sentence fragment somewhere natural, and make sure not all sentences end with simple periods after uniform commas.\n4. Reduce any remaining uniformity in paragraph length — no two adjacent paragraphs should be within one sentence of the same length.\n5. Keep every fact, name, number, and quote exactly as given.${customLine}\nReturn ONLY the final article, no notes or explanation.\n\nARTICLE:\n${current}`;
+          current = await callAIWithRetry({ prompt: p4, maxTokens: 3200, apiKey: m4.apiKey, provider: m4.provider, retries: 2, delayMs: 1200 });
           current = stripDashArtifacts(current);
           setProgress('✅ All passes complete.', 100); addBadge('✓ Done', '#f5b042');
         } else { setProgress('✅ Humanization complete.', 100); }
@@ -1108,7 +1128,7 @@
     function renderUpsellBanner(containerId, feature) {
       const el = document.getElementById(containerId);
       if (!el) return;
-      el.innerHTML = `<div style="background:#2A1E0A;border:1px solid rgba(245,176,66,0.25);border-radius:12px;padding:28px;text-align:center;margin-top:8px"><div style="font-size:1.3rem;margin-bottom:8px">🔒 ${feature === 'briefs' ? 'Briefs & Drafts' : 'Crawl limit reached'}</div><div style="font-size:12px;color:var(--text-sec);margin-bottom:18px">Upgrade to Pro for unlimited crawls, AI briefs, drafts, and all sources.</div><a href="/pricing" class="run-btn" style="margin:0 auto;width:max-content">⚡ Upgrade to Pro</a></div>`;
+      el.innerHTML = `<div style="background:#2A1E0A;border:1px solid rgba(245,176,66,0.25);border-radius:12px;padding:28px;text-align:center;margin-top:8px"><div style="font-size:1.3rem;margin-bottom:8px">🔒 ${feature === 'briefs' ? 'Briefs & Drafts' : 'Crawl limit reached'}</div><div style="font-size:12px;color:var(--text-sec);margin-bottom:18px">Upgrade to Pro for unlimited crawls, AI briefs, drafts, and all sources.</div><a href="pricing.html" class="run-btn" style="margin:0 auto;width:max-content">⚡ Upgrade to Pro</a></div>`;
     }
 
     async function renderSourceChips() {
@@ -1122,7 +1142,7 @@
         return `<button class="source-chip${allowed ? (isDefault ? ' active' : '') : ' locked'}" data-src="${src}" ${!allowed ? 'disabled title="Upgrade to Pro"' : ''}>${SOURCE_LABELS[src]}${!allowed ? ' 🔒' : ''}</button>`;
       }).join('');
       row.querySelectorAll('.source-chip:not(.locked)').forEach(c => c.addEventListener('click', () => c.classList.toggle('active')));
-      row.querySelectorAll('.source-chip.locked').forEach(c => c.addEventListener('click', () => window.location.href = '/pricing'));
+      row.querySelectorAll('.source-chip.locked').forEach(c => c.addEventListener('click', () => window.location.href = 'pricing.html'));
     }
 
     async function loadSettingsUI() {
@@ -1255,7 +1275,7 @@
       const topKw    = Object.entries(wordMap).filter(([, c]) => c >= minCount).sort((a, b) => b[1] - a[1]).slice(0, 40);
       if (!topKw.length) { container.innerHTML = '<div class="empty">Not enough data yet — try crawling more sources.</div>'; return; }
       if (!hasBriefs) {
-        container.innerHTML = `<div class="section-label">🔥 Trending keywords</div><div class="kw-grid">${topKw.map(([k, c]) => `<span class="kw-tag">${esc(k)} <span style="opacity:0.5">${c}</span></span>`).join('')}</div><div style="background:#2A1E0A;border:1px solid rgba(245,176,66,0.25);border-radius:12px;padding:24px;text-align:center;margin-top:16px"><div style="font-size:1rem;margin-bottom:8px">🔒 AI keyword intelligence is a Pro feature</div><div style="font-size:12px;color:var(--text-sec);margin-bottom:16px">Upgrade for AI-powered keyword clusters, content gaps and topic briefs.</div><a href="/pricing" class="run-btn" style="margin:0 auto;width:max-content">View Pro Plan →</a></div>`;
+        container.innerHTML = `<div class="section-label">🔥 Trending keywords</div><div class="kw-grid">${topKw.map(([k, c]) => `<span class="kw-tag">${esc(k)} <span style="opacity:0.5">${c}</span></span>`).join('')}</div><div style="background:#2A1E0A;border:1px solid rgba(245,176,66,0.25);border-radius:12px;padding:24px;text-align:center;margin-top:16px"><div style="font-size:1rem;margin-bottom:8px">🔒 AI keyword intelligence is a Pro feature</div><div style="font-size:12px;color:var(--text-sec);margin-bottom:16px">Upgrade for AI-powered keyword clusters, content gaps and topic briefs.</div><a href="pricing.html" class="run-btn" style="margin:0 auto;width:max-content">View Pro Plan →</a></div>`;
         return;
       }
       container.innerHTML = `<div class="section-label">🔥 Trending keywords</div><div class="kw-grid">${topKw.map(([k, c]) => `<span class="kw-tag" data-term="${esc(k)}">${esc(k)} <span style="opacity:0.5">${c}</span></span>`).join('')}</div><div class="section-label" style="margin-top:16px">🧠 Click any keyword to generate a topic brief</div><div id="kwAiSection" style="margin-top:20px"><div style="text-align:center;padding:24px;color:var(--text-hint)"><span class="spinner"></span> Loading AI keyword intelligence…</div></div>`;
@@ -1893,7 +1913,7 @@
       if (!el) return;
       if (profile?.plan === 'trial' && profile.trialExpiresAt) {
         const days = Math.max(0, Math.ceil((new Date(profile.trialExpiresAt) - Date.now()) / 86400000));
-        el.innerHTML = `<div class="trial-expiry-warning">⚡ Trial active — ${days} day${days !== 1 ? 's' : ''} remaining. <a href="/pricing" style="color:var(--accent);font-weight:600">Upgrade to keep Pro access →</a></div>`;
+        el.innerHTML = `<div class="trial-expiry-warning">⚡ Trial active — ${days} day${days !== 1 ? 's' : ''} remaining. <a href="pricing.html" style="color:var(--accent);font-weight:600">Upgrade to keep Pro access →</a></div>`;
       }
     }
 

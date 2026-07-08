@@ -113,6 +113,26 @@
             <label>🔍 AI Topic Discovery</label>
             <input type="text" id="aiTopicInput" placeholder="e.g., renewable energy, AI regulation, space exploration, crypto, healthcare..." autocomplete="off">
           </div>
+	          <!-- Region selector -->
+          <div class="ai-search-field ai-search-region">
+            <label>🌍 Region</label>
+            <select id="aiRegionSelect">
+              <option value="auto">Auto-detect</option>
+              <option value="global">Worldwide</option>
+              <option value="us">United States</option>
+              <option value="uk">United Kingdom</option>
+              <option value="ca">Canada</option>
+              <option value="au">Australia</option>
+              <option value="in">India</option>
+              <option value="pk">Pakistan</option>
+              <option value="ng">Nigeria</option>
+              <option value="za">South Africa</option>
+              <option value="ae">UAE</option>
+              <option value="sg">Singapore</option>
+              <option value="hk">Hong Kong</option>
+              <!-- add more as needed -->
+            </select>
+          </div>
           <button class="ai-search-btn" id="aiDiscoverBtn">✨ Discover & Crawl</button>
         </div>
         <div id="aiDiscoveryStatus"></div>
@@ -290,6 +310,69 @@
       mistral: { minIntervalMs: 4500, defaultCooldownMs: 60000 },
       anthropic: { minIntervalMs: 1500, defaultCooldownMs: 20000 },
     };
+        // ==================== REGION SUPPORT ====================
+    const REGION_PARAMS = {
+      global: { hl: 'en', gl: 'us', ceid: 'US:en' },
+      us:     { hl: 'en', gl: 'us', ceid: 'US:en' },
+      uk:     { hl: 'en', gl: 'gb', ceid: 'GB:en' },
+      ca:     { hl: 'en', gl: 'ca', ceid: 'CA:en' },
+      au:     { hl: 'en', gl: 'au', ceid: 'AU:en' },
+      in:     { hl: 'en', gl: 'in', ceid: 'IN:en' },
+      pk:     { hl: 'en', gl: 'pk', ceid: 'PK:en' },
+      ng:     { hl: 'en', gl: 'ng', ceid: 'NG:en' },
+      za:     { hl: 'en', gl: 'za', ceid: 'ZA:en' },
+      ae:     { hl: 'en', gl: 'ae', ceid: 'AE:en' },
+      sg:     { hl: 'en', gl: 'sg', ceid: 'SG:en' },
+      hk:     { hl: 'en', gl: 'hk', ceid: 'HK:en' },
+    };
+
+    let _detectedRegion = null; // cached
+
+    async function detectRegion() {
+      if (_detectedRegion) return _detectedRegion;
+      try {
+        const res = await fetch('https://ipapi.co/json/', { cache: 'force-cache' });
+        const data = await res.json();
+        const code = data.country_code?.toLowerCase();
+        if (code && REGION_PARAMS[code]) {
+          _detectedRegion = code;
+          return code;
+        }
+      } catch (e) {
+        console.warn('[Region] Auto-detect failed:', e);
+      }
+      _detectedRegion = 'global';
+      return 'global';
+    }
+
+    function getRegionCode() {
+      const select = document.getElementById('aiRegionSelect');
+      const val = select ? select.value : 'auto';
+      if (val === 'auto') return _detectedRegion || 'global';
+      return val;
+    }
+
+    function getRegionParams(code) {
+      return REGION_PARAMS[code] || REGION_PARAMS.global;
+    }
+
+    function getRegionLabel(code) {
+      const map = {
+        global: 'Worldwide',
+        us: 'United States',
+        uk: 'United Kingdom',
+        ca: 'Canada',
+        au: 'Australia',
+        in: 'India',
+        pk: 'Pakistan',
+        ng: 'Nigeria',
+        za: 'South Africa',
+        ae: 'UAE',
+        sg: 'Singapore',
+        hk: 'Hong Kong',
+      };
+      return map[code] || code.toUpperCase();
+    }
 
     function suspendRss2Json() {
       _rss2jsonSuspended = true;
@@ -1347,18 +1430,25 @@
       return [];
     }
 
-    async function discoverFeedsForTopic(topic) {
+        async function discoverFeedsForTopic(topic, regionCode) {
       const provider = settings.aiProvider;
       const apiKey = provider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
       if (!apiKey) throw new Error('API key missing');
-      const prompt = `You are a professional news aggregator. For the topic: "${topic}", find 8 to 12 high-quality, active RSS feeds from reputable news websites, blogs, or publications that regularly cover this topic. Return ONLY a valid JSON array of objects with keys: "name" (string, human readable site name) and "url" (string, full RSS feed URL). Do not include any explanation or markdown. Example: [{"name":"TechCrunch AI","url":"https://techcrunch.com/tag/artificial-intelligence/feed/"}].`;
+
+      const regionLabel = getRegionLabel(regionCode);
+      const regionHint = regionCode !== 'global'
+        ? `Prefer sources that are based in or frequently cover ${regionLabel}. Include at least two reputable local publications from that region.`
+        : '';
+
+      const prompt = `You are a professional news aggregator. For the topic: "${topic}", find 8 to 12 high-quality, active RSS feeds from reputable news websites, blogs, or publications that regularly cover this topic. ${regionHint} Return ONLY a valid JSON array of objects with keys: "name" (string, human readable site name) and "url" (string, full RSS feed URL). Do not include any explanation or markdown. Example: [{"name":"TechCrunch AI","url":"https://techcrunch.com/tag/artificial-intelligence/feed/"}].`;
+
       let raw = await callAIWithRetry({ prompt, maxTokens: 1200, apiKey, provider, retries: 2, delayMs: 1000 });
       let cleaned = raw.replace(/```json\s*|```\s*$/g, '').trim();
       const match = cleaned.match(/\[[\s\S]*\]/);
       if (match) cleaned = match[0];
       const feeds = JSON.parse(cleaned);
       if (!Array.isArray(feeds) || feeds.length === 0) throw new Error('AI did not return any feeds.');
-      return feeds.filter(f => f.url && f.url.startsWith('http')).slice(0,12);
+      return feeds.filter(f => f.url && f.url.startsWith('http')).slice(0, 12);
     }
 
     function getGoogleNewsTimeframeQuery() {
@@ -1394,20 +1484,33 @@
       return score;
     }
 
-    async function crawlSearchSources(topic) {
-      // 1. Google News search with timeframe parameters
+        async function crawlSearchSources(topic) {
+      const regionCode = getRegionCode();
+      const params = getRegionParams(regionCode);
       const timeframeQuery = getGoogleNewsTimeframeQuery();
-      const googleNewsUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(topic + timeframeQuery)}&hl=en-US&gl=US&ceid=US:en`;
-      const googleNewsPromise = fetchSingleRSSFeedWithRetry(googleNewsUrl, 'Google News Search', 3, 1500)
+
+      // 1. Primary Google News query with selected region
+      const primaryUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(topic + timeframeQuery)}&hl=${params.hl}&gl=${params.gl}&ceid=${params.ceid}`;
+      const primaryPromise = fetchSingleRSSFeedWithRetry(primaryUrl, `Google News (${getRegionLabel(regionCode)})`, 3, 1500)
         .then(items => items.map(item => ({ ...item, platform: 'google_news' })));
 
-      // 2. Reddit Search
+      // 2. Secondary global (US) query for extra recall, if region is not global
+      let globalPromise = Promise.resolve([]);
+      if (regionCode !== 'global') {
+        const globalParams = REGION_PARAMS.global;
+        const globalUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(topic + timeframeQuery)}&hl=${globalParams.hl}&gl=${globalParams.gl}&ceid=${globalParams.ceid}`;
+        globalPromise = fetchSingleRSSFeedWithRetry(globalUrl, 'Google News (Global)', 2, 1200)
+          .then(items => items.map(item => ({ ...item, platform: 'google_news' })))
+          .catch(() => []);
+      }
+
+      // 3. Reddit, HN, AI feeds (unchanged)
       let redditTime = 'all';
       if (timeframeMs === 86400000) redditTime = 'day';
       else if (timeframeMs === 604800000) redditTime = 'week';
       else if (timeframeMs === 2592000000) redditTime = 'month';
       else if (timeframeMs === 31536000000) redditTime = 'year';
-      
+
       const redditSort = sortMode === 'popular' ? 'relevance' : 'new';
       const redditUrl = `https://www.reddit.com/search.json?q=${encodeURIComponent(topic)}&sort=${redditSort}&t=${redditTime}&limit=25`;
       const redditPromise = fetchTimeout(redditUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } })
@@ -1424,7 +1527,6 @@
         })))
         .catch(e => { console.warn('[Crawl] Reddit search failed:', e); return []; });
 
-      // 3. Hacker News Search via Algolia API
       let hnUrl = `https://hn.algolia.com/api/v1/search${sortMode === 'newest' ? '_by_date' : ''}?query=${encodeURIComponent(topic)}&tags=story&hitsPerPage=20`;
       if (timeframeMs > 0) {
         const minTimeSec = Math.floor((Date.now() - timeframeMs) / 1000);
@@ -1444,10 +1546,10 @@
         })))
         .catch(e => { console.warn('[Crawl] HN search failed:', e); return []; });
 
-      // 4. AI-discovered niche publication feeds (capped to prevent rate limits)
+      // 4. AI-discovered feeds (region-aware)
       const aiFeedsPromise = (async () => {
         try {
-          const feeds = await discoverFeedsForTopic(topic);
+          const feeds = await discoverFeedsForTopic(topic, regionCode);
           const slicedFeeds = feeds.slice(0, 4);
           const articles = [];
           for (const feed of slicedFeeds) {
@@ -1462,9 +1564,9 @@
         }
       })();
 
-      const results = await Promise.allSettled([googleNewsPromise, redditPromise, hnPromise, aiFeedsPromise]);
+      const results = await Promise.allSettled([primaryPromise, globalPromise, redditPromise, hnPromise, aiFeedsPromise]);
       const allArticles = results.flatMap(r => r.status === 'fulfilled' ? r.value : []);
-      
+
       const uniqueMap = new Map();
       allArticles.forEach(a => {
         if (a.url && !uniqueMap.has(a.url)) {

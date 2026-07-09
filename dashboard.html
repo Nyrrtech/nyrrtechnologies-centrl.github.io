@@ -690,7 +690,7 @@
     }
 
     // ==================== SOURCE CRAWLING ====================
-    const SOURCE_LABELS = { world:'🌍 World', us:'🇺🇸 US', tech:'💻 Tech', science:'🔬 Science', business:'📈 Business', reddit:'👾 Reddit', hackernews:'🔶 HN', climate:'🌱 Climate' };
+    const SOURCE_LABELS = { world:'🌍 World', us:'🇺🇸 US', tech:'💻 Tech', science:'🔬 Science', business:'📈 Business', reddit:'👾 Reddit', climate:'🌱 Climate' };
     const ALL_SOURCES = {
       world: [ { name:'BBC World', url:'https://feeds.bbci.co.uk/news/world/rss.xml' }, { name:'Reuters', url:'https://feeds.reuters.com/reuters/topNews' }, { name:'Al Jazeera', url:'https://www.aljazeera.com/xml/rss/all.xml' }, { name:'Guardian World', url:'https://www.theguardian.com/world/rss' }, { name:'NPR News', url:'https://feeds.npr.org/1001/rss.xml' }, { name:'Deutsche Welle', url:'https://rss.dw.com/rdf/rss-en-all' }, { name:'AP News', url:'https://rsshub.app/apnews/topics/apf-topnews' } ],
       us: [ { name:'CNN', url:'http://rss.cnn.com/rss/edition.rss' }, { name:'NBC News', url:'https://feeds.nbcnews.com/nbcnews/public/news' }, { name:'ABC News', url:'https://abcnews.go.com/abcnews/topstories' }, { name:'Axios', url:'https://api.axios.com/feed/' }, { name:'CBS News', url:'https://www.cbsnews.com/latest/rss/main' }, { name:'Politico', url:'https://rss.politico.com/politics-news.xml' } ],
@@ -698,7 +698,6 @@
       science: [ { name:'Science Daily', url:'https://www.sciencedaily.com/rss/top.xml' }, { name:'Phys.org', url:'https://phys.org/rss-feed/' }, { name:'New Scientist', url:'https://www.newscientist.com/feed/home' }, { name:'Space.com', url:'https://www.space.com/feeds/all' } ],
       business: [ { name:'CNBC', url:'https://www.cnbc.com/id/100003114/device/rss/rss.html' }, { name:'Business Insider', url:'https://feeds.businessinsider.com/custom/all' }, { name:'Forbes', url:'https://www.forbes.com/real-time/feed2/' }, { name:'MarketWatch', url:'https://feeds.marketwatch.com/marketwatch/topstories/' } ],
       reddit: [ { name:'r/worldnews', url:'https://www.reddit.com/r/worldnews/hot.json?limit=10' }, { name:'r/news', url:'https://www.reddit.com/r/news/hot.json?limit=8' }, { name:'r/technology', url:'https://www.reddit.com/r/technology/hot.json?limit=8' }, { name:'r/science', url:'https://www.reddit.com/r/science/hot.json?limit=8' }, { name:'r/business', url:'https://www.reddit.com/r/business/hot.json?limit=6' } ],
-      hackernews: 'hn',
       climate: [ { name:'Guardian Env', url:'https://www.theguardian.com/environment/rss' }, { name:'Inside Climate', url:'https://insideclimatenews.org/feed/' }, { name:'Carbon Brief', url:'https://www.carbonbrief.org/feed' } ],
     };
 
@@ -713,21 +712,6 @@
       })));
       const all = results.flatMap(r => r.status === 'fulfilled' ? r.value : []);
       const map = new Map(); all.forEach(s => map.set(s.url, s)); return Array.from(map.values());
-    }
-
-    async function fetchHN() {
-      try {
-        const [topIds, newIds] = await Promise.all([fetch('https://hacker-news.firebaseio.com/v0/topstories.json').then(r=>r.json()), fetch('https://hacker-news.firebaseio.com/v0/newstories.json').then(r=>r.json())]);
-        const ids = [...new Set([...topIds.slice(0,20), ...newIds.slice(0,20)])];
-        const items = await Promise.all(ids.map(async id => {
-          try {
-            const it = await (await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`)).json();
-            if (!it?.title) return null;
-            return { source: 'Hacker News', platform: 'hackernews', title: it.title, url: it.url || `https://news.ycombinator.com/item?id=${it.id}`, score: it.score||0, comments: it.descendants||0, publishedAt: new Date(it.time*1000).toISOString() };
-          } catch(e) { return null; }
-        }));
-        return items.filter(Boolean);
-      } catch(e) { return []; }
     }
 
     async function fetchRSSGroup(group) {
@@ -758,7 +742,6 @@
     async function crawlAllSources(selected) {
       const categoryResults = await Promise.allSettled(selected.map(async src => {
         if (src === 'reddit') return await fetchReddit();
-        if (src === 'hackernews') return await fetchHN();
         if (Array.isArray(ALL_SOURCES[src])) return await fetchRSSGroup(ALL_SOURCES[src]);
         return [];
       }));
@@ -1196,7 +1179,7 @@
       const profile = await getProfile();
       const row = document.getElementById('sourceChipsRow');
       if (!row) return;
-      const allowedSrcs = profile?.allSources ? Object.keys(SOURCE_LABELS) : ['world','tech','hackernews'];
+      const allowedSrcs = profile?.allSources ? Object.keys(SOURCE_LABELS) : ['world','tech','science'];
       row.innerHTML = Object.keys(SOURCE_LABELS).map(src => {
         const allowed = allowedSrcs.includes(src);
         const isDefault = src === 'world';
@@ -1238,9 +1221,13 @@
       if (remote.rss2jsonKeySet) {
         keyLoads.push(window.getApiKey('rss2json').then(k => { if (k) settings.rss2jsonKey = k; }));
       }
-      if (remote.openrouterKeySet) {
-        keyLoads.push(window.getApiKey('openrouter').then(k => { if (k) settings.openrouterKey = k; }));
-      }
+      // NOTE: unlike the keys above, this one is NOT gated behind remote.openrouterKeySet.
+      // That flag comes from a server-side Supabase function (get_user_key_flags) that may not
+      // yet know about the 'openrouter' key type, which would make it permanently report false
+      // even after the key was saved successfully. get_user_key() itself is generic and just
+      // returns '' if nothing is stored, so it's safe to always attempt this — it's what actually
+      // makes the key available for pass rotation regardless of whether that flag has been updated.
+      keyLoads.push(window.getApiKey('openrouter').then(k => { if (k) settings.openrouterKey = k; }).catch(() => {}));
       await Promise.allSettled(keyLoads);
 
       if (remote.anthropicKeySet && el('anthropicKeyStatus')) {
@@ -1258,7 +1245,7 @@
         el('rss2jsonKeyStatusIcon').innerHTML = '✓';
         el('rss2jsonKeyStatusText').textContent = 'Key saved';
       }
-      if (remote.openrouterKeySet && el('openrouterKeyStatus')) {
+      if ((remote.openrouterKeySet || settings.openrouterKey) && el('openrouterKeyStatus')) {
         el('openrouterKeyStatus').style.display = 'flex';
         el('openrouterKeyStatusIcon').innerHTML = '✓';
         el('openrouterKeyStatusText').textContent = 'Key saved';
@@ -1505,7 +1492,7 @@
         score += matchCount;
       }
       
-      if (article.platform === 'reddit' || article.platform === 'hackernews') {
+      if (article.platform === 'reddit') {
         score += (article.score || 0) * 0.1;
       }
       return score;
@@ -1552,26 +1539,6 @@
         })))
         .catch(e => { console.warn('[Crawl] Reddit search failed:', e); return []; });
 
-      // 3. Hacker News Search via Algolia API
-      let hnUrl = `https://hn.algolia.com/api/v1/search${sortMode === 'newest' ? '_by_date' : ''}?query=${encodeURIComponent(topic)}&tags=story&hitsPerPage=20`;
-      if (timeframeMs > 0) {
-        const minTimeSec = Math.floor((Date.now() - timeframeMs) / 1000);
-        hnUrl += `&numericFilters=created_at_i>${minTimeSec}`;
-      }
-      const hnPromise = fetchTimeout(hnUrl)
-        .then(r => r.json())
-        .then(d => (d.hits || []).map(hit => ({
-          source: 'Hacker News',
-          platform: 'hackernews',
-          title: hit.title,
-          url: hit.url || `https://news.ycombinator.com/item?id=${hit.objectID}`,
-          score: hit.points || 0,
-          comments: hit.num_comments || 0,
-          description: hit.story_text || '',
-          publishedAt: new Date(hit.created_at_i * 1000).toISOString()
-        })))
-        .catch(e => { console.warn('[Crawl] HN search failed:', e); return []; });
-
       // 4. AI-discovered niche publication feeds (capped to prevent rate limits)
       const aiFeedsPromise = (async () => {
         try {
@@ -1590,7 +1557,7 @@
         }
       })();
 
-      const results = await Promise.allSettled([googleNewsPromise, globalNewsPromise, redditPromise, hnPromise, aiFeedsPromise]);
+      const results = await Promise.allSettled([googleNewsPromise, globalNewsPromise, redditPromise, aiFeedsPromise]);
       const allArticles = results.flatMap(r => r.status === 'fulfilled' ? r.value : []);
       
       const uniqueMap = new Map();

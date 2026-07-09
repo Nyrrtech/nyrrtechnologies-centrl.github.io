@@ -17,7 +17,7 @@ ScryWeb combines a multi-source news crawler, AI sentiment and emotion classific
 - AI content humanizer that reduces detectable AI signals in generated drafts.
 - Clean Markdown and JSON export for CMS and API-driven publishing pipelines.
 - Chrome browser extension for per-article sentiment analysis and keyword extraction.
-- Enterprise tier with team accounts, SSO, custom sentiment models, on-premise AI deployment, SLAs, and API whitelabeling.
+- Enterprise tier with team accounts, SSO, custom sentiment models, on-premise AI deployment, SLAs, and API white-labeling.
 
 ## Pricing Tiers
 

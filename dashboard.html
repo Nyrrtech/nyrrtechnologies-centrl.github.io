@@ -113,24 +113,17 @@
             <label>🔍 AI Topic Discovery</label>
             <input type="text" id="aiTopicInput" placeholder="e.g., renewable energy, AI regulation, space exploration, crypto, healthcare..." autocomplete="off">
           </div>
-	          <!-- Region selector -->
-          <div class="ai-search-field ai-search-region">
-            <label>🌍 Region</label>
-            <select id="aiRegionSelect">
-              <option value="auto">Auto-detect</option>
-              <option value="global">Worldwide</option>
-              <option value="us">United States</option>
+          <div class="ai-search-field" style="max-width:170px">
+            <label>🌍 News Region</label>
+            <select id="aiRegionSelect" class="settings-input">
+              <option value="auto" selected>Auto-detect from topic</option>
+              <option value="global">Global (US edition)</option>
               <option value="uk">United Kingdom</option>
+              <option value="pk">Pakistan</option>
+              <option value="in">India</option>
+              <option value="ae">UAE</option>
               <option value="ca">Canada</option>
               <option value="au">Australia</option>
-              <option value="in">India</option>
-              <option value="pk">Pakistan</option>
-              <option value="ng">Nigeria</option>
-              <option value="za">South Africa</option>
-              <option value="ae">UAE</option>
-              <option value="sg">Singapore</option>
-              <option value="hk">Hong Kong</option>
-              <!-- add more as needed -->
             </select>
           </div>
           <button class="ai-search-btn" id="aiDiscoverBtn">✨ Discover & Crawl</button>
@@ -254,6 +247,12 @@
             <input class="settings-input" type="password" id="mistralKey" placeholder="Your Mistral key">
             <div id="mistralKeyStatus" class="key-set-indicator" style="display:none"><span id="mistralKeyStatusIcon">✓</span><span id="mistralKeyStatusText">Key saved</span></div>
           </div>
+          <div class="settings-group">
+            <span class="settings-label">OpenRouter API Key <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional — adds free models to the Humanizer's multi-model rotation)</span></span>
+            <input class="settings-input" type="password" id="openrouterKey" placeholder="sk-or-…">
+            <div id="openrouterKeyStatus" class="key-set-indicator" style="display:none"><span id="openrouterKeyStatusIcon">✓</span><span id="openrouterKeyStatusText">Key saved</span></div>
+            <div style="font-size:11px;color:var(--text-hint);margin-top:4px">Get a free key at openrouter.ai. This isn't a third "active provider" toggle above — when set, it's automatically added to the Humanizer's pass-rotation pool alongside Anthropic/Mistral for extra model diversity.</div>
+          </div>
           <div style="font-size:11px;color:var(--text-hint);margin-top:6px">🔐 Keys are encrypted with AES-256 and stored securely in your account.</div>
         </div>
         <div class="settings-card">
@@ -291,7 +290,7 @@
     const RSS2JSON_URL = 'https://api.rss2json.com/v1/api.json';
     const FETCH_TIMEOUT = 15000;
 
-    let settings = { aiProvider: 'mistral', anthropicKey: '', mistralKey: '', rss2jsonKey: '', proxyUrl: '', aiKeywords: true };
+    let settings = { aiProvider: 'mistral', anthropicKey: '', mistralKey: '', openrouterKey: '', rss2jsonKey: '', proxyUrl: '', aiKeywords: true };
     let stories = [], activeFilter = null, activeKeywordFilter = null, currentBrief = null;
     let sortMode = 'newest', timeframeMs = 604800000;
     let _lastPipelineRun = 0;
@@ -309,70 +308,8 @@
     const AI_RATE_LIMITS = {
       mistral: { minIntervalMs: 4500, defaultCooldownMs: 60000 },
       anthropic: { minIntervalMs: 1500, defaultCooldownMs: 20000 },
+      openrouter: { minIntervalMs: 5000, defaultCooldownMs: 60000 }, // free-tier OpenRouter models are heavily rate-limited
     };
-        // ==================== REGION SUPPORT ====================
-    const REGION_PARAMS = {
-      global: { hl: 'en', gl: 'us', ceid: 'US:en' },
-      us:     { hl: 'en', gl: 'us', ceid: 'US:en' },
-      uk:     { hl: 'en', gl: 'gb', ceid: 'GB:en' },
-      ca:     { hl: 'en', gl: 'ca', ceid: 'CA:en' },
-      au:     { hl: 'en', gl: 'au', ceid: 'AU:en' },
-      in:     { hl: 'en', gl: 'in', ceid: 'IN:en' },
-      pk:     { hl: 'en', gl: 'pk', ceid: 'PK:en' },
-      ng:     { hl: 'en', gl: 'ng', ceid: 'NG:en' },
-      za:     { hl: 'en', gl: 'za', ceid: 'ZA:en' },
-      ae:     { hl: 'en', gl: 'ae', ceid: 'AE:en' },
-      sg:     { hl: 'en', gl: 'sg', ceid: 'SG:en' },
-      hk:     { hl: 'en', gl: 'hk', ceid: 'HK:en' },
-    };
-
-    let _detectedRegion = null; // cached
-
-    async function detectRegion() {
-      if (_detectedRegion) return _detectedRegion;
-      try {
-        const res = await fetch('https://ipapi.co/json/', { cache: 'force-cache' });
-        const data = await res.json();
-        const code = data.country_code?.toLowerCase();
-        if (code && REGION_PARAMS[code]) {
-          _detectedRegion = code;
-          return code;
-        }
-      } catch (e) {
-        console.warn('[Region] Auto-detect failed:', e);
-      }
-      _detectedRegion = 'global';
-      return 'global';
-    }
-
-    function getRegionCode() {
-      const select = document.getElementById('aiRegionSelect');
-      const val = select ? select.value : 'auto';
-      if (val === 'auto') return _detectedRegion || 'global';
-      return val;
-    }
-
-    function getRegionParams(code) {
-      return REGION_PARAMS[code] || REGION_PARAMS.global;
-    }
-
-    function getRegionLabel(code) {
-      const map = {
-        global: 'Worldwide',
-        us: 'United States',
-        uk: 'United Kingdom',
-        ca: 'Canada',
-        au: 'Australia',
-        in: 'India',
-        pk: 'Pakistan',
-        ng: 'Nigeria',
-        za: 'South Africa',
-        ae: 'UAE',
-        sg: 'Singapore',
-        hk: 'Hong Kong',
-      };
-      return map[code] || code.toUpperCase();
-    }
 
     function suspendRss2Json() {
       _rss2jsonSuspended = true;
@@ -546,7 +483,7 @@
     }
 
     // ==================== AI CALLS ====================
-    async function callAI({ prompt, maxTokens = 600, apiKey, provider }) {
+    async function callAI({ prompt, maxTokens = 600, apiKey, provider, model }) {
       return runAiRequest(provider, async () => {
         if (provider === 'anthropic') {
           const r = await fetch('https://api.anthropic.com/v1/messages', {
@@ -560,6 +497,30 @@
           }
           if (!r.ok) { const e = await r.text(); throw new Error(`Anthropic ${r.status}: ${e.slice(0,100)}`); }
           const d = await r.json(); return d.content[0].text;
+        } else if (provider === 'openrouter') {
+          // OpenRouter exposes an OpenAI-compatible chat completions endpoint. `model` selects
+          // which specific free model to use — passed in per-call so different humanizer passes
+          // can rotate across genuinely different model families, not just different providers.
+          const orModel = model || 'mistralai/mistral-7b-instruct:free';
+          const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${apiKey}`,
+              'HTTP-Referer': (typeof window !== 'undefined' && window.location?.origin) || 'https://scryweb.com',
+              'X-Title': 'ScryWeb Humanizer'
+            },
+            body: JSON.stringify({ model: orModel, max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] })
+          });
+          if (r.status === 429) {
+            pauseAiRateLimit(provider, r, true);
+            throw new Error('429 Rate Limit Exceeded');
+          }
+          if (!r.ok) { const e = await r.text(); throw new Error(`OpenRouter ${r.status}: ${e.slice(0,120)}`); }
+          const d = await r.json();
+          const content = d.choices?.[0]?.message?.content;
+          if (!content) throw new Error('OpenRouter returned an empty response (the free model may be temporarily overloaded).');
+          return content;
         } else {
           const mistralModel = maxTokens <= 800 ? 'mistral-small-latest' : 'mistral-large-latest';
           const r = await fetch('https://api.mistral.ai/v1/chat/completions', {
@@ -577,12 +538,12 @@
       });
     }
 
-    async function callAIWithRetry({ prompt, maxTokens = 600, apiKey, provider, retries = 5, delayMs = 1000 }) {
+    async function callAIWithRetry({ prompt, maxTokens = 600, apiKey, provider, model, retries = 5, delayMs = 1000 }) {
       let lastErr;
       for (let i = 1; i <= retries; i++) {
         try {
           await checkAndDelayIfRateLimited();
-          return await callAI({ prompt, maxTokens, apiKey, provider });
+          return await callAI({ prompt, maxTokens, apiKey, provider, model });
         }
         catch (e) {
           lastErr = e;
@@ -1101,6 +1062,18 @@
     }
 
     // ==================== ADVANCED HUMANIZER ====================
+    // Free-tier OpenRouter models used to further diversify the multi-model rotation pool.
+    // These add genuinely different model families (not just different providers of similar models)
+    // to the mix, which matters for breaking a single model's token-level statistical fingerprint.
+    // NOTE: OpenRouter's free catalog changes over time and slugs can be deprecated/renamed —
+    // if a pass starts failing with a 4xx from OpenRouter, check https://openrouter.ai/models?max_price=0
+    // and update this list.
+    const OPENROUTER_FREE_MODELS = [
+      'mistralai/mistral-7b-instruct:free',
+      'meta-llama/llama-3.2-3b-instruct:free',
+      'google/gemma-2-9b-it:free',
+      'qwen/qwen-2.5-7b-instruct:free',
+    ];
     const HUMANIZER_BANNED   = ['delve','leverage','revolutionize','groundbreaking','unprecedented','game-changer','transformative','cutting-edge','holistic','synergy','paradigm','disruptive','innovative','robust','seamless','unlock','empower','streamline','optimize','utilize','harness','realm','moreover','furthermore','notably','consequently','accordingly','in conclusion','to summarize','it is important to note','needless to say',"in today's fast-paced world",'in the digital age','moving forward','going forward','dive deep','not only','but also','when it comes to','it goes without saying','at the end of the day','plays a crucial role','plays a vital role',"let's dive in",'in this article','on the other hand','when all is said and done','in a world where','it is worth noting','stands as a testament','underscores the importance','serves as a reminder'];
     const HUMANIZER_PERSONAS = { journalist: { voice: 'seasoned investigative journalist with 15+ years experience', traits: ['Lead with the most surprising fact','Use inverted pyramid','Name real people specifically','Insert short punchy paragraphs','Challenge assumptions','Use parenthetical asides sparingly (commas or plain parentheses, not dashes)','Occasionally address the reader'] }, blogger: { voice: 'enthusiastic personal blogger with deep knowledge', traits: ['Start with a personal anecdote','Use "I" occasionally','Ask rhetorical questions','Use casual connectors','Break into short paragraphs','Use parenthetical asides','Use "you" frequently'] }, expert: { voice: 'authoritative subject-matter expert', traits: ['Use precise terminology','Reference historical context','Acknowledge nuance','Use hedging language',"Be willing to say what others get wrong",'Short declarative sentences after complex ones'] }, storyteller: { voice: 'narrative journalist who makes dry topics compelling', traits: ['Open with a scene','Use sensory language','Build tension through sequencing','Vary sentence length dramatically','End paragraphs with a turn'] }, analyst: { voice: 'sharp business/policy analyst', traits: ['Lead with the key takeaway','Use numbered breakdowns','Contrast expectation vs reality','Reference real-world implications','Keep sentences tight','Be direct about uncertainty'] } };
     const AI_FINGERPRINT_RULES = 'Avoid known AI-writing fingerprints: use at most one or two em-dashes in the ENTIRE piece, only where it reads truly naturally — do not eliminate them completely, since a total absence of any dash is itself an artificial, over-corrected pattern; the goal is rarity, not zero. Vary how pauses are punctuated: some as commas, some as new sentences, some as parentheses — do not convert everything to the same substitute, since uniform substitution just creates a different flat rhythm. Avoid neatly parallel triads ("X, Y, and Z" lists used more than once). Avoid "not only... but also" constructions. Vary punctuation style across sentences (mix periods, occasional semicolons, the rare fragment) instead of uniform comma-heavy sentences. Avoid symmetric paragraph lengths. Do not end the piece with a tidy summary sentence ("In the end...", "Ultimately...") — end on a concrete detail, quote, or fact instead. Vary sentence openers so no more than two consecutive sentences start with the same word type (no back-to-back "The..." or "This..." openers). Let at least one sentence per few paragraphs be mildly imperfect or run slightly long, the way an unedited human draft would read, rather than uniformly clean and balanced.';
@@ -1125,13 +1098,17 @@
 
     async function runAdvancedHumanizer({ text, persona, tone, bypassLevel, seoMode, focusKeyword, preserveVoice = false, customInstructions = '', targetDiv, onComplete }) {
       const apiKey = settings.aiProvider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
-      if (!apiKey) { if (targetDiv) targetDiv.innerHTML = '<div class="error-msg">⚠️ Add your API key in Settings first.</div>'; return null; }
+      const hasAnyKey = !!(settings.anthropicKey || settings.mistralKey || settings.openrouterKey);
+      if (!hasAnyKey) { if (targetDiv) targetDiv.innerHTML = '<div class="error-msg">⚠️ Add at least one AI provider API key in Settings first (Anthropic, Mistral, or OpenRouter).</div>'; return null; }
       // Build a rotation pool of every provider the user has a key for. Running every pass through
       // one model keeps a single, consistent statistical fingerprint end to end — alternating models
       // per pass means no single model's token-probability signature dominates the final text.
       const providerPool = [];
       if (settings.anthropicKey) providerPool.push({ provider: 'anthropic', apiKey: settings.anthropicKey });
       if (settings.mistralKey)   providerPool.push({ provider: 'mistral',   apiKey: settings.mistralKey });
+      if (settings.openrouterKey) {
+        OPENROUTER_FREE_MODELS.forEach(m => providerPool.push({ provider: 'openrouter', apiKey: settings.openrouterKey, model: m }));
+      }
       if (!providerPool.length) providerPool.push({ provider: settings.aiProvider, apiKey });
       const forPass = (passIndex) => providerPool[passIndex % providerPool.length];
       const personaData = HUMANIZER_PERSONAS[persona] || HUMANIZER_PERSONAS.journalist;
@@ -1149,35 +1126,36 @@
       const addBadge    = (label, color) => { const badges = document.getElementById('hzPassBadges'); if (!badges) return; const b = document.createElement('span'); b.style.cssText = `font-size:10px;padding:2px 9px;border-radius:20px;background:${color}22;color:${color};border:1px solid ${color}44`; b.textContent = label; badges.appendChild(b); };
       const passBadges  = document.getElementById('hzPassBadges');
       if (passBadges) passBadges.innerHTML = '';
+      const modelLabel = (m) => m.provider === 'openrouter' ? `openrouter/${m.model.split('/')[1]?.replace(':free','') || m.model}` : m.provider;
       let current = text;
       try {
         const m1 = forPass(0);
-        setProgress('<span class="spinner"></span> Pass 1/' + passes + ': Restructuring & voice (' + m1.provider + ')…', 10); addBadge('Pass 1: Structure · ' + m1.provider, '#f5b042');
+        setProgress('<span class="spinner"></span> Pass 1/' + passes + ': Restructuring & voice (' + modelLabel(m1) + ')…', 10); addBadge('Pass 1: Structure · ' + modelLabel(m1), '#f5b042');
         const p1 = `${voiceInstr}\nBYPASS LEVEL: ${bypassInstr}${keywordLine}${customLine}\n${AI_FINGERPRINT_RULES}\nABSOLUTE RULES:\n1. NEVER use: "${bannedList}"\n2. Keep ALL facts accurate\n3. Vary sentence length dramatically\n4. Return ONLY the rewritten article.\n\nARTICLE:\n${current}`;
-        current = await callAIWithRetry({ prompt: p1, maxTokens: 3200, apiKey: m1.apiKey, provider: m1.provider, retries: 2, delayMs: 1200 });
+        current = await callAIWithRetry({ prompt: p1, maxTokens: 3200, apiKey: m1.apiKey, provider: m1.provider, model: m1.model, retries: 2, delayMs: 1200 });
         current = stripDashArtifacts(current);
         setProgress('<span class="spinner"></span> Pass 1 complete.', 20);
         if (passes >= 2) {
           const m2 = forPass(1);
-          await new Promise(r => setTimeout(r, 500)); setProgress('<span class="spinner"></span> Pass 2/' + passes + ': Maximising burstiness (' + m2.provider + ')…', 35); addBadge('Pass 2: Burstiness · ' + m2.provider, '#8BC97F');
+          await new Promise(r => setTimeout(r, 500)); setProgress('<span class="spinner"></span> Pass 2/' + passes + ': Maximising burstiness (' + modelLabel(m2) + ')…', 35); addBadge('Pass 2: Burstiness · ' + modelLabel(m2), '#8BC97F');
           const p2 = `Expert editor specialising in making AI-written text undetectable.${preserveVoice ? ' Keep the article\'s existing tone, voice, and persona intact while you edit.' : ''}\nEDITING TASKS:\n1. Restructure at least 3 of the 5 longest sentences\n2. Replace predictable word choices\n3. Remove: "moreover","furthermore","however","therefore","thus","additionally"\n4. Add 2-3 natural imperfections: comma splice, sentence starting with "And"/"But"\n5. No two consecutive sentences similar length${seoInstr}${customLine}\n${AI_FINGERPRINT_RULES}\nReturn ONLY the edited article.\n\nARTICLE:\n${current}`;
-          current = await callAIWithRetry({ prompt: p2, maxTokens: 3200, apiKey: m2.apiKey, provider: m2.provider, retries: 2, delayMs: 1200 });
+          current = await callAIWithRetry({ prompt: p2, maxTokens: 3200, apiKey: m2.apiKey, provider: m2.provider, model: m2.model, retries: 2, delayMs: 1200 });
           current = stripDashArtifacts(current);
           setProgress('<span class="spinner"></span> Pass 2 complete.', 50);
         }
         if (passes >= 3) {
           const m3 = forPass(2);
-          await new Promise(r => setTimeout(r, 500)); setProgress('<span class="spinner"></span> Pass 3/' + passes + ': Scrubbing AI fingerprints (' + m3.provider + ')…', 60); addBadge('Pass 3: Fingerprint Scrub · ' + m3.provider, '#9B7EDE');
+          await new Promise(r => setTimeout(r, 500)); setProgress('<span class="spinner"></span> Pass 3/' + passes + ': Scrubbing AI fingerprints (' + modelLabel(m3) + ')…', 60); addBadge('Pass 3: Fingerprint Scrub · ' + modelLabel(m3), '#9B7EDE');
           const p3 = `Final AI fingerprint scrub.${preserveVoice ? ' Keep the article\'s existing tone, voice, and persona intact.' : ''}\nFINAL CHECKS:\n1. Any word used 3+ times? Vary with synonyms.\n2. 3+ consecutive sentences starting the same way? Fix.\n3. No two consecutive paragraphs the same length.\n4. Add if missing: mild surprise, mild opinion, short standalone sentence, rhetorical question.${focusKeyword ? `\n5. Confirm keyword "${focusKeyword}" appears in first 150 words.` : ''}${customLine}\n${AI_FINGERPRINT_RULES}\nReturn ONLY the final article.\n\nARTICLE:\n${current}`;
-          current = await callAIWithRetry({ prompt: p3, maxTokens: 3200, apiKey: m3.apiKey, provider: m3.provider, retries: 2, delayMs: 1200 });
+          current = await callAIWithRetry({ prompt: p3, maxTokens: 3200, apiKey: m3.apiKey, provider: m3.provider, model: m3.model, retries: 2, delayMs: 1200 });
           current = stripDashArtifacts(current);
           setProgress('<span class="spinner"></span> Pass 3 complete.', 75);
         }
         if (passes >= 4) {
           const m4 = forPass(3);
-          await new Promise(r => setTimeout(r, 500)); setProgress('<span class="spinner"></span> Pass 4/' + passes + ': Detector-specific scrub (' + m4.provider + ')…', 80); addBadge('Pass 4: Detector Scrub · ' + m4.provider, '#6FA8DC');
+          await new Promise(r => setTimeout(r, 500)); setProgress('<span class="spinner"></span> Pass 4/' + passes + ': Detector-specific scrub (' + modelLabel(m4) + ')…', 80); addBadge('Pass 4: Detector Scrub · ' + modelLabel(m4), '#6FA8DC');
           const p4 = `You are doing a specialised pass whose ONLY job is defeating modern classifier-based AI detectors (the kind used by tools like GPTZero and Copyleaks, which key on token-predictability patterns, not just sentence-length variety).${preserveVoice ? ' Keep the article\'s existing tone, voice, and persona intact.' : ''}\nTASKS:\n1. Em-dashes should already be rare — leave at most one or two, don't add more.\n2. Find any list or clause structured as neat parallel triads ("X, Y, and Z" appearing more than once) and break the symmetry — combine two items, or restate as a sentence.\n3. Vary punctuation rhythm: introduce at least one semicolon and one short sentence fragment somewhere natural, and make sure not all sentences end with simple periods after uniform commas.\n4. Reduce any remaining uniformity in paragraph length — no two adjacent paragraphs should be within one sentence of the same length.\n5. Keep every fact, name, number, and quote exactly as given.${customLine}\nReturn ONLY the final article, no notes or explanation.\n\nARTICLE:\n${current}`;
-          current = await callAIWithRetry({ prompt: p4, maxTokens: 3200, apiKey: m4.apiKey, provider: m4.provider, retries: 2, delayMs: 1200 });
+          current = await callAIWithRetry({ prompt: p4, maxTokens: 3200, apiKey: m4.apiKey, provider: m4.provider, model: m4.model, retries: 2, delayMs: 1200 });
           current = stripDashArtifacts(current);
           setProgress('✅ All passes complete.', 100); addBadge('✓ Done', '#f5b042');
         } else { setProgress('✅ Humanization complete.', 100); }
@@ -1260,6 +1238,9 @@
       if (remote.rss2jsonKeySet) {
         keyLoads.push(window.getApiKey('rss2json').then(k => { if (k) settings.rss2jsonKey = k; }));
       }
+      if (remote.openrouterKeySet) {
+        keyLoads.push(window.getApiKey('openrouter').then(k => { if (k) settings.openrouterKey = k; }));
+      }
       await Promise.allSettled(keyLoads);
 
       if (remote.anthropicKeySet && el('anthropicKeyStatus')) {
@@ -1277,6 +1258,11 @@
         el('rss2jsonKeyStatusIcon').innerHTML = '✓';
         el('rss2jsonKeyStatusText').textContent = 'Key saved';
       }
+      if (remote.openrouterKeySet && el('openrouterKeyStatus')) {
+        el('openrouterKeyStatus').style.display = 'flex';
+        el('openrouterKeyStatusIcon').innerHTML = '✓';
+        el('openrouterKeyStatusText').textContent = 'Key saved';
+      }
     }
 
     async function saveSettingsHandler() {
@@ -1284,10 +1270,12 @@
       const newAnthropicKey = el('anthropicKey')?.value.trim() || '';
       const newMistralKey   = el('mistralKey')?.value.trim()   || '';
       const newRss2jsonKey  = el('rss2jsonKey')?.value.trim()  || '';
+      const newOpenrouterKey = el('openrouterKey')?.value.trim() || '';
       
       if (newAnthropicKey) settings.anthropicKey = newAnthropicKey;
       if (newMistralKey)   settings.mistralKey   = newMistralKey;
       if (newRss2jsonKey)  settings.rss2jsonKey  = newRss2jsonKey;
+      if (newOpenrouterKey) settings.openrouterKey = newOpenrouterKey;
       settings.proxyUrl   = el('proxyUrl')?.value.trim()                   || '';
       settings.aiKeywords = el('aiEnrichToggle')?.classList.contains('on') || false;
       
@@ -1302,12 +1290,14 @@
           aiKeywordsEnabled: settings.aiKeywords, 
           anthropicKey: newAnthropicKey, 
           mistralKey: newMistralKey, 
-          rss2jsonKey: newRss2jsonKey 
+          rss2jsonKey: newRss2jsonKey,
+          openrouterKey: newOpenrouterKey
         });
         showSettingsMessage('✓ Settings saved successfully!', false);
         if (newAnthropicKey && el('anthropicKey')) el('anthropicKey').value = '';
         if (newMistralKey && el('mistralKey')) el('mistralKey').value = '';
         if (newRss2jsonKey && el('rss2jsonKey')) el('rss2jsonKey').value = '';
+        if (newOpenrouterKey && el('openrouterKey')) el('openrouterKey').value = '';
         if (newAnthropicKey && el('anthropicKeyStatus')) {
           el('anthropicKeyStatus').style.display = 'flex';
           el('anthropicKeyStatusIcon').innerHTML = '✓';
@@ -1322,6 +1312,11 @@
           el('rss2jsonKeyStatus').style.display = 'flex';
           el('rss2jsonKeyStatusIcon').innerHTML = '✓';
           el('rss2jsonKeyStatusText').textContent = 'Key saved';
+        }
+        if (newOpenrouterKey && el('openrouterKeyStatus')) {
+          el('openrouterKeyStatus').style.display = 'flex';
+          el('openrouterKeyStatusIcon').innerHTML = '✓';
+          el('openrouterKeyStatusText').textContent = 'Key saved';
         }
         await window.loadSettings(true);
       } catch (err) {
@@ -1430,25 +1425,21 @@
       return [];
     }
 
-        async function discoverFeedsForTopic(topic, regionCode) {
+    async function discoverFeedsForTopic(topic, regionLabel) {
       const provider = settings.aiProvider;
       const apiKey = provider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
       if (!apiKey) throw new Error('API key missing');
-
-      const regionLabel = getRegionLabel(regionCode);
-      const regionHint = regionCode !== 'global'
-        ? `Prefer sources that are based in or frequently cover ${regionLabel}. Include at least two reputable local publications from that region.`
+      const regionLine = regionLabel && regionLabel !== 'Global (US edition)'
+        ? ` This topic appears to be specific to ${regionLabel} — prioritize local/regional publications, newspapers, and industry blogs based there over generic international sites, since they're more likely to cover it in depth.`
         : '';
-
-      const prompt = `You are a professional news aggregator. For the topic: "${topic}", find 8 to 12 high-quality, active RSS feeds from reputable news websites, blogs, or publications that regularly cover this topic. ${regionHint} Return ONLY a valid JSON array of objects with keys: "name" (string, human readable site name) and "url" (string, full RSS feed URL). Do not include any explanation or markdown. Example: [{"name":"TechCrunch AI","url":"https://techcrunch.com/tag/artificial-intelligence/feed/"}].`;
-
+      const prompt = `You are a professional news aggregator. For the topic: "${topic}", find 8 to 12 high-quality, active RSS feeds from reputable news websites, blogs, or publications that regularly cover this topic.${regionLine} Return ONLY a valid JSON array of objects with keys: "name" (string, human readable site name) and "url" (string, full RSS feed URL). Do not include any explanation or markdown. Example: [{"name":"TechCrunch AI","url":"https://techcrunch.com/tag/artificial-intelligence/feed/"}].`;
       let raw = await callAIWithRetry({ prompt, maxTokens: 1200, apiKey, provider, retries: 2, delayMs: 1000 });
       let cleaned = raw.replace(/```json\s*|```\s*$/g, '').trim();
       const match = cleaned.match(/\[[\s\S]*\]/);
       if (match) cleaned = match[0];
       const feeds = JSON.parse(cleaned);
       if (!Array.isArray(feeds) || feeds.length === 0) throw new Error('AI did not return any feeds.');
-      return feeds.filter(f => f.url && f.url.startsWith('http')).slice(0, 12);
+      return feeds.filter(f => f.url && f.url.startsWith('http')).slice(0,12);
     }
 
     function getGoogleNewsTimeframeQuery() {
@@ -1457,6 +1448,42 @@
       if (timeframeMs === 2592000000) return ' when:1m';
       if (timeframeMs === 31536000000) return ' when:1y';
       return '';
+    }
+
+    // Google News RSS results differ a lot by regional edition — the same search run through the
+    // US edition vs. the Pakistan edition surfaces largely different outlets, because Google ranks
+    // "local authority" sources per edition. A crawl hardcoded to one edition will systematically
+    // miss niche/local topics whose relevant coverage lives in a different country's press.
+    const REGION_EDITIONS = {
+      global: { gl: 'US', hl: 'en-US', ceid: 'US:en', label: 'Global (US edition)' },
+      uk:     { gl: 'GB', hl: 'en-GB', ceid: 'GB:en', label: 'United Kingdom' },
+      pk:     { gl: 'PK', hl: 'en-PK', ceid: 'PK:en', label: 'Pakistan' },
+      in:     { gl: 'IN', hl: 'en-IN', ceid: 'IN:en', label: 'India' },
+      ae:     { gl: 'AE', hl: 'en-AE', ceid: 'AE:en', label: 'UAE' },
+      ca:     { gl: 'CA', hl: 'en-CA', ceid: 'CA:en', label: 'Canada' },
+      au:     { gl: 'AU', hl: 'en-AU', ceid: 'AU:en', label: 'Australia' },
+    };
+    // Small keyword hint list so "Auto-detect" picks a sensible edition without the user having to
+    // know Google's country codes. Not exhaustive — the dropdown is always there as an override.
+    const REGION_HINTS = {
+      pk: ['pakistan','islamabad','karachi','lahore','rawalpindi','peshawar','faisalabad','multan','quetta'],
+      in: ['india','delhi','mumbai','bengaluru','bangalore','hyderabad','chennai','kolkata','pune','gurgaon','gurugram','noida'],
+      uk: ['uk','united kingdom','london','manchester','birmingham','england','scotland','wales','edinburgh','glasgow'],
+      ae: ['uae','dubai','abu dhabi','emirates','sharjah'],
+      ca: ['canada','toronto','vancouver','ottawa','montreal','calgary'],
+      au: ['australia','sydney','melbourne','canberra','brisbane','perth'],
+    };
+    function detectRegionFromTopic(topic) {
+      const t = (topic || '').toLowerCase();
+      for (const [region, hints] of Object.entries(REGION_HINTS)) {
+        if (hints.some(h => t.includes(h))) return region;
+      }
+      return null;
+    }
+    function resolveRegion(topic) {
+      const selected = document.getElementById('aiRegionSelect')?.value || 'auto';
+      if (selected !== 'auto') return selected;
+      return detectRegionFromTopic(topic) || 'global';
     }
 
     function calculateRelevanceScore(article, topic) {
@@ -1484,33 +1511,31 @@
       return score;
     }
 
-        async function crawlSearchSources(topic) {
-      const regionCode = getRegionCode();
-      const params = getRegionParams(regionCode);
+    async function crawlSearchSources(topic) {
+      // 1. Google News search with timeframe parameters, in the resolved regional edition
       const timeframeQuery = getGoogleNewsTimeframeQuery();
-
-      // 1. Primary Google News query with selected region
-      const primaryUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(topic + timeframeQuery)}&hl=${params.hl}&gl=${params.gl}&ceid=${params.ceid}`;
-      const primaryPromise = fetchSingleRSSFeedWithRetry(primaryUrl, `Google News (${getRegionLabel(regionCode)})`, 3, 1500)
+      const region = resolveRegion(topic);
+      const edition = REGION_EDITIONS[region] || REGION_EDITIONS.global;
+      const googleNewsUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(topic + timeframeQuery)}&hl=${edition.hl}&gl=${edition.gl}&ceid=${edition.ceid}`;
+      const googleNewsPromise = fetchSingleRSSFeedWithRetry(googleNewsUrl, `Google News Search (${edition.label})`, 3, 1500)
         .then(items => items.map(item => ({ ...item, platform: 'google_news' })));
 
-      // 2. Secondary global (US) query for extra recall, if region is not global
-      let globalPromise = Promise.resolve([]);
-      if (regionCode !== 'global') {
-        const globalParams = REGION_PARAMS.global;
-        const globalUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(topic + timeframeQuery)}&hl=${globalParams.hl}&gl=${globalParams.gl}&ceid=${globalParams.ceid}`;
-        globalPromise = fetchSingleRSSFeedWithRetry(globalUrl, 'Google News (Global)', 2, 1200)
-          .then(items => items.map(item => ({ ...item, platform: 'google_news' })))
-          .catch(() => []);
-      }
+      // 1b. If a non-global edition was used, also run the global edition in parallel — some
+      // international coverage of a local topic (wire services, larger outlets) only shows up there.
+      const globalNewsPromise = region !== 'global'
+        ? fetchSingleRSSFeedWithRetry(
+            `https://news.google.com/rss/search?q=${encodeURIComponent(topic + timeframeQuery)}&hl=en-US&gl=US&ceid=US:en`,
+            'Google News Search (Global)', 3, 1500
+          ).then(items => items.map(item => ({ ...item, platform: 'google_news' })))
+        : Promise.resolve([]);
 
-      // 3. Reddit, HN, AI feeds (unchanged)
+      // 2. Reddit Search
       let redditTime = 'all';
       if (timeframeMs === 86400000) redditTime = 'day';
       else if (timeframeMs === 604800000) redditTime = 'week';
       else if (timeframeMs === 2592000000) redditTime = 'month';
       else if (timeframeMs === 31536000000) redditTime = 'year';
-
+      
       const redditSort = sortMode === 'popular' ? 'relevance' : 'new';
       const redditUrl = `https://www.reddit.com/search.json?q=${encodeURIComponent(topic)}&sort=${redditSort}&t=${redditTime}&limit=25`;
       const redditPromise = fetchTimeout(redditUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } })
@@ -1527,6 +1552,7 @@
         })))
         .catch(e => { console.warn('[Crawl] Reddit search failed:', e); return []; });
 
+      // 3. Hacker News Search via Algolia API
       let hnUrl = `https://hn.algolia.com/api/v1/search${sortMode === 'newest' ? '_by_date' : ''}?query=${encodeURIComponent(topic)}&tags=story&hitsPerPage=20`;
       if (timeframeMs > 0) {
         const minTimeSec = Math.floor((Date.now() - timeframeMs) / 1000);
@@ -1546,10 +1572,10 @@
         })))
         .catch(e => { console.warn('[Crawl] HN search failed:', e); return []; });
 
-      // 4. AI-discovered feeds (region-aware)
+      // 4. AI-discovered niche publication feeds (capped to prevent rate limits)
       const aiFeedsPromise = (async () => {
         try {
-          const feeds = await discoverFeedsForTopic(topic, regionCode);
+          const feeds = await discoverFeedsForTopic(topic, edition.label);
           const slicedFeeds = feeds.slice(0, 4);
           const articles = [];
           for (const feed of slicedFeeds) {
@@ -1564,9 +1590,9 @@
         }
       })();
 
-      const results = await Promise.allSettled([primaryPromise, globalPromise, redditPromise, hnPromise, aiFeedsPromise]);
+      const results = await Promise.allSettled([googleNewsPromise, globalNewsPromise, redditPromise, hnPromise, aiFeedsPromise]);
       const allArticles = results.flatMap(r => r.status === 'fulfilled' ? r.value : []);
-
+      
       const uniqueMap = new Map();
       allArticles.forEach(a => {
         if (a.url && !uniqueMap.has(a.url)) {

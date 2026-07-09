@@ -116,7 +116,7 @@ window.logout = async function() {
   _deviceFp = null;  // clear fingerprint cache after RPC
 
   await _sb.auth.signOut();
-  window.location.href = '/';
+  window.location.href = 'index.html';
 };
 
 /**
@@ -125,7 +125,7 @@ window.logout = async function() {
  */
 window.sendPasswordReset = async function(email) {
   const { error } = await _sb.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin + '/',
+    redirectTo: window.location.origin + '/index.html',
   });
   if (error) throw error;
 };
@@ -342,9 +342,11 @@ window.loadSettings = async function(force = false) {
     anthropicKeySet:   !!(keyFlags?.anthropic_set),
     mistralKeySet:     !!(keyFlags?.mistral_set),
     rss2jsonKeySet:    !!(keyFlags?.rss2json_set),
+    openrouterKeySet:  !!(keyFlags?.openrouter_set),
     anthropicKey: '',
     mistralKey:   '',
     rss2jsonKey:  '',
+    openrouterKey: '',
   };
   return _cachedSettings;
 };
@@ -370,6 +372,7 @@ window.saveSettings = async function(settings) {
   if (settings.anthropicKey) keyUpdates.push(_storeEncryptedKey(user.id, 'anthropic', settings.anthropicKey));
   if (settings.mistralKey)   keyUpdates.push(_storeEncryptedKey(user.id, 'mistral',   settings.mistralKey));
   if (settings.rss2jsonKey)  keyUpdates.push(_storeEncryptedKey(user.id, 'rss2json',  settings.rss2jsonKey));
+  if (settings.openrouterKey) keyUpdates.push(_storeEncryptedKey(user.id, 'openrouter', settings.openrouterKey));
   await Promise.allSettled(keyUpdates);
 
   _cachedSettings = null; // force reload on next access
@@ -403,8 +406,8 @@ window.getApiKey = async function(keyType) {
 function _defaultSettings() {
   return {
     aiProvider: 'mistral', proxyUrl: '', aiKeywordsEnabled: true,
-    anthropicKeySet: false, mistralKeySet: false, rss2jsonKeySet: false,
-    anthropicKey: '', mistralKey: '', rss2jsonKey: '',
+    anthropicKeySet: false, mistralKeySet: false, rss2jsonKeySet: false, openrouterKeySet: false,
+    anthropicKey: '', mistralKey: '', rss2jsonKey: '', openrouterKey: '',
   };
 }
 
@@ -461,7 +464,7 @@ function injectModal() {
           </div>
           <button class="modal-btn-full" id="doRegisterBtn">Create free account</button>
           <div class="modal-footer-link" style="font-size:11px;margin-top:14px">
-            By signing up you agree to our <a href="/terms">Terms</a>.
+            By signing up you agree to our <a href="terms.html">Terms</a>.
           </div>
         </div>
 
@@ -757,8 +760,8 @@ async function renderHeader() {
             ${planMenuBadge}
           </div>
           <div class="user-dropdown-divider"></div>
-          <a href="/dashboard" class="user-dropdown-item" role="menuitem">Dashboard</a>
-          <a href="/pricing" class="user-dropdown-item" role="menuitem">Upgrade plan</a>
+          <a href="dashboard.html" class="user-dropdown-item" role="menuitem">Dashboard</a>
+          <a href="pricing.html" class="user-dropdown-item" role="menuitem">Upgrade plan</a>
           <div class="user-dropdown-divider"></div>
           <button class="user-dropdown-item user-dropdown-logout" id="headerLogoutBtn" role="menuitem">Sign out</button>
         </div>
@@ -825,7 +828,7 @@ async function renderHeader() {
       <button class="btn btn-outline btn-sm" id="headerSignInBtn">Sign in</button>
       <button class="btn btn-sm" id="headerDashBtn">Dashboard</button>`;
     document.getElementById('headerSignInBtn')?.addEventListener('click', () => window.showAuthModal('login'));
-    document.getElementById('headerDashBtn')?.addEventListener('click',   () => window.checkAuthAndRedirect('/dashboard'));
+    document.getElementById('headerDashBtn')?.addEventListener('click',   () => window.checkAuthAndRedirect('dashboard.html'));
     dispatchAuthStateChecked(null, null);
     return;
   }
@@ -867,8 +870,8 @@ async function renderHeader() {
           <span class="plan-badge ${meta.badgeClass}">${meta.label}</span>
         </div>
         <div class="user-dropdown-divider"></div>
-        <a href="/dashboard" class="user-dropdown-item" role="menuitem">📊 Dashboard</a>
-        <a href="/pricing"   class="user-dropdown-item" role="menuitem">💰 Upgrade plan</a>
+        <a href="dashboard.html" class="user-dropdown-item" role="menuitem">📊 Dashboard</a>
+        <a href="pricing.html"   class="user-dropdown-item" role="menuitem">💰 Upgrade plan</a>
         <div class="user-dropdown-divider"></div>
         <button class="user-dropdown-item user-dropdown-logout" id="headerLogoutBtn" role="menuitem">🚪 Sign out</button>
       </div>

@@ -554,7 +554,13 @@
               'HTTP-Referer': (typeof window !== 'undefined' && window.location?.origin) || 'https://scryweb.com',
               'X-Title': 'ScryWeb Humanizer'
             },
-            body: JSON.stringify({ model: orModel, max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] })
+            body: JSON.stringify({
+              model: orModel, max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }],
+              // Some free models (DeepSeek-R1 style, QwQ, etc.) think out loud before answering.
+              // Ask OpenRouter to strip that reasoning trace from the response — we only ever
+              // want the final rewritten text, never the model's scratch work.
+              reasoning: { exclude: true }
+            })
           });
           if (r.status === 429) {
             pauseAiRateLimit(provider, orModel, r, true);
@@ -562,8 +568,12 @@
           }
           if (!r.ok) { const e = await r.text(); throw new Error(`OpenRouter ${r.status}: ${e.slice(0,120)}`); }
           const d = await r.json();
-          const content = d.choices?.[0]?.message?.content;
+          let content = d.choices?.[0]?.message?.content;
           if (!content) throw new Error('OpenRouter returned an empty response (the free model may be temporarily overloaded).');
+          // Belt-and-braces: strip any <think>/<reasoning> block that leaks through despite
+          // reasoning:exclude, in case a given free model doesn't honor that param.
+          content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '').trim();
+          if (!content) throw new Error('OpenRouter returned only a reasoning trace with no final answer.');
           return content;
         } else {
           const mistralModel = maxTokens <= 800 ? 'mistral-small-latest' : 'mistral-large-latest';
@@ -1113,7 +1123,7 @@
       'google/gemma-2-9b-it:free',
       'qwen/qwen-2.5-7b-instruct:free',
     ];
-    const OPENROUTER_MODELS_CACHE_KEY = 'scryweb_openrouter_free_models_cache_v2';
+    const OPENROUTER_MODELS_CACHE_KEY = 'scryweb_openrouter_free_models_cache_v3';
     const OPENROUTER_MODELS_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6h — OpenRouter's free catalog doesn't churn hourly
 
     // OpenRouter's free-model catalog changes over time (models get added, renamed, or dropped).
@@ -1153,7 +1163,7 @@
             // which is exactly the "output" bug this filter exists to prevent.
             const id = (m.id || '').toLowerCase();
             const name = (m.name || '').toLowerCase();
-            const blocked = /guard|moderation|shield|safety|classifier|content-filter/;
+            const blocked = /guard|moderation|shield|safety|classifier|content-filter|\br1\b|:r1|qwq|thinking|reasoner|reasoning/;
             return !blocked.test(id) && !blocked.test(name);
           })
           .map(m => m.id);
@@ -1216,10 +1226,17 @@
       // otherwise be caught as a failure — check that what came back actually looks like a
       // rewritten article before accepting it.
       const MODERATION_VERDICT_RE = /^\s*(safe|unsafe)\b[\s\S]{0,40}$/i;
+      // Reasoning models sometimes narrate their planning instead of (or in addition to) giving
+      // the final rewrite — "The task is to...", "Let's check:", "Paragraph 1:", "We need to...".
+      // A real rewritten article won't contain more than one or two of these phrases; a
+      // chain-of-thought dump will be full of them.
+      const THINKING_MARKERS_RE = /\b(the task is to|let'?s (check|count|draft|parse|plan)|we need to|paragraph \d+\s*[:(]|here'?s (what|my) (plan|draft)|i (need|should|will) (rewrite|check|count))\b/gi;
       function looksLikeArticle(result, sourceText) {
         if (!result || typeof result !== 'string') return false;
         const trimmed = result.trim();
         if (MODERATION_VERDICT_RE.test(trimmed)) return false;
+        const thinkingHits = (trimmed.match(THINKING_MARKERS_RE) || []).length;
+        if (thinkingHits >= 2) return false; // reads like scratch work, not a finished article
         // A genuine rewrite should be in the same ballpark length as what went in — a real pass
         // won't collapse a multi-paragraph article down to a couple of words.
         const minLen = Math.min(80, Math.max(30, sourceText.trim().length * 0.15));

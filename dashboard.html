@@ -1109,10 +1109,7 @@
     // Fallback list used until a live fetch succeeds (or if the fetch fails/is offline).
     const OPENROUTER_FREE_MODELS_FALLBACK = [
       'mistralai/mistral-7b-instruct:free',
-    ];
-    const OPENROUTER_FREE_MODELS = [
       'meta-llama/llama-3.2-3b-instruct:free',
-      'google/gemma-4-31b-it:free',
       'google/gemma-2-9b-it:free',
       'qwen/qwen-2.5-7b-instruct:free',
     ];
@@ -1141,6 +1138,14 @@
           .filter(m => {
             const p = m.pricing || {};
             return (Number(p.prompt) || 0) === 0 && (Number(p.completion) || 0) === 0;
+          })
+          .filter(m => {
+            // Stick to plain text->text chat models — vision/audio/tool-only free models are more
+            // likely to return an empty completion for a plain text prompt like ours.
+            const arch = m.architecture || {};
+            const inputs = arch.input_modalities || (arch.modality ? arch.modality.split('->')[0].split('+') : ['text']);
+            const outputs = arch.output_modalities || (arch.modality ? arch.modality.split('->')[1]?.split('+') : ['text']);
+            return (!inputs || inputs.includes('text')) && (!outputs || outputs.includes('text'));
           })
           .map(m => m.id);
         if (free.length) {
@@ -1192,18 +1197,34 @@
       // Pick a model for a given pass, preferring one that isn't currently cooling down from a
       // rate limit. If everything in the pool is cooling down, fall back to the round-robin pick
       // anyway — callAIWithRetry will pause and wait it out rather than failing the whole run.
-      const forPass = (passIndex) => {
-        const start = passIndex % providerPool.length;
-        for (let offset = 0; offset < providerPool.length; offset++) {
-          const candidate = providerPool[(start + offset) % providerPool.length];
-          if (isModelAvailable(candidate.provider, candidate.model)) return candidate;
-        }
-        return providerPool[start]; // all busy — caller will pause on this one and resume
-      };
       const onRateLimitPause = ({ resumeInMs }) => {
         const p = document.getElementById('hzProgressMsg');
         if (p) p.innerHTML = `<span class="spinner"></span> Rate limit hit — pausing this pass for ${Math.ceil(Math.max(0, resumeInMs) / 1000)}s, then resuming automatically (progress kept)…`;
       };
+      // Free OpenRouter models sometimes return an empty/garbage response instead of a clean
+      // 429 (overloaded, deprecated slug, etc). Treat that the same as a rate limit for pool
+      // purposes — put the offending model on a short cooldown and hand this pass to the next
+      // available candidate, rather than failing the whole run over one flaky free model.
+      async function runPassWithFallback(passIndex, promptFn, maxTokens, onModelChosen) {
+        const start = passIndex % providerPool.length;
+        let lastErr;
+        for (let offset = 0; offset < providerPool.length; offset++) {
+          const candidate = providerPool[(start + offset) % providerPool.length];
+          if (!isModelAvailable(candidate.provider, candidate.model)) continue;
+          if (onModelChosen) onModelChosen(candidate);
+          try {
+            return await callAIWithRetry({ prompt: promptFn(), maxTokens, apiKey: candidate.apiKey, provider: candidate.provider, model: candidate.model, retries: 3, delayMs: 1200, onRateLimitPause });
+          } catch (e) {
+            lastErr = e;
+            // Short, deliberately shorter-than-a-real-rate-limit cooldown — this model may well
+            // work again in a minute; we just don't want to keep hammering it THIS pass.
+            pauseAiRateLimit(candidate.provider, candidate.model, null, false);
+            getModelState(candidate.provider, candidate.model).resumeTime = Date.now() + 20000;
+          }
+        }
+        // Every candidate in the pool failed — surface the last error so the user sees why.
+        throw lastErr || new Error('No AI provider available.');
+      }
       const personaData = HUMANIZER_PERSONAS[persona] || HUMANIZER_PERSONAS.journalist;
       const bypassInstr = BYPASS_INSTRS[bypassLevel] || BYPASS_INSTRS.medium;
       const seoInstr    = SEO_INSTRS[seoMode] || '';
@@ -1222,33 +1243,29 @@
       const modelLabel = (m) => m.provider === 'openrouter' ? `openrouter/${m.model.split('/')[1]?.replace(':free','') || m.model}` : m.provider;
       let current = text;
       try {
-        const m1 = forPass(0);
-        setProgress('<span class="spinner"></span> Pass 1/' + passes + ': Restructuring & voice (' + modelLabel(m1) + ')…', 10); addBadge('Pass 1: Structure · ' + modelLabel(m1), '#f5b042');
-        const p1 = `${voiceInstr}\nBYPASS LEVEL: ${bypassInstr}${keywordLine}${customLine}\n${AI_FINGERPRINT_RULES}\nABSOLUTE RULES:\n1. NEVER use: "${bannedList}"\n2. Keep ALL facts accurate\n3. Vary sentence length dramatically\n4. Return ONLY the rewritten article.\n\nARTICLE:\n${current}`;
-        current = await callAIWithRetry({ prompt: p1, maxTokens: 3200, apiKey: m1.apiKey, provider: m1.provider, model: m1.model, retries: 3, delayMs: 1200, onRateLimitPause });
+        setProgress('<span class="spinner"></span> Pass 1/' + passes + ': Restructuring & voice…', 10);
+        const p1 = () => `${voiceInstr}\nBYPASS LEVEL: ${bypassInstr}${keywordLine}${customLine}\n${AI_FINGERPRINT_RULES}\nABSOLUTE RULES:\n1. NEVER use: "${bannedList}"\n2. Keep ALL facts accurate\n3. Vary sentence length dramatically\n4. Return ONLY the rewritten article.\n\nARTICLE:\n${current}`;
+        current = await runPassWithFallback(0, p1, 3200, (m) => { setProgress('<span class="spinner"></span> Pass 1/' + passes + ': Restructuring & voice (' + modelLabel(m) + ')…', 10); addBadge('Pass 1: Structure · ' + modelLabel(m), '#f5b042'); });
         current = stripDashArtifacts(current);
         setProgress('<span class="spinner"></span> Pass 1 complete.', 20);
         if (passes >= 2) {
-          const m2 = forPass(1);
-          await new Promise(r => setTimeout(r, 500)); setProgress('<span class="spinner"></span> Pass 2/' + passes + ': Maximising burstiness (' + modelLabel(m2) + ')…', 35); addBadge('Pass 2: Burstiness · ' + modelLabel(m2), '#8BC97F');
-          const p2 = `Expert editor specialising in making AI-written text undetectable.${preserveVoice ? ' Keep the article\'s existing tone, voice, and persona intact while you edit.' : ''}\nEDITING TASKS:\n1. Restructure at least 3 of the 5 longest sentences\n2. Replace predictable word choices\n3. Remove: "moreover","furthermore","however","therefore","thus","additionally"\n4. Add 2-3 natural imperfections: comma splice, sentence starting with "And"/"But"\n5. No two consecutive sentences similar length${seoInstr}${customLine}\n${AI_FINGERPRINT_RULES}\nReturn ONLY the edited article.\n\nARTICLE:\n${current}`;
-          current = await callAIWithRetry({ prompt: p2, maxTokens: 3200, apiKey: m2.apiKey, provider: m2.provider, model: m2.model, retries: 3, delayMs: 1200, onRateLimitPause });
+          await new Promise(r => setTimeout(r, 500)); setProgress('<span class="spinner"></span> Pass 2/' + passes + ': Maximising burstiness…', 35);
+          const p2 = () => `Expert editor specialising in making AI-written text undetectable.${preserveVoice ? ' Keep the article\'s existing tone, voice, and persona intact while you edit.' : ''}\nEDITING TASKS:\n1. Restructure at least 3 of the 5 longest sentences\n2. Replace predictable word choices\n3. Remove: "moreover","furthermore","however","therefore","thus","additionally"\n4. Add 2-3 natural imperfections: comma splice, sentence starting with "And"/"But"\n5. No two consecutive sentences similar length${seoInstr}${customLine}\n${AI_FINGERPRINT_RULES}\nReturn ONLY the edited article.\n\nARTICLE:\n${current}`;
+          current = await runPassWithFallback(1, p2, 3200, (m) => { setProgress('<span class="spinner"></span> Pass 2/' + passes + ': Maximising burstiness (' + modelLabel(m) + ')…', 35); addBadge('Pass 2: Burstiness · ' + modelLabel(m), '#8BC97F'); });
           current = stripDashArtifacts(current);
           setProgress('<span class="spinner"></span> Pass 2 complete.', 50);
         }
         if (passes >= 3) {
-          const m3 = forPass(2);
-          await new Promise(r => setTimeout(r, 500)); setProgress('<span class="spinner"></span> Pass 3/' + passes + ': Scrubbing AI fingerprints (' + modelLabel(m3) + ')…', 60); addBadge('Pass 3: Fingerprint Scrub · ' + modelLabel(m3), '#9B7EDE');
-          const p3 = `Final AI fingerprint scrub.${preserveVoice ? ' Keep the article\'s existing tone, voice, and persona intact.' : ''}\nFINAL CHECKS:\n1. Any word used 3+ times? Vary with synonyms.\n2. 3+ consecutive sentences starting the same way? Fix.\n3. No two consecutive paragraphs the same length.\n4. Add if missing: mild surprise, mild opinion, short standalone sentence, rhetorical question.${focusKeyword ? `\n5. Confirm keyword "${focusKeyword}" appears in first 150 words.` : ''}${customLine}\n${AI_FINGERPRINT_RULES}\nReturn ONLY the final article.\n\nARTICLE:\n${current}`;
-          current = await callAIWithRetry({ prompt: p3, maxTokens: 3200, apiKey: m3.apiKey, provider: m3.provider, model: m3.model, retries: 3, delayMs: 1200, onRateLimitPause });
+          await new Promise(r => setTimeout(r, 500)); setProgress('<span class="spinner"></span> Pass 3/' + passes + ': Scrubbing AI fingerprints…', 60);
+          const p3 = () => `Final AI fingerprint scrub.${preserveVoice ? ' Keep the article\'s existing tone, voice, and persona intact.' : ''}\nFINAL CHECKS:\n1. Any word used 3+ times? Vary with synonyms.\n2. 3+ consecutive sentences starting the same way? Fix.\n3. No two consecutive paragraphs the same length.\n4. Add if missing: mild surprise, mild opinion, short standalone sentence, rhetorical question.${focusKeyword ? `\n5. Confirm keyword "${focusKeyword}" appears in first 150 words.` : ''}${customLine}\n${AI_FINGERPRINT_RULES}\nReturn ONLY the final article.\n\nARTICLE:\n${current}`;
+          current = await runPassWithFallback(2, p3, 3200, (m) => { setProgress('<span class="spinner"></span> Pass 3/' + passes + ': Scrubbing AI fingerprints (' + modelLabel(m) + ')…', 60); addBadge('Pass 3: Fingerprint Scrub · ' + modelLabel(m), '#9B7EDE'); });
           current = stripDashArtifacts(current);
           setProgress('<span class="spinner"></span> Pass 3 complete.', 75);
         }
         if (passes >= 4) {
-          const m4 = forPass(3);
-          await new Promise(r => setTimeout(r, 500)); setProgress('<span class="spinner"></span> Pass 4/' + passes + ': Detector-specific scrub (' + modelLabel(m4) + ')…', 80); addBadge('Pass 4: Detector Scrub · ' + modelLabel(m4), '#6FA8DC');
-          const p4 = `You are doing a specialised pass whose ONLY job is defeating modern classifier-based AI detectors (the kind used by tools like GPTZero and Copyleaks, which key on token-predictability patterns, not just sentence-length variety).${preserveVoice ? ' Keep the article\'s existing tone, voice, and persona intact.' : ''}\nTASKS:\n1. Em-dashes should already be rare — leave at most one or two, don't add more.\n2. Find any list or clause structured as neat parallel triads ("X, Y, and Z" appearing more than once) and break the symmetry — combine two items, or restate as a sentence.\n3. Vary punctuation rhythm: introduce at least one semicolon and one short sentence fragment somewhere natural, and make sure not all sentences end with simple periods after uniform commas.\n4. Reduce any remaining uniformity in paragraph length — no two adjacent paragraphs should be within one sentence of the same length.\n5. Keep every fact, name, number, and quote exactly as given.${customLine}\nReturn ONLY the final article, no notes or explanation.\n\nARTICLE:\n${current}`;
-          current = await callAIWithRetry({ prompt: p4, maxTokens: 3200, apiKey: m4.apiKey, provider: m4.provider, model: m4.model, retries: 3, delayMs: 1200, onRateLimitPause });
+          await new Promise(r => setTimeout(r, 500)); setProgress('<span class="spinner"></span> Pass 4/' + passes + ': Detector-specific scrub…', 80);
+          const p4 = () => `You are doing a specialised pass whose ONLY job is defeating modern classifier-based AI detectors (the kind used by tools like GPTZero and Copyleaks, which key on token-predictability patterns, not just sentence-length variety).${preserveVoice ? ' Keep the article\'s existing tone, voice, and persona intact.' : ''}\nTASKS:\n1. Em-dashes should already be rare — leave at most one or two, don't add more.\n2. Find any list or clause structured as neat parallel triads ("X, Y, and Z" appearing more than once) and break the symmetry — combine two items, or restate as a sentence.\n3. Vary punctuation rhythm: introduce at least one semicolon and one short sentence fragment somewhere natural, and make sure not all sentences end with simple periods after uniform commas.\n4. Reduce any remaining uniformity in paragraph length — no two adjacent paragraphs should be within one sentence of the same length.\n5. Keep every fact, name, number, and quote exactly as given.${customLine}\nReturn ONLY the final article, no notes or explanation.\n\nARTICLE:\n${current}`;
+          current = await runPassWithFallback(3, p4, 3200, (m) => { setProgress('<span class="spinner"></span> Pass 4/' + passes + ': Detector-specific scrub (' + modelLabel(m) + ')…', 80); addBadge('Pass 4: Detector Scrub · ' + modelLabel(m), '#6FA8DC'); });
           current = stripDashArtifacts(current);
           setProgress('✅ All passes complete.', 100); addBadge('✓ Done', '#f5b042');
         } else { setProgress('✅ Humanization complete.', 100); }

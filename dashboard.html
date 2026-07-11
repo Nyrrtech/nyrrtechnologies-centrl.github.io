@@ -297,30 +297,71 @@
     const PIPELINE_COOLDOWN_MS = 60000;
 
     // Rate Limit Mechanics
-    let _aiRateLimitPaused = false;
-    let _aiRateLimitResumeTime = 0;
-    let _aiRequestChain = Promise.resolve();
-    let _aiNextRequestAt = 0;
-    let _aiConsecutiveRateLimits = 0;
-    let _aiCircuitOpenUntil = 0;
+    // Rate limits are tracked PER MODEL KEY (provider + specific model), not just per provider.
+    // This matters because a pool like OpenRouter's free-model rotation contains several
+    // independent models that each get rate-limited on their own schedule — one model getting
+    // throttled shouldn't block requests to a sibling model that's still fresh.
     let _rss2jsonSuspended = false;
 
-    const AI_RATE_LIMITS = {
-      mistral: { minIntervalMs: 4500, defaultCooldownMs: 60000 },
-      anthropic: { minIntervalMs: 1500, defaultCooldownMs: 20000 },
+    // Default cooldown/interval guesses used until a model teaches us its real limits via
+    // a 429 response (which may carry a Retry-After header with the real value).
+    const AI_RATE_LIMIT_DEFAULTS = {
+      mistral:    { minIntervalMs: 4500, defaultCooldownMs: 60000 },
+      anthropic:  { minIntervalMs: 1500, defaultCooldownMs: 20000 },
       openrouter: { minIntervalMs: 5000, defaultCooldownMs: 60000 }, // free-tier OpenRouter models are heavily rate-limited
     };
+
+    // key -> { paused, resumeTime, nextRequestAt, consecutiveRateLimits, circuitOpenUntil,
+    //          minIntervalMs, defaultCooldownMs, requestChain }
+    const _aiModelState = new Map();
+
+    function modelKey(provider, model) { return model ? `${provider}::${model}` : provider; }
+
+    function getModelState(provider, model) {
+      const key = modelKey(provider, model);
+      let st = _aiModelState.get(key);
+      if (!st) {
+        const d = AI_RATE_LIMIT_DEFAULTS[provider] || { minIntervalMs: 2000, defaultCooldownMs: 30000 };
+        st = {
+          paused: false, resumeTime: 0, nextRequestAt: 0,
+          consecutiveRateLimits: 0, circuitOpenUntil: 0,
+          minIntervalMs: d.minIntervalMs, defaultCooldownMs: d.defaultCooldownMs,
+          requestChain: Promise.resolve(),
+        };
+        _aiModelState.set(key, st);
+      }
+      return st;
+    }
+
+    // Is this specific model currently cooling down / circuit-broken? Used by pool selection
+    // so a busy model can be skipped in favor of a fresh one instead of blocking the pipeline.
+    function isModelAvailable(provider, model) {
+      const st = getModelState(provider, model);
+      const now = Date.now();
+      return !(st.paused && now < st.resumeTime) && st.circuitOpenUntil <= now;
+    }
+
+    function soonestResumeMs(pool) {
+      const now = Date.now();
+      let soonest = Infinity;
+      for (const m of pool) {
+        const st = getModelState(m.provider, m.model);
+        const until = Math.max(st.paused ? st.resumeTime : 0, st.circuitOpenUntil);
+        if (until > now) soonest = Math.min(soonest, until - now);
+      }
+      return Number.isFinite(soonest) ? soonest : 0;
+    }
 
     function suspendRss2Json() {
       _rss2jsonSuspended = true;
       setTimeout(() => { _rss2jsonSuspended = false; }, 60000); // Suspend for 60s
     }
 
-    function updateRateLimitStatus(isPaused, seconds) {
+    function updateRateLimitStatus(isPaused, seconds, label) {
       const progressDiv = document.getElementById('progressMsg');
       const aiStatusDiv = document.getElementById('aiDiscoveryStatus');
-      const msg = `AI rate limit reached. Pausing for ${seconds}s, then retrying automatically...`;
-      
+      const msg = `AI rate limit reached${label ? ` (${label})` : ''}. Pausing for ${seconds}s, then retrying automatically...`;
+
       if (isPaused) {
         if (progressDiv && progressDiv.innerHTML.includes('Analyzing')) {
           if (!progressDiv.dataset.originalText) progressDiv.dataset.originalText = progressDiv.textContent;
@@ -336,22 +377,24 @@
       }
     }
 
-    async function checkAndDelayIfRateLimited() {
-      if (_aiRateLimitPaused) {
+    async function checkAndDelayIfRateLimited(provider, model) {
+      const st = getModelState(provider, model);
+      if (st.paused) {
         let now = Date.now();
-        while (now < _aiRateLimitResumeTime) {
-          const waitTime = _aiRateLimitResumeTime - now;
-          updateRateLimitStatus(true, Math.ceil(waitTime / 1000));
+        while (now < st.resumeTime) {
+          const waitTime = st.resumeTime - now;
+          updateRateLimitStatus(true, Math.ceil(waitTime / 1000), modelKey(provider, model));
           await new Promise(r => setTimeout(r, Math.min(1000, waitTime)));
           now = Date.now();
         }
-        _aiRateLimitPaused = false;
+        st.paused = false;
         updateRateLimitStatus(false);
       }
     }
 
-    function getRetryAfterMs(response, provider) {
-      const fallback = AI_RATE_LIMITS[provider]?.defaultCooldownMs || 30000;
+    function getRetryAfterMs(response, provider, model) {
+      const st = getModelState(provider, model);
+      const fallback = st.defaultCooldownMs;
       const retryAfter = response.headers.get('retry-after');
       if (!retryAfter) return fallback;
 
@@ -364,43 +407,44 @@
       return fallback;
     }
 
-    function pauseAiRateLimit(provider, response = null, countFailure = false) {
-      const cooldownMs = response ? getRetryAfterMs(response, provider) : (AI_RATE_LIMITS[provider]?.defaultCooldownMs || 30000);
-      _aiRateLimitPaused = true;
-      _aiRateLimitResumeTime = Math.max(_aiRateLimitResumeTime, Date.now() + cooldownMs);
-      _aiNextRequestAt = Math.max(_aiNextRequestAt, _aiRateLimitResumeTime);
+    function pauseAiRateLimit(provider, model, response = null, countFailure = false) {
+      const st = getModelState(provider, model);
+      const cooldownMs = response ? getRetryAfterMs(response, provider, model) : st.defaultCooldownMs;
+      st.paused = true;
+      st.resumeTime = Math.max(st.resumeTime, Date.now() + cooldownMs);
+      st.nextRequestAt = Math.max(st.nextRequestAt, st.resumeTime);
 
       if (countFailure) {
-        _aiConsecutiveRateLimits++;
-        if (_aiConsecutiveRateLimits >= 3) {
-          _aiCircuitOpenUntil = Math.max(_aiCircuitOpenUntil, Date.now() + 5 * 60000);
+        st.consecutiveRateLimits++;
+        if (st.consecutiveRateLimits >= 3) {
+          st.circuitOpenUntil = Math.max(st.circuitOpenUntil, Date.now() + 5 * 60000);
         }
       }
     }
 
-    async function runAiRequest(provider, requestFn) {
-      const previous = _aiRequestChain.catch(() => {});
+    async function runAiRequest(provider, model, requestFn) {
+      const st = getModelState(provider, model);
+      const previous = st.requestChain.catch(() => {});
       let release;
-      _aiRequestChain = previous.then(() => new Promise(resolve => { release = resolve; }));
+      st.requestChain = previous.then(() => new Promise(resolve => { release = resolve; }));
 
       await previous;
       try {
-        if (_aiCircuitOpenUntil > Date.now()) {
-          updateRateLimitStatus(true, Math.ceil((_aiCircuitOpenUntil - Date.now()) / 1000));
+        if (st.circuitOpenUntil > Date.now()) {
+          updateRateLimitStatus(true, Math.ceil((st.circuitOpenUntil - Date.now()) / 1000), modelKey(provider, model));
           throw new Error('AI requests paused after repeated rate limits');
         }
 
-        await checkAndDelayIfRateLimited();
+        await checkAndDelayIfRateLimited(provider, model);
 
-        const minInterval = AI_RATE_LIMITS[provider]?.minIntervalMs || 2000;
-        const waitMs = _aiNextRequestAt - Date.now();
+        const waitMs = st.nextRequestAt - Date.now();
         if (waitMs > 0) {
           await new Promise(r => setTimeout(r, waitMs));
         }
 
         const result = await requestFn();
-        _aiConsecutiveRateLimits = 0;
-        _aiNextRequestAt = Math.max(_aiNextRequestAt, Date.now() + minInterval);
+        st.consecutiveRateLimits = 0;
+        st.nextRequestAt = Math.max(st.nextRequestAt, Date.now() + st.minIntervalMs);
         return result;
       } finally {
         if (release) release();
@@ -484,7 +528,7 @@
 
     // ==================== AI CALLS ====================
     async function callAI({ prompt, maxTokens = 600, apiKey, provider, model }) {
-      return runAiRequest(provider, async () => {
+      return runAiRequest(provider, model, async () => {
         if (provider === 'anthropic') {
           const r = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
@@ -492,7 +536,7 @@
             body: JSON.stringify({ model: 'claude-3-haiku-20240307', max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] })
           });
           if (r.status === 429) {
-            pauseAiRateLimit(provider, r, true);
+            pauseAiRateLimit(provider, model, r, true);
             throw new Error('429 Rate Limit Exceeded');
           }
           if (!r.ok) { const e = await r.text(); throw new Error(`Anthropic ${r.status}: ${e.slice(0,100)}`); }
@@ -513,7 +557,7 @@
             body: JSON.stringify({ model: orModel, max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] })
           });
           if (r.status === 429) {
-            pauseAiRateLimit(provider, r, true);
+            pauseAiRateLimit(provider, orModel, r, true);
             throw new Error('429 Rate Limit Exceeded');
           }
           if (!r.ok) { const e = await r.text(); throw new Error(`OpenRouter ${r.status}: ${e.slice(0,120)}`); }
@@ -529,7 +573,7 @@
             body: JSON.stringify({ model: mistralModel, max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] })
           });
           if (r.status === 429) {
-            pauseAiRateLimit(provider, r, true);
+            pauseAiRateLimit(provider, model, r, true);
             throw new Error('429 Rate Limit Exceeded');
           }
           if (!r.ok) { const e = await r.text(); throw new Error(`Mistral ${r.status}: ${e.slice(0,120)}`); }
@@ -538,26 +582,37 @@
       });
     }
 
-    async function callAIWithRetry({ prompt, maxTokens = 600, apiKey, provider, model, retries = 5, delayMs = 1000 }) {
+    // retries here counts real failures (network/5xx) only. A 429 never burns down the retry
+    // budget — it just pauses this model and tries again once its cooldown clears, so a run
+    // is never abandoned purely because a model got rate-limited. onRateLimitPause (optional)
+    // is called every time we start waiting out a 429, so a caller can surface "paused, will
+    // resume automatically" UI instead of looking stuck or, worse, throwing the work away.
+    async function callAIWithRetry({ prompt, maxTokens = 600, apiKey, provider, model, retries = 5, delayMs = 1000, onRateLimitPause = null, maxRateLimitWaits = 20 }) {
       let lastErr;
-      for (let i = 1; i <= retries; i++) {
+      let rateLimitWaits = 0;
+      let i = 1;
+      while (i <= retries) {
         try {
-          await checkAndDelayIfRateLimited();
+          await checkAndDelayIfRateLimited(provider, model);
           return await callAI({ prompt, maxTokens, apiKey, provider, model });
         }
         catch (e) {
           lastErr = e;
           const is429 = e.message.includes('429') || e.message.includes('Rate Limit');
           const is5xx = /\b5\d{2}\b/.test(e.message);
-          
+
           if (is429) {
-            pauseAiRateLimit(provider);
-            await checkAndDelayIfRateLimited();
-            continue;
+            rateLimitWaits++;
+            if (rateLimitWaits > maxRateLimitWaits) throw e; // safety valve, not a normal exit
+            pauseAiRateLimit(provider, model);
+            if (onRateLimitPause) onRateLimitPause({ provider, model, resumeInMs: getModelState(provider, model).resumeTime - Date.now() });
+            await checkAndDelayIfRateLimited(provider, model);
+            continue; // does NOT increment i — rate limits don't count against the retry budget
           }
-          
-          if (!is5xx || i === retries) throw e;
-          const wait = delayMs * Math.pow(2, i-1) + Math.random()*300;
+
+          i++;
+          if (!is5xx || i > retries) throw e;
+          const wait = delayMs * Math.pow(2, i-2) + Math.random()*300;
           await new Promise(r => setTimeout(r, wait));
         }
       }
@@ -1051,13 +1106,49 @@
     // NOTE: OpenRouter's free catalog changes over time and slugs can be deprecated/renamed —
     // if a pass starts failing with a 4xx from OpenRouter, check https://openrouter.ai/models?max_price=0
     // and update this list.
-    const OPENROUTER_FREE_MODELS = [
-      'google/gemma-4-31b-it:free',
+    // Fallback list used until a live fetch succeeds (or if the fetch fails/is offline).
+    const OPENROUTER_FREE_MODELS_FALLBACK = [
+      'mistralai/mistral-7b-instruct:free',
       'meta-llama/llama-3.2-3b-instruct:free',
       'google/gemma-2-9b-it:free',
       'qwen/qwen-2.5-7b-instruct:free',
-      'openai/gpt-oss-120b:free',
     ];
+    const OPENROUTER_MODELS_CACHE_KEY = 'scryweb_openrouter_free_models_cache';
+    const OPENROUTER_MODELS_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6h — OpenRouter's free catalog doesn't churn hourly
+
+    // OpenRouter's free-model catalog changes over time (models get added, renamed, or dropped).
+    // Rather than hardcoding slugs, pull the live list and cache it, so the rotation pool always
+    // reflects what's actually available instead of failing on stale/deprecated model slugs.
+    async function getOpenRouterFreeModels(apiKey) {
+      try {
+        const cached = JSON.parse(localStorage.getItem(OPENROUTER_MODELS_CACHE_KEY) || 'null');
+        if (cached && Array.isArray(cached.models) && cached.models.length && (Date.now() - cached.fetchedAt) < OPENROUTER_MODELS_CACHE_TTL_MS) {
+          return cached.models;
+        }
+      } catch (e) {}
+
+      try {
+        const headers = { 'Content-Type': 'application/json' };
+        if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+        const r = await fetchTimeout('https://openrouter.ai/api/v1/models', { headers });
+        if (!r.ok) throw new Error(`OpenRouter models ${r.status}`);
+        const d = await r.json();
+        const free = (d.data || [])
+          .filter(m => m.id && m.id.endsWith(':free'))
+          .filter(m => {
+            const p = m.pricing || {};
+            return (Number(p.prompt) || 0) === 0 && (Number(p.completion) || 0) === 0;
+          })
+          .map(m => m.id);
+        if (free.length) {
+          try { localStorage.setItem(OPENROUTER_MODELS_CACHE_KEY, JSON.stringify({ models: free, fetchedAt: Date.now() })); } catch (e) {}
+          return free;
+        }
+      } catch (e) {
+        console.warn('[OpenRouter] Could not fetch live free-model list, using fallback:', e.message);
+      }
+      return OPENROUTER_FREE_MODELS_FALLBACK;
+    }
     const HUMANIZER_BANNED   = ['delve','leverage','revolutionize','groundbreaking','unprecedented','game-changer','transformative','cutting-edge','holistic','synergy','paradigm','disruptive','innovative','robust','seamless','unlock','empower','streamline','optimize','utilize','harness','realm','moreover','furthermore','notably','consequently','accordingly','in conclusion','to summarize','it is important to note','needless to say',"in today's fast-paced world",'in the digital age','moving forward','going forward','dive deep','not only','but also','when it comes to','it goes without saying','at the end of the day','plays a crucial role','plays a vital role',"let's dive in",'in this article','on the other hand','when all is said and done','in a world where','it is worth noting','stands as a testament','underscores the importance','serves as a reminder'];
     const HUMANIZER_PERSONAS = { journalist: { voice: 'seasoned investigative journalist with 15+ years experience', traits: ['Lead with the most surprising fact','Use inverted pyramid','Name real people specifically','Insert short punchy paragraphs','Challenge assumptions','Use parenthetical asides sparingly (commas or plain parentheses, not dashes)','Occasionally address the reader'] }, blogger: { voice: 'enthusiastic personal blogger with deep knowledge', traits: ['Start with a personal anecdote','Use "I" occasionally','Ask rhetorical questions','Use casual connectors','Break into short paragraphs','Use parenthetical asides','Use "you" frequently'] }, expert: { voice: 'authoritative subject-matter expert', traits: ['Use precise terminology','Reference historical context','Acknowledge nuance','Use hedging language',"Be willing to say what others get wrong",'Short declarative sentences after complex ones'] }, storyteller: { voice: 'narrative journalist who makes dry topics compelling', traits: ['Open with a scene','Use sensory language','Build tension through sequencing','Vary sentence length dramatically','End paragraphs with a turn'] }, analyst: { voice: 'sharp business/policy analyst', traits: ['Lead with the key takeaway','Use numbered breakdowns','Contrast expectation vs reality','Reference real-world implications','Keep sentences tight','Be direct about uncertainty'] } };
     const AI_FINGERPRINT_RULES = 'Avoid known AI-writing fingerprints: use at most one or two em-dashes in the ENTIRE piece, only where it reads truly naturally — do not eliminate them completely, since a total absence of any dash is itself an artificial, over-corrected pattern; the goal is rarity, not zero. Vary how pauses are punctuated: some as commas, some as new sentences, some as parentheses — do not convert everything to the same substitute, since uniform substitution just creates a different flat rhythm. Avoid neatly parallel triads ("X, Y, and Z" lists used more than once). Avoid "not only... but also" constructions. Vary punctuation style across sentences (mix periods, occasional semicolons, the rare fragment) instead of uniform comma-heavy sentences. Avoid symmetric paragraph lengths. Do not end the piece with a tidy summary sentence ("In the end...", "Ultimately...") — end on a concrete detail, quote, or fact instead. Vary sentence openers so no more than two consecutive sentences start with the same word type (no back-to-back "The..." or "This..." openers). Let at least one sentence per few paragraphs be mildly imperfect or run slightly long, the way an unedited human draft would read, rather than uniformly clean and balanced.';
@@ -1091,10 +1182,25 @@
       if (settings.anthropicKey) providerPool.push({ provider: 'anthropic', apiKey: settings.anthropicKey });
       if (settings.mistralKey)   providerPool.push({ provider: 'mistral',   apiKey: settings.mistralKey });
       if (settings.openrouterKey) {
-        OPENROUTER_FREE_MODELS.forEach(m => providerPool.push({ provider: 'openrouter', apiKey: settings.openrouterKey, model: m }));
+        const orModels = await getOpenRouterFreeModels(settings.openrouterKey);
+        orModels.forEach(m => providerPool.push({ provider: 'openrouter', apiKey: settings.openrouterKey, model: m }));
       }
       if (!providerPool.length) providerPool.push({ provider: settings.aiProvider, apiKey });
-      const forPass = (passIndex) => providerPool[passIndex % providerPool.length];
+      // Pick a model for a given pass, preferring one that isn't currently cooling down from a
+      // rate limit. If everything in the pool is cooling down, fall back to the round-robin pick
+      // anyway — callAIWithRetry will pause and wait it out rather than failing the whole run.
+      const forPass = (passIndex) => {
+        const start = passIndex % providerPool.length;
+        for (let offset = 0; offset < providerPool.length; offset++) {
+          const candidate = providerPool[(start + offset) % providerPool.length];
+          if (isModelAvailable(candidate.provider, candidate.model)) return candidate;
+        }
+        return providerPool[start]; // all busy — caller will pause on this one and resume
+      };
+      const onRateLimitPause = ({ resumeInMs }) => {
+        const p = document.getElementById('hzProgressMsg');
+        if (p) p.innerHTML = `<span class="spinner"></span> Rate limit hit — pausing this pass for ${Math.ceil(Math.max(0, resumeInMs) / 1000)}s, then resuming automatically (progress kept)…`;
+      };
       const personaData = HUMANIZER_PERSONAS[persona] || HUMANIZER_PERSONAS.journalist;
       const bypassInstr = BYPASS_INSTRS[bypassLevel] || BYPASS_INSTRS.medium;
       const seoInstr    = SEO_INSTRS[seoMode] || '';
@@ -1116,14 +1222,14 @@
         const m1 = forPass(0);
         setProgress('<span class="spinner"></span> Pass 1/' + passes + ': Restructuring & voice (' + modelLabel(m1) + ')…', 10); addBadge('Pass 1: Structure · ' + modelLabel(m1), '#f5b042');
         const p1 = `${voiceInstr}\nBYPASS LEVEL: ${bypassInstr}${keywordLine}${customLine}\n${AI_FINGERPRINT_RULES}\nABSOLUTE RULES:\n1. NEVER use: "${bannedList}"\n2. Keep ALL facts accurate\n3. Vary sentence length dramatically\n4. Return ONLY the rewritten article.\n\nARTICLE:\n${current}`;
-        current = await callAIWithRetry({ prompt: p1, maxTokens: 3200, apiKey: m1.apiKey, provider: m1.provider, model: m1.model, retries: 2, delayMs: 1200 });
+        current = await callAIWithRetry({ prompt: p1, maxTokens: 3200, apiKey: m1.apiKey, provider: m1.provider, model: m1.model, retries: 3, delayMs: 1200, onRateLimitPause });
         current = stripDashArtifacts(current);
         setProgress('<span class="spinner"></span> Pass 1 complete.', 20);
         if (passes >= 2) {
           const m2 = forPass(1);
           await new Promise(r => setTimeout(r, 500)); setProgress('<span class="spinner"></span> Pass 2/' + passes + ': Maximising burstiness (' + modelLabel(m2) + ')…', 35); addBadge('Pass 2: Burstiness · ' + modelLabel(m2), '#8BC97F');
           const p2 = `Expert editor specialising in making AI-written text undetectable.${preserveVoice ? ' Keep the article\'s existing tone, voice, and persona intact while you edit.' : ''}\nEDITING TASKS:\n1. Restructure at least 3 of the 5 longest sentences\n2. Replace predictable word choices\n3. Remove: "moreover","furthermore","however","therefore","thus","additionally"\n4. Add 2-3 natural imperfections: comma splice, sentence starting with "And"/"But"\n5. No two consecutive sentences similar length${seoInstr}${customLine}\n${AI_FINGERPRINT_RULES}\nReturn ONLY the edited article.\n\nARTICLE:\n${current}`;
-          current = await callAIWithRetry({ prompt: p2, maxTokens: 3200, apiKey: m2.apiKey, provider: m2.provider, model: m2.model, retries: 2, delayMs: 1200 });
+          current = await callAIWithRetry({ prompt: p2, maxTokens: 3200, apiKey: m2.apiKey, provider: m2.provider, model: m2.model, retries: 3, delayMs: 1200, onRateLimitPause });
           current = stripDashArtifacts(current);
           setProgress('<span class="spinner"></span> Pass 2 complete.', 50);
         }
@@ -1131,7 +1237,7 @@
           const m3 = forPass(2);
           await new Promise(r => setTimeout(r, 500)); setProgress('<span class="spinner"></span> Pass 3/' + passes + ': Scrubbing AI fingerprints (' + modelLabel(m3) + ')…', 60); addBadge('Pass 3: Fingerprint Scrub · ' + modelLabel(m3), '#9B7EDE');
           const p3 = `Final AI fingerprint scrub.${preserveVoice ? ' Keep the article\'s existing tone, voice, and persona intact.' : ''}\nFINAL CHECKS:\n1. Any word used 3+ times? Vary with synonyms.\n2. 3+ consecutive sentences starting the same way? Fix.\n3. No two consecutive paragraphs the same length.\n4. Add if missing: mild surprise, mild opinion, short standalone sentence, rhetorical question.${focusKeyword ? `\n5. Confirm keyword "${focusKeyword}" appears in first 150 words.` : ''}${customLine}\n${AI_FINGERPRINT_RULES}\nReturn ONLY the final article.\n\nARTICLE:\n${current}`;
-          current = await callAIWithRetry({ prompt: p3, maxTokens: 3200, apiKey: m3.apiKey, provider: m3.provider, model: m3.model, retries: 2, delayMs: 1200 });
+          current = await callAIWithRetry({ prompt: p3, maxTokens: 3200, apiKey: m3.apiKey, provider: m3.provider, model: m3.model, retries: 3, delayMs: 1200, onRateLimitPause });
           current = stripDashArtifacts(current);
           setProgress('<span class="spinner"></span> Pass 3 complete.', 75);
         }
@@ -1139,7 +1245,7 @@
           const m4 = forPass(3);
           await new Promise(r => setTimeout(r, 500)); setProgress('<span class="spinner"></span> Pass 4/' + passes + ': Detector-specific scrub (' + modelLabel(m4) + ')…', 80); addBadge('Pass 4: Detector Scrub · ' + modelLabel(m4), '#6FA8DC');
           const p4 = `You are doing a specialised pass whose ONLY job is defeating modern classifier-based AI detectors (the kind used by tools like GPTZero and Copyleaks, which key on token-predictability patterns, not just sentence-length variety).${preserveVoice ? ' Keep the article\'s existing tone, voice, and persona intact.' : ''}\nTASKS:\n1. Em-dashes should already be rare — leave at most one or two, don't add more.\n2. Find any list or clause structured as neat parallel triads ("X, Y, and Z" appearing more than once) and break the symmetry — combine two items, or restate as a sentence.\n3. Vary punctuation rhythm: introduce at least one semicolon and one short sentence fragment somewhere natural, and make sure not all sentences end with simple periods after uniform commas.\n4. Reduce any remaining uniformity in paragraph length — no two adjacent paragraphs should be within one sentence of the same length.\n5. Keep every fact, name, number, and quote exactly as given.${customLine}\nReturn ONLY the final article, no notes or explanation.\n\nARTICLE:\n${current}`;
-          current = await callAIWithRetry({ prompt: p4, maxTokens: 3200, apiKey: m4.apiKey, provider: m4.provider, model: m4.model, retries: 2, delayMs: 1200 });
+          current = await callAIWithRetry({ prompt: p4, maxTokens: 3200, apiKey: m4.apiKey, provider: m4.provider, model: m4.model, retries: 3, delayMs: 1200, onRateLimitPause });
           current = stripDashArtifacts(current);
           setProgress('✅ All passes complete.', 100); addBadge('✓ Done', '#f5b042');
         } else { setProgress('✅ Humanization complete.', 100); }

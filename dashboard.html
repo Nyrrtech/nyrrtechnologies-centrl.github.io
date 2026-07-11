@@ -1113,7 +1113,7 @@
       'google/gemma-2-9b-it:free',
       'qwen/qwen-2.5-7b-instruct:free',
     ];
-    const OPENROUTER_MODELS_CACHE_KEY = 'scryweb_openrouter_free_models_cache';
+    const OPENROUTER_MODELS_CACHE_KEY = 'scryweb_openrouter_free_models_cache_v2';
     const OPENROUTER_MODELS_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6h — OpenRouter's free catalog doesn't churn hourly
 
     // OpenRouter's free-model catalog changes over time (models get added, renamed, or dropped).
@@ -1146,6 +1146,15 @@
             const inputs = arch.input_modalities || (arch.modality ? arch.modality.split('->')[0].split('+') : ['text']);
             const outputs = arch.output_modalities || (arch.modality ? arch.modality.split('->')[1]?.split('+') : ['text']);
             return (!inputs || inputs.includes('text')) && (!outputs || outputs.includes('text'));
+          })
+          .filter(m => {
+            // Exclude moderation/guard/classifier models (e.g. Llama Guard). These aren't chat
+            // models — given our rewrite prompt they just return a safety verdict like "safe",
+            // which is exactly the "output" bug this filter exists to prevent.
+            const id = (m.id || '').toLowerCase();
+            const name = (m.name || '').toLowerCase();
+            const blocked = /guard|moderation|shield|safety|classifier|content-filter/;
+            return !blocked.test(id) && !blocked.test(name);
           })
           .map(m => m.id);
         if (free.length) {
@@ -1201,19 +1210,39 @@
         const p = document.getElementById('hzProgressMsg');
         if (p) p.innerHTML = `<span class="spinner"></span> Rate limit hit — pausing this pass for ${Math.ceil(Math.max(0, resumeInMs) / 1000)}s, then resuming automatically (progress kept)…`;
       };
+      // A handful of "free" OpenRouter models aren't chat/rewrite models at all — moderation
+      // models (e.g. Llama Guard) take our article prompt and just return a safety verdict like
+      // "safe" or "unsafe\nS1". That's a valid HTTP response with real content, so it wouldn't
+      // otherwise be caught as a failure — check that what came back actually looks like a
+      // rewritten article before accepting it.
+      const MODERATION_VERDICT_RE = /^\s*(safe|unsafe)\b[\s\S]{0,40}$/i;
+      function looksLikeArticle(result, sourceText) {
+        if (!result || typeof result !== 'string') return false;
+        const trimmed = result.trim();
+        if (MODERATION_VERDICT_RE.test(trimmed)) return false;
+        // A genuine rewrite should be in the same ballpark length as what went in — a real pass
+        // won't collapse a multi-paragraph article down to a couple of words.
+        const minLen = Math.min(80, Math.max(30, sourceText.trim().length * 0.15));
+        return trimmed.length >= minLen;
+      }
       // Free OpenRouter models sometimes return an empty/garbage response instead of a clean
       // 429 (overloaded, deprecated slug, etc). Treat that the same as a rate limit for pool
       // purposes — put the offending model on a short cooldown and hand this pass to the next
       // available candidate, rather than failing the whole run over one flaky free model.
       async function runPassWithFallback(passIndex, promptFn, maxTokens, onModelChosen) {
         const start = passIndex % providerPool.length;
+        const sourceText = current;
         let lastErr;
         for (let offset = 0; offset < providerPool.length; offset++) {
           const candidate = providerPool[(start + offset) % providerPool.length];
           if (!isModelAvailable(candidate.provider, candidate.model)) continue;
           if (onModelChosen) onModelChosen(candidate);
           try {
-            return await callAIWithRetry({ prompt: promptFn(), maxTokens, apiKey: candidate.apiKey, provider: candidate.provider, model: candidate.model, retries: 3, delayMs: 1200, onRateLimitPause });
+            const result = await callAIWithRetry({ prompt: promptFn(), maxTokens, apiKey: candidate.apiKey, provider: candidate.provider, model: candidate.model, retries: 3, delayMs: 1200, onRateLimitPause });
+            if (!looksLikeArticle(result, sourceText)) {
+              throw new Error(`Model returned a non-article response ("${result.trim().slice(0, 60)}") instead of a rewrite.`);
+            }
+            return result;
           } catch (e) {
             lastErr = e;
             // Short, deliberately shorter-than-a-real-rate-limit cooldown — this model may well

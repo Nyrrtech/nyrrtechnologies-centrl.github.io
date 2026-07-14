@@ -613,10 +613,13 @@
           const is5xx = /\b5\d{2}\b/.test(e.message);
 
           if (is429) {
-            rateLimitWaits++;
-            if (rateLimitWaits > maxRateLimitWaits) throw e; // safety valve, not a normal exit
             pauseAiRateLimit(provider, model);
-            if (onRateLimitPause) onRateLimitPause({ provider, model, resumeInMs: getModelState(provider, model).resumeTime - Date.now() });
+            rateLimitWaits++;
+            // maxRateLimitWaits=0 means "don't sit and wait on this model at all — bubble up
+            // immediately". Used when the caller has other models to fall back to, so a single
+            // rate-limited model doesn't block progress for minutes while sibling models sit idle.
+            if (rateLimitWaits > maxRateLimitWaits) throw e;
+            if (onRateLimitPause) onRateLimitPause({ provider, model, attempt: rateLimitWaits, resumeInMs: getModelState(provider, model).resumeTime - Date.now() });
             await checkAndDelayIfRateLimited(provider, model);
             continue; // does NOT increment i — rate limits don't count against the retry budget
           }
@@ -1255,12 +1258,26 @@
         let lastErr;
         let startIdx = order.findIndex(c => `${c.provider}::${c.model||''}` !== avoidProviderKey);
         if (startIdx < 0) startIdx = 0;
+        // If there's more than one model to try, don't sit and wait out a 429 on this one — bail
+        // immediately (maxRateLimitWaits: 0) and let the loop below move straight to the next
+        // candidate. Only patiently wait (and actually show a live countdown) when this is the
+        // only model available at all.
+        const maxRateLimitWaits = order.length > 1 ? 0 : 5;
         for (let offset = 0; offset < order.length; offset++) {
           const candidate = order[(startIdx + offset) % order.length];
           if (!isModelAvailable(candidate.provider, candidate.model)) continue;
           try {
             const temperature = 0.7 + Math.random() * 0.3; // re-rolled per call: kills output determinism
-            const result = await callAIWithRetry({ prompt: promptFn(), maxTokens, apiKey: candidate.apiKey, provider: candidate.provider, model: candidate.model, temperature, retries: 3, delayMs: 1000, onRateLimitPause });
+            const onPause = ({ attempt, resumeInMs }) => {
+              const p = document.getElementById('hzProgressMsg');
+              if (!p) return;
+              if (order.length > 1) {
+                p.innerHTML = `<span class="spinner"></span> ${modelLabel(candidate)} is rate-limited — switching to the next model…`;
+              } else {
+                p.innerHTML = `<span class="spinner"></span> Rate limit hit (attempt ${attempt}) — pausing ${Math.ceil(Math.max(0, resumeInMs) / 1000)}s, then retrying automatically (progress kept)…`;
+              }
+            };
+            const result = await callAIWithRetry({ prompt: promptFn(), maxTokens, apiKey: candidate.apiKey, provider: candidate.provider, model: candidate.model, temperature, retries: 3, delayMs: 1000, maxRateLimitWaits, onRateLimitPause: onPause });
             if (!looksLikeExcerpt(result, sourceText)) {
               throw new Error(`Model returned a non-excerpt response ("${result.trim().slice(0, 50)}").`);
             }

@@ -527,13 +527,13 @@
     }
 
     // ==================== AI CALLS ====================
-    async function callAI({ prompt, maxTokens = 600, apiKey, provider, model }) {
+    async function callAI({ prompt, maxTokens = 600, apiKey, provider, model, temperature }) {
       return runAiRequest(provider, model, async () => {
         if (provider === 'anthropic') {
           const r = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-            body: JSON.stringify({ model: 'claude-3-haiku-20240307', max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] })
+            body: JSON.stringify({ model: 'claude-3-haiku-20240307', max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }], ...(temperature != null ? { temperature } : {}) })
           });
           if (r.status === 429) {
             pauseAiRateLimit(provider, model, r, true);
@@ -556,6 +556,7 @@
             },
             body: JSON.stringify({
               model: orModel, max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }],
+              ...(temperature != null ? { temperature } : {}),
               // Some free models (DeepSeek-R1 style, QwQ, etc.) think out loud before answering.
               // Ask OpenRouter to strip that reasoning trace from the response — we only ever
               // want the final rewritten text, never the model's scratch work.
@@ -580,7 +581,7 @@
           const r = await fetch('https://api.mistral.ai/v1/chat/completions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-            body: JSON.stringify({ model: mistralModel, max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] })
+            body: JSON.stringify({ model: mistralModel, max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }], ...(temperature != null ? { temperature } : {}) })
           });
           if (r.status === 429) {
             pauseAiRateLimit(provider, model, r, true);
@@ -597,14 +598,14 @@
     // is never abandoned purely because a model got rate-limited. onRateLimitPause (optional)
     // is called every time we start waiting out a 429, so a caller can surface "paused, will
     // resume automatically" UI instead of looking stuck or, worse, throwing the work away.
-    async function callAIWithRetry({ prompt, maxTokens = 600, apiKey, provider, model, retries = 5, delayMs = 1000, onRateLimitPause = null, maxRateLimitWaits = 20 }) {
+    async function callAIWithRetry({ prompt, maxTokens = 600, apiKey, provider, model, temperature, retries = 5, delayMs = 1000, onRateLimitPause = null, maxRateLimitWaits = 20 }) {
       let lastErr;
       let rateLimitWaits = 0;
       let i = 1;
       while (i <= retries) {
         try {
           await checkAndDelayIfRateLimited(provider, model);
-          return await callAI({ prompt, maxTokens, apiKey, provider, model });
+          return await callAI({ prompt, maxTokens, apiKey, provider, model, temperature });
         }
         catch (e) {
           lastErr = e;
@@ -1199,12 +1200,18 @@
     const SEO_INSTRS         = { none: '', basic: '\n\nSEO (Basic): Use focus keyword naturally in first paragraph and 2+ other places. Active voice.', full: '\n\nSEO (Full): Keyword in first 100 words, a heading, and final paragraph. Include 3-5 LSI terms.' };
 
     async function runAdvancedHumanizer({ text, persona, tone, bypassLevel, seoMode, focusKeyword, preserveVoice = false, customInstructions = '', targetDiv, onComplete }) {
+      // --- AMALGAM APPROACH ---
+      // Instead of running the whole article through one model per pass (which just leaves the
+      // LAST model's word-choice distribution stamped across the entire output), the article is
+      // split into small excerpts — a sentence or two each — and each excerpt is rewritten by a
+      // randomly-assigned model from the pool. No single model's token-probability fingerprint
+      // dominates the final text because no single model wrote more than a few sentences of it.
+      // Assignment is reshuffled and re-seeded (temperature, offsets) on every single run, so
+      // repeated runs on the same input no longer produce identical output.
       const apiKey = settings.aiProvider === 'anthropic' ? settings.anthropicKey : settings.mistralKey;
       const hasAnyKey = !!(settings.anthropicKey || settings.mistralKey || settings.openrouterKey);
       if (!hasAnyKey) { if (targetDiv) targetDiv.innerHTML = '<div class="error-msg">⚠️ Add at least one AI provider API key in Settings first (Anthropic, Mistral, or OpenRouter).</div>'; return null; }
-      // Build a rotation pool of every provider the user has a key for. Running every pass through
-      // one model keeps a single, consistent statistical fingerprint end to end — alternating models
-      // per pass means no single model's token-probability signature dominates the final text.
+
       const providerPool = [];
       if (settings.anthropicKey) providerPool.push({ provider: 'anthropic', apiKey: settings.anthropicKey });
       if (settings.mistralKey)   providerPool.push({ provider: 'mistral',   apiKey: settings.mistralKey });
@@ -1213,109 +1220,171 @@
         orModels.forEach(m => providerPool.push({ provider: 'openrouter', apiKey: settings.openrouterKey, model: m }));
       }
       if (!providerPool.length) providerPool.push({ provider: settings.aiProvider, apiKey });
-      // Pick a model for a given pass, preferring one that isn't currently cooling down from a
-      // rate limit. If everything in the pool is cooling down, fall back to the round-robin pick
-      // anyway — callAIWithRetry will pause and wait it out rather than failing the whole run.
+
       const onRateLimitPause = ({ resumeInMs }) => {
         const p = document.getElementById('hzProgressMsg');
-        if (p) p.innerHTML = `<span class="spinner"></span> Rate limit hit — pausing this pass for ${Math.ceil(Math.max(0, resumeInMs) / 1000)}s, then resuming automatically (progress kept)…`;
+        if (p) p.innerHTML = `<span class="spinner"></span> Rate limit hit — pausing for ${Math.ceil(Math.max(0, resumeInMs) / 1000)}s, then resuming automatically (progress kept)…`;
       };
       // A handful of "free" OpenRouter models aren't chat/rewrite models at all — moderation
-      // models (e.g. Llama Guard) take our article prompt and just return a safety verdict like
-      // "safe" or "unsafe\nS1". That's a valid HTTP response with real content, so it wouldn't
-      // otherwise be caught as a failure — check that what came back actually looks like a
-      // rewritten article before accepting it.
+      // models (e.g. Llama Guard) take our prompt and just return a safety verdict like "safe".
+      // Reasoning models sometimes narrate their planning instead of answering. Neither is
+      // caught by a plain HTTP failure, so validate that what came back actually looks like a
+      // rewritten excerpt before accepting it.
       const MODERATION_VERDICT_RE = /^\s*(safe|unsafe)\b[\s\S]{0,40}$/i;
-      // Reasoning models sometimes narrate their planning instead of (or in addition to) giving
-      // the final rewrite — "The task is to...", "Let's check:", "Paragraph 1:", "We need to...".
-      // A real rewritten article won't contain more than one or two of these phrases; a
-      // chain-of-thought dump will be full of them.
       const THINKING_MARKERS_RE = /\b(the task is to|let'?s (check|count|draft|parse|plan)|we need to|paragraph \d+\s*[:(]|here'?s (what|my) (plan|draft)|i (need|should|will) (rewrite|check|count))\b/gi;
-      function looksLikeArticle(result, sourceText) {
+      function looksLikeExcerpt(result, sourceText) {
         if (!result || typeof result !== 'string') return false;
         const trimmed = result.trim();
+        if (!trimmed) return false;
         if (MODERATION_VERDICT_RE.test(trimmed)) return false;
-        const thinkingHits = (trimmed.match(THINKING_MARKERS_RE) || []).length;
-        if (thinkingHits >= 2) return false; // reads like scratch work, not a finished article
-        // A genuine rewrite should be in the same ballpark length as what went in — a real pass
-        // won't collapse a multi-paragraph article down to a couple of words.
-        const minLen = Math.min(80, Math.max(30, sourceText.trim().length * 0.15));
-        return trimmed.length >= minLen;
+        if ((trimmed.match(THINKING_MARKERS_RE) || []).length >= 2) return false;
+        const srcLen = sourceText.trim().length;
+        return trimmed.length >= Math.max(6, srcLen * 0.35) && trimmed.length <= Math.max(200, srcLen * 3);
       }
-      // Free OpenRouter models sometimes return an empty/garbage response instead of a clean
-      // 429 (overloaded, deprecated slug, etc). Treat that the same as a rate limit for pool
-      // purposes — put the offending model on a short cooldown and hand this pass to the next
-      // available candidate, rather than failing the whole run over one flaky free model.
-      async function runPassWithFallback(passIndex, promptFn, maxTokens, onModelChosen) {
-        const start = passIndex % providerPool.length;
-        const sourceText = current;
+
+      function shuffledPool() {
+        const arr = providerPool.slice();
+        for (let i = arr.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+      }
+
+      async function rewriteExcerptWithFallback(order, avoidProviderKey, sourceText, promptFn, maxTokens) {
         let lastErr;
-        for (let offset = 0; offset < providerPool.length; offset++) {
-          const candidate = providerPool[(start + offset) % providerPool.length];
+        let startIdx = order.findIndex(c => `${c.provider}::${c.model||''}` !== avoidProviderKey);
+        if (startIdx < 0) startIdx = 0;
+        for (let offset = 0; offset < order.length; offset++) {
+          const candidate = order[(startIdx + offset) % order.length];
           if (!isModelAvailable(candidate.provider, candidate.model)) continue;
-          if (onModelChosen) onModelChosen(candidate);
           try {
-            const result = await callAIWithRetry({ prompt: promptFn(), maxTokens, apiKey: candidate.apiKey, provider: candidate.provider, model: candidate.model, retries: 3, delayMs: 1200, onRateLimitPause });
-            if (!looksLikeArticle(result, sourceText)) {
-              throw new Error(`Model returned a non-article response ("${result.trim().slice(0, 60)}") instead of a rewrite.`);
+            const temperature = 0.7 + Math.random() * 0.3; // re-rolled per call: kills output determinism
+            const result = await callAIWithRetry({ prompt: promptFn(), maxTokens, apiKey: candidate.apiKey, provider: candidate.provider, model: candidate.model, temperature, retries: 3, delayMs: 1000, onRateLimitPause });
+            if (!looksLikeExcerpt(result, sourceText)) {
+              throw new Error(`Model returned a non-excerpt response ("${result.trim().slice(0, 50)}").`);
             }
-            return result;
+            return { text: result.trim(), candidate };
           } catch (e) {
             lastErr = e;
-            // Short, deliberately shorter-than-a-real-rate-limit cooldown — this model may well
-            // work again in a minute; we just don't want to keep hammering it THIS pass.
             pauseAiRateLimit(candidate.provider, candidate.model, null, false);
             getModelState(candidate.provider, candidate.model).resumeTime = Date.now() + 20000;
           }
         }
-        // Every candidate in the pool failed — surface the last error so the user sees why.
-        throw lastErr || new Error('No AI provider available.');
+        return { text: sourceText, candidate: null, failed: true, error: lastErr };
       }
+
+      const ABBR_RE = /\b(Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St|vs|etc|approx|Inc|Ltd|Co|Gov|Sen|Rep|No|a\.m|p\.m|U\.S|U\.K|E\.U)\.$/i;
+      function splitSentences(paragraph) {
+        const rough = paragraph.split(/(?<=[.!?])\s+(?=[A-Z"\u201c'\u2019(0-9])/);
+        const out = [];
+        for (const t of rough) {
+          if (out.length && ABBR_RE.test(out[out.length - 1].trim())) out[out.length - 1] += ' ' + t;
+          else out.push(t);
+        }
+        return out.map(s => s.trim()).filter(Boolean);
+      }
+      function buildExcerpts(article, maxExcerpts) {
+        const paragraphs = article.split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
+        const perPara = paragraphs.map(splitSentences);
+        const totalSentences = perPara.reduce((n, s) => n + s.length, 0) || 1;
+        let chunkSize = 1;
+        while (Math.ceil(totalSentences / chunkSize) > maxExcerpts) chunkSize++;
+        const excerpts = [];
+        perPara.forEach((sentences, pi) => {
+          for (let i = 0; i < sentences.length; i += chunkSize) {
+            excerpts.push({ paraIndex: pi, text: sentences.slice(i, i + chunkSize).join(' ') });
+          }
+        });
+        return { paragraphCount: paragraphs.length, excerpts };
+      }
+
       const personaData = HUMANIZER_PERSONAS[persona] || HUMANIZER_PERSONAS.journalist;
       const bypassInstr = BYPASS_INSTRS[bypassLevel] || BYPASS_INSTRS.medium;
       const seoInstr    = SEO_INSTRS[seoMode] || '';
       const bannedList  = HUMANIZER_BANNED.join('", "');
-      const keywordLine = focusKeyword ? `\nFOCUS KEYWORD: "${focusKeyword}"` : '';
-      const customLine  = customInstructions ? `\nUSER INSTRUCTIONS (follow these throughout every pass): ${customInstructions}` : '';
+      const keywordLine = focusKeyword ? `\nFOCUS KEYWORD: "${focusKeyword}" (only if it naturally belongs in this excerpt)` : '';
+      const customLine  = customInstructions ? `\nUSER INSTRUCTIONS (follow throughout): ${customInstructions}` : '';
       const toneGuide   = { casual: 'warm, conversational — contractions, short paragraphs', professional: 'polished, authoritative, active voice', witty: 'sharp, clever, light humour', empathetic: 'warm, use "we" and "you", compassionate', simple: 'plain English, max 15-word sentences' };
       const voiceInstr  = preserveVoice
-        ? `You are editing this article while carefully preserving its EXISTING tone, voice, and persona exactly as written. Identify the author's current style, formality level, and point of view, then keep that intact — do not adopt a new persona and do not shift the tone.`
-        : `You are a ${personaData.voice}. Rewrite with a completely new structure and voice.\nPERSONA TRAITS:\n${personaData.traits.map((t, i) => `${i + 1}. ${t}`).join('\n')}\nTONE: ${toneGuide[tone] || toneGuide.casual}`;
-      const passes      = bypassLevel === 'light' ? 1 : bypassLevel === 'medium' ? 2 : 4;
+        ? `Preserve the EXISTING tone, voice, and persona of this article exactly — do not adopt a new persona and do not shift the tone.`
+        : `Write as a ${personaData.voice}.\nPERSONA TRAITS:\n${personaData.traits.map((t, i) => `${i + 1}. ${t}`).join('\n')}\nTONE: ${toneGuide[tone] || toneGuide.casual}`;
+
+      const tiers = {
+        light:      { layers: 1, maxExcerpts: 16 },
+        medium:     { layers: 2, maxExcerpts: 22 },
+        aggressive: { layers: 3, maxExcerpts: 28 },
+      };
+      const tier = tiers[bypassLevel] || tiers.medium;
+      const { paragraphCount, excerpts } = buildExcerpts(text, tier.maxExcerpts);
+
       const setProgress = (msg, pct) => { const p = document.getElementById('hzProgressMsg'); const f = document.getElementById('hzProgFill'); if (p) p.innerHTML = msg; if (f) f.style.width = pct + '%'; };
       const addBadge    = (label, color) => { const badges = document.getElementById('hzPassBadges'); if (!badges) return; const b = document.createElement('span'); b.style.cssText = `font-size:10px;padding:2px 9px;border-radius:20px;background:${color}22;color:${color};border:1px solid ${color}44`; b.textContent = label; badges.appendChild(b); };
       const passBadges  = document.getElementById('hzPassBadges');
       if (passBadges) passBadges.innerHTML = '';
-      const modelLabel = (m) => m.provider === 'openrouter' ? `openrouter/${m.model.split('/')[1]?.replace(':free','') || m.model}` : m.provider;
-      let current = text;
+      const modelLabel = (c) => !c ? 'kept original' : c.provider === 'openrouter' ? `openrouter/${c.model.split('/')[1]?.replace(':free','') || c.model}` : c.provider;
+      const PALETTE = ['#f5b042', '#8BC97F', '#9B7EDE', '#6FA8DC', '#E88C8C', '#5FC7C1'];
+
       try {
-        setProgress('<span class="spinner"></span> Pass 1/' + passes + ': Restructuring & voice…', 10);
-        const p1 = () => `${voiceInstr}\nBYPASS LEVEL: ${bypassInstr}${keywordLine}${customLine}\n${AI_FINGERPRINT_RULES}\nABSOLUTE RULES:\n1. NEVER use: "${bannedList}"\n2. Keep ALL facts accurate\n3. Vary sentence length dramatically\n4. Return ONLY the rewritten article.\n\nARTICLE:\n${current}`;
-        current = await runPassWithFallback(0, p1, 3200, (m) => { setProgress('<span class="spinner"></span> Pass 1/' + passes + ': Restructuring & voice (' + modelLabel(m) + ')…', 10); addBadge('Pass 1: Structure · ' + modelLabel(m), '#f5b042'); });
-        current = stripDashArtifacts(current);
-        setProgress('<span class="spinner"></span> Pass 1 complete.', 20);
-        if (passes >= 2) {
-          await new Promise(r => setTimeout(r, 500)); setProgress('<span class="spinner"></span> Pass 2/' + passes + ': Maximising burstiness…', 35);
-          const p2 = () => `Expert editor specialising in making AI-written text undetectable.${preserveVoice ? ' Keep the article\'s existing tone, voice, and persona intact while you edit.' : ''}\nEDITING TASKS:\n1. Restructure at least 3 of the 5 longest sentences\n2. Replace predictable word choices\n3. Remove: "moreover","furthermore","however","therefore","thus","additionally"\n4. Add 2-3 natural imperfections: comma splice, sentence starting with "And"/"But"\n5. No two consecutive sentences similar length${seoInstr}${customLine}\n${AI_FINGERPRINT_RULES}\nReturn ONLY the edited article.\n\nARTICLE:\n${current}`;
-          current = await runPassWithFallback(1, p2, 3200, (m) => { setProgress('<span class="spinner"></span> Pass 2/' + passes + ': Maximising burstiness (' + modelLabel(m) + ')…', 35); addBadge('Pass 2: Burstiness · ' + modelLabel(m), '#8BC97F'); });
-          current = stripDashArtifacts(current);
-          setProgress('<span class="spinner"></span> Pass 2 complete.', 50);
+        let excerptTexts = excerpts.map(e => e.text);
+        const usageCounts = new Map();
+        const totalCalls = excerptTexts.length * tier.layers;
+        let callsDone = 0;
+
+        for (let layer = 0; layer < tier.layers; layer++) {
+          const order = shuffledPool();
+          let lastUsedKey = null;
+          for (let i = 0; i < excerptTexts.length; i++) {
+            const excerpt = excerpts[i];
+            const sourceText = excerptTexts[i];
+            const prevContext = i > 0 ? excerptTexts[i - 1].slice(-140) : '';
+            const nextPeek    = i < excerptTexts.length - 1 ? excerptTexts[i + 1].slice(0, 100) : '';
+            const isNewParagraph = i === 0 || excerpt.paraIndex !== excerpts[i - 1].paraIndex;
+
+            const promptFn = () => `You're rewriting ONE short excerpt from a longer article. Other excerpts of the same article are being independently rewritten by other models — your job is only this excerpt, so it reads naturally in place among neighbors you can't see in full.
+${voiceInstr}
+${layer === 0 ? `BYPASS LEVEL: ${bypassInstr}\nNEVER use these words/phrases: "${bannedList}"` : `This excerpt was already rewritten once — refine it further: vary word choice and rhythm without changing its meaning, and don't reintroduce anything generic-sounding.`}
+RULES:
+- Preserve every fact, name, number, date, and quoted phrase EXACTLY as given.
+- Do not summarize, add commentary, or explain — output only the rewritten excerpt itself.
+- Do not repeat these instructions or add quotation marks around your answer.
+- Keep roughly the same length as the original excerpt.${keywordLine}${customLine}${isNewParagraph ? '\n- This begins a new paragraph — feel free to vary its opening structure from a typical subject-first sentence.' : ''}
+${prevContext ? `PRECEDING TEXT (context only — do not repeat): "…${prevContext}"` : ''}
+${nextPeek ? `FOLLOWING TEXT (context only — do not repeat): "${nextPeek}…"` : ''}
+
+EXCERPT TO REWRITE:
+${sourceText}`;
+
+            const avoidKey = lastUsedKey;
+            const { text: rewritten, candidate } = await rewriteExcerptWithFallback(order, avoidKey, sourceText, promptFn, 260);
+            excerptTexts[i] = rewritten;
+            if (candidate) {
+              lastUsedKey = `${candidate.provider}::${candidate.model || ''}`;
+              const label = modelLabel(candidate);
+              usageCounts.set(label, (usageCounts.get(label) || 0) + 1);
+            }
+            callsDone++;
+            const pct = Math.round((callsDone / totalCalls) * 90) + 5;
+            setProgress(`<span class="spinner"></span> Layer ${layer + 1}/${tier.layers}: rewriting excerpt ${i + 1}/${excerptTexts.length} (${modelLabel(candidate)})…`, pct);
+          }
+          setProgress(`<span class="spinner"></span> Layer ${layer + 1}/${tier.layers} complete.`, Math.round(((layer + 1) / tier.layers) * 90) + 5);
         }
-        if (passes >= 3) {
-          await new Promise(r => setTimeout(r, 500)); setProgress('<span class="spinner"></span> Pass 3/' + passes + ': Scrubbing AI fingerprints…', 60);
-          const p3 = () => `Final AI fingerprint scrub.${preserveVoice ? ' Keep the article\'s existing tone, voice, and persona intact.' : ''}\nFINAL CHECKS:\n1. Any word used 3+ times? Vary with synonyms.\n2. 3+ consecutive sentences starting the same way? Fix.\n3. No two consecutive paragraphs the same length.\n4. Add if missing: mild surprise, mild opinion, short standalone sentence, rhetorical question.${focusKeyword ? `\n5. Confirm keyword "${focusKeyword}" appears in first 150 words.` : ''}${customLine}\n${AI_FINGERPRINT_RULES}\nReturn ONLY the final article.\n\nARTICLE:\n${current}`;
-          current = await runPassWithFallback(2, p3, 3200, (m) => { setProgress('<span class="spinner"></span> Pass 3/' + passes + ': Scrubbing AI fingerprints (' + modelLabel(m) + ')…', 60); addBadge('Pass 3: Fingerprint Scrub · ' + modelLabel(m), '#9B7EDE'); });
-          current = stripDashArtifacts(current);
-          setProgress('<span class="spinner"></span> Pass 3 complete.', 75);
-        }
-        if (passes >= 4) {
-          await new Promise(r => setTimeout(r, 500)); setProgress('<span class="spinner"></span> Pass 4/' + passes + ': Detector-specific scrub…', 80);
-          const p4 = () => `You are doing a specialised pass whose ONLY job is defeating modern classifier-based AI detectors (the kind used by tools like GPTZero and Copyleaks, which key on token-predictability patterns, not just sentence-length variety).${preserveVoice ? ' Keep the article\'s existing tone, voice, and persona intact.' : ''}\nTASKS:\n1. Em-dashes should already be rare — leave at most one or two, don't add more.\n2. Find any list or clause structured as neat parallel triads ("X, Y, and Z" appearing more than once) and break the symmetry — combine two items, or restate as a sentence.\n3. Vary punctuation rhythm: introduce at least one semicolon and one short sentence fragment somewhere natural, and make sure not all sentences end with simple periods after uniform commas.\n4. Reduce any remaining uniformity in paragraph length — no two adjacent paragraphs should be within one sentence of the same length.\n5. Keep every fact, name, number, and quote exactly as given.${customLine}\nReturn ONLY the final article, no notes or explanation.\n\nARTICLE:\n${current}`;
-          current = await runPassWithFallback(3, p4, 3200, (m) => { setProgress('<span class="spinner"></span> Pass 4/' + passes + ': Detector-specific scrub (' + modelLabel(m) + ')…', 80); addBadge('Pass 4: Detector Scrub · ' + modelLabel(m), '#6FA8DC'); });
-          current = stripDashArtifacts(current);
-          setProgress('✅ All passes complete.', 100); addBadge('✓ Done', '#f5b042');
-        } else { setProgress('✅ Humanization complete.', 100); }
-        setTimeout(() => { const p = document.getElementById('hzProgressMsg'); const f = document.getElementById('hzProgFill'); if (p) p.textContent = ''; if (f) f.style.width = '0%'; }, 3000);
+
+        const paragraphs = [];
+        let buf = [];
+        let curPara = excerpts.length ? excerpts[0].paraIndex : 0;
+        excerpts.forEach((e, i) => {
+          if (e.paraIndex !== curPara) { paragraphs.push(buf.join(' ')); buf = []; curPara = e.paraIndex; }
+          buf.push(excerptTexts[i]);
+        });
+        if (buf.length) paragraphs.push(buf.join(' '));
+        let current = stripDashArtifacts(paragraphs.join('\n\n'));
+
+        [...usageCounts.entries()].forEach(([label, count], idx) => {
+          addBadge(`${label} · ${count} excerpt${count === 1 ? '' : 's'}`, PALETTE[idx % PALETTE.length]);
+        });
+        setProgress('✅ Amalgam humanization complete — ' + excerpts.length + ' excerpts across ' + paragraphCount + ' paragraphs, ' + usageCounts.size + ' models blended.', 100);
+        setTimeout(() => { const p = document.getElementById('hzProgressMsg'); const f = document.getElementById('hzProgFill'); if (p) p.textContent = ''; if (f) f.style.width = '0%'; }, 4000);
         if (onComplete) onComplete(current);
         return current;
       } catch (e) {
@@ -1324,7 +1393,6 @@
         return null;
       }
     }
-
     async function humanizeDraft(text, tone = 'casual') {
       const draftDiv = document.getElementById('draftContent');
       if (draftDiv) draftDiv.innerHTML = '<div class="empty"><span class="spinner"></span> Humanizing draft…</div>';

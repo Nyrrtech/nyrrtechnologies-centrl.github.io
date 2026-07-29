@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AccessKit — Embeddable Accessibility Widget Demo</title>
+<meta name="description" content="A free, embeddable accessibility widget with text-to-speech, AI summarization, dyslexia fonts, reading ruler, zoom, contrast modes, and more.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0b0f;--bg2:#111318;--bg3:#1a1d25;--orange:#F05A00;--text:#eaeaea;--muted:#888;--border:rgba(255,255,255,0.07);}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased;}
+
+/* Hero */
+.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 20px;background:radial-gradient(ellipse 70% 50% at 50% -10%,rgba(240,90,0,0.18),transparent);}
+.hero-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(240,90,0,0.12);border:1px solid rgba(240,90,0,0.3);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:600;color:var(--orange);letter-spacing:0.5px;margin-bottom:28px;}
+.hero h1{font-size:clamp(2.4rem,6vw,4.2rem);font-weight:800;letter-spacing:-1.5px;line-height:1.1;margin-bottom:20px;background:linear-gradient(135deg,#fff 60%,var(--orange));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero p{font-size:1.1rem;color:var(--muted);max-width:560px;margin:0 auto 36px;}
+.hero-btns{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;transition:all 0.18s;}
+.btn-orange{background:var(--orange);color:#fff;border:none;}
+.btn-orange:hover{background:#d44e00;transform:translateY(-1px);}
+.btn-outline{background:transparent;color:var(--text);border:1px solid rgba(255,255,255,0.15);}
+.btn-outline:hover{border-color:var(--orange);color:var(--orange);}
+
+/* Features grid */
+.section{padding:80px 20px;max-width:1100px;margin:0 auto;}
+.section-tag{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--orange);margin-bottom:12px;}
+.section h2{font-size:clamp(1.8rem,4vw,2.8rem);font-weight:700;letter-spacing:-0.8px;margin-bottom:16px;}
+.section > p{color:var(--muted);font-size:1rem;max-width:540px;margin-bottom:48px;}
+
+.features{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;}
+.feat-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:22px;transition:all 0.2s;position:relative;overflow:hidden;}
+.feat-card::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at top left,rgba(240,90,0,0.07),transparent 60%);opacity:0;transition:opacity 0.2s;}
+.feat-card:hover{border-color:rgba(240,90,0,0.3);transform:translateY(-2px);}
+.feat-card:hover::before{opacity:1;}
+.feat-card-icon{font-size:26px;margin-bottom:12px;}
+.feat-card h3{font-size:14px;font-weight:600;margin-bottom:6px;}
+.feat-card p{font-size:12px;color:var(--muted);line-height:1.6;}
+
+/* Code embed */
+.embed-section{background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:60px 20px;}
+.embed-inner{max-width:800px;margin:0 auto;}
+.code-block{background:var(--bg);border:1px solid rgba(240,90,0,0.2);border-radius:10px;padding:20px 24px;font-family:'Courier New',monospace;font-size:13px;color:#e0e0e0;overflow-x:auto;margin:16px 0;position:relative;}
+.code-block .hl{color:var(--orange);}
+.copy-btn{position:absolute;top:12px;right:12px;background:rgba(240,90,0,0.15);border:1px solid rgba(240,90,0,0.3);color:var(--orange);padding:4px 10px;border-radius:5px;font-size:11px;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.15s;}
+.copy-btn:hover{background:rgba(240,90,0,0.3);}
+
+/* Sample content */
+.content-section{padding:60px 20px;max-width:800px;margin:0 auto;}
+.content-section h2{font-size:1.8rem;font-weight:700;margin-bottom:16px;}
+.content-section p{color:#ccc;margin-bottom:16px;line-height:1.8;}
+
+/* Footer */
+footer{text-align:center;padding:40px 20px;border-top:1px solid var(--border);color:var(--muted);font-size:12px;}
+
+/* Divider */
+.divider{height:1px;background:var(--border);margin:0;}
+</style>
+</head>
+<body>
+
+<main>
+<!-- Hero -->
+<section class="hero" aria-labelledby="hero-heading">
+  <div class="hero-badge">♿ Open Source · Free Forever</div>
+  <h1 id="hero-heading">Accessibility for<br>Every Website</h1>
+  <p>Drop one script tag and give every visitor text-to-speech, AI summaries, dyslexia fonts, reading rulers, contrast modes, and much more.</p>
+  <div class="hero-btns">
+    <a href="#embed" class="btn btn-orange">📋 Get Embed Code</a>
+    <a href="#features" class="btn btn-outline">✦ See Features</a>
+  </div>
+</section>
+
+<!-- Features -->
+<section class="section" id="features" aria-label="Widget Features">
+  <p class="section-tag">What's included</p>
+  <h2>Everything accessibility needs</h2>
+  <p>Built on web standards, zero dependencies, works on any website.</p>
+  <div class="features">
+    <article class="feat-card"><div class="feat-card-icon">🔊</div><h3>Read Aloud</h3><p>Full page text-to-speech with adjustable speed, pitch, and voice selection.</p></article>
+    <article class="feat-card"><div class="feat-card-icon">📊</div><h3>Read with Progress</h3><p>Paragraph-by-paragraph reading with a live progress bar and scroll tracking.</p></article>
+    <article class="feat-card"><div class="feat-card-icon">🖱️</div><h3>Pick Section</h3><p>Click any element on the page to have it read aloud immediately.</p></article>
+    <article class="feat-card"><div class="feat-card-icon">📏</div><h3>Reading Ruler</h3><p>A focus line that follows your mouse, helping dyslexic users track their position.</p></article>
+    <article class="feat-card"><div class="feat-card-icon">🤖</div><h3>AI Summary</h3><p>Mistral AI condenses any page into 3–5 clear sentences, then reads it aloud.</p></article>
+    <article class="feat-card"><div class="feat-card-icon">💬</div><h3>Page Q&amp;A</h3><p>Ask questions about the current page in plain language. AI answers and reads back.</p></article>
+    <article class="feat-card"><div class="feat-card-icon">🔤</div><h3>Dyslexia Font</h3><p>Switch to OpenDyslexic with wider letter and word spacing for easier reading.</p></article>
+    <article class="feat-card"><div class="feat-card-icon">🎨</div><h3>Contrast Modes</h3><p>High contrast, dark, inverted, sepia, and greyscale colour profiles.</p></article>
+    <article class="feat-card"><div class="feat-card-icon">🔍</div><h3>Zoom Control</h3><p>Smooth zoom from 50% to 300% with a slider or keyboard shortcuts.</p></article>
+    <article class="feat-card"><div class="feat-card-icon">Aa</div><h3>Font Size</h3><p>Increase or decrease font size independently of browser zoom.</p></article>
+    <article class="feat-card"><div class="feat-card-icon">↕️</div><h3>Line &amp; Letter Spacing</h3><p>Three spacing levels for lines and letter spacing to reduce crowding.</p></article>
+    <article class="feat-card"><div class="feat-card-icon">🔗</div><h3>Highlight Links</h3><p>Make all clickable links visually prominent with a blue outline.</p></article>
+    <article class="feat-card"><div class="feat-card-icon">📌</div><h3>Heading Markers</h3><p>Add left-border markers to all headings for easy document scanning.</p></article>
+    <article class="feat-card"><div class="feat-card-icon">🖼️</div><h3>Hide Images</h3><p>Collapse all images for distraction-free reading or low-bandwidth use.</p></article>
+    <article class="feat-card"><div class="feat-card-icon">⏸️</div><h3>Stop Animations</h3><p>Instantly freeze all CSS animations and transitions — reduces motion sickness.</p></article>
+    <article class="feat-card"><div class="feat-card-icon">🎯</div><h3>Focus Rings</h3><p>Enhance keyboard focus indicators so they are always clearly visible.</p></article>
+    <article class="feat-card"><div class="feat-card-icon">🖱️</div><h3>Large Cursor</h3><p>Switch to a larger custom cursor for users with low vision or motor difficulties.</p></article>
+    <article class="feat-card"><div class="feat-card-icon">✨</div><h3>Simplify Page</h3><p>Strips ads, sidebars, and distractions, leaving a clean, readable layout.</p></article>
+    <article class="feat-card"><div class="feat-card-icon">🔄</div><h3>Simplify Text</h3><p>Select any complex passage and AI rewrites it in plain, simple language.</p></article>
+    <article class="feat-card"><div class="feat-card-icon">💾</div><h3>Remembers Settings</h3><p>All preferences saved to localStorage and restored on your next visit.</p></article>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- Embed -->
+<section class="embed-section" id="embed" aria-label="Embed Instructions">
+  <div class="embed-inner">
+    <p class="section-tag" style="margin-bottom:12px">Integration</p>
+    <h2 style="font-size:1.8rem;font-weight:700;margin-bottom:12px">Add to any website</h2>
+    <p style="color:#888;margin-bottom:24px">Paste these two lines before the closing <code style="color:var(--orange)">&lt;/body&gt;</code> tag:</p>
+    <div class="code-block">
+      <button class="copy-btn" onclick="copyEmbed()">Copy</button>
+      <span class="hl">&lt;link</span> rel=<span class="hl">"stylesheet"</span> href=<span class="hl">"accessibility-widget.css"</span><span class="hl">&gt;</span><br>
+      <span class="hl">&lt;script</span> src=<span class="hl">"widget-core.js"</span><span class="hl">&gt;&lt;/script&gt;</span><br>
+      <span class="hl">&lt;script</span> src=<span class="hl">"widget-ui.js"</span><span class="hl">&gt;&lt;/script&gt;</span>
+    </div>
+    <p style="font-size:12px;color:#666;margin-top:8px">Then set your Mistral API key inside the widget Settings tab to enable AI features.</p>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- Sample readable content for demo -->
+<section class="content-section" aria-label="Sample Article">
+  <h2>Sample Article — Try the Widget!</h2>
+  <p>Welcome to the AccessKit demo page. Click the orange button in the bottom-right corner to open the accessibility panel. You can use all the features on this very page — try reading this article aloud, zooming in, changing the font, or asking the AI a question about this content.</p>
+  <h3 style="font-size:1.2rem;font-weight:600;margin:20px 0 10px">Why Web Accessibility Matters</h3>
+  <p>Over one billion people worldwide live with some form of disability. The web should be usable by everyone, regardless of visual, auditory, motor, or cognitive ability. Despite this, many websites are built without accessibility in mind, creating barriers for a significant portion of the population.</p>
+  <p>AccessKit removes those barriers with a single embed. It brings assistive technology features directly to your users without requiring them to install browser extensions or use separate software.</p>
+  <h3 style="font-size:1.2rem;font-weight:600;margin:20px 0 10px">Built on Open Standards</h3>
+  <p>The widget uses the Web Speech API for text-to-speech, CSS custom properties for theming, and the Mistral AI API for intelligent features. Everything runs in the browser — no data is collected, and no tracking occurs. Your users' privacy is respected.</p>
+  <p>All accessibility preferences are saved in <code style="font-size:12px;color:var(--orange)">localStorage</code> so returning visitors get their preferred settings automatically applied from the first moment the page loads.</p>
+</section>
+</main>
+
+<footer>
+  <p>AccessKit · Open source accessibility widget · <a href="https://mistral.ai" style="color:var(--orange);text-decoration:none">Powered by Mistral AI</a></p>
+</footer>
+
+<!-- AccessKit Widget -->
+<link rel="stylesheet" href="accessibility-widget.css">
+<script src="widget-core.js"></script>
+<script src="widget-ui.js"></script>
+
+<script>
+function copyEmbed(){
+  const code = `<link rel="stylesheet" href="accessibility-widget.css">\n<script src="widget-core.js"><\/script>\n<script src="widget-ui.js"><\/script>`;
+  navigator.clipboard.writeText(code).then(()=>{ document.querySelector('.copy-btn').textContent='Copied!'; setTimeout(()=>{ document.querySelector('.copy-btn').textContent='Copy'; },2000); });
+}
+</script>
+</body>
+</html>

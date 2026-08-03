@@ -66,6 +66,7 @@
     </div>
   </header>
 
+  <!-- Accessibility Widget -->
   <script src="https://cdn.scryweb.com/loader.js" data-client-id="scryweb-demo" async></script>
   <div class="dashboard-wrap">
     <h1 class="sr-only">ScryWeb — AI News Intelligence Dashboard</h1>
@@ -104,6 +105,7 @@
         <button class="db-tab" id="tab-draft" data-tab="draft" role="tab" aria-controls="pane-draft" aria-selected="false">✍️ Draft <span class="tab-lock" id="draftTabLock"></span></button>
         <button class="db-tab" id="tab-humanizer" data-tab="humanizer" role="tab" aria-controls="pane-humanizer" aria-selected="false">✨ Humanizer <span class="tab-lock" id="humanizerTabLock"></span></button>
         <button class="db-tab" id="tab-settings" data-tab="settings" role="tab" aria-controls="pane-settings" aria-selected="false">⚙️ Settings</button>
+        <button class="db-tab" id="tab-widget" data-tab="widget" role="tab" aria-controls="pane-widget" aria-selected="false">🎨 Widget</button>
         <button class="db-tab" id="tab-account" data-tab="account" role="tab" aria-controls="pane-account" aria-selected="false">👤 Account</button>
       </div>
 
@@ -267,6 +269,48 @@
           <div class="settings-group" style="display:flex;align-items:center;gap:12px"><button class="toggle" id="aiEnrichToggle" aria-label="Toggle AI keyword enrichment"></button><span style="font-size:12px;color:var(--text-sec)">AI keyword enrichment <span id="enrichPlanNote" style="color:var(--accent);font-size:11px"></span></span></div>
         </div>
         <button class="save-btn" id="saveSettingsBtn">💾 Save settings</button><div id="settingsMsg" style="margin-top:8px;text-align:center;font-size:12px;color:var(--accent)"></div>
+      </div>
+
+      <!-- WIDGET THEME PANE -->
+      <div class="db-pane" id="pane-widget" role="tabpanel" aria-labelledby="tab-widget">
+        <div id="widgetNoLicenseNote" style="display:none">
+          <div class="settings-card">
+            <div class="settings-section-title">🎨 Accessibility Widget</div>
+            <p style="font-size:12px;color:var(--text-sec)">No widget license is set up on your account yet. Contact us to get your embeddable accessibility widget enabled.</p>
+          </div>
+        </div>
+        <div id="widgetThemeForm" style="display:none">
+          <div class="settings-card">
+            <div class="settings-section-title">🎨 Widget appearance</div>
+            <div class="settings-group">
+              <span class="settings-label">Theme</span>
+              <select class="settings-input" id="widgetThemePreset">
+                <option value="default">Default (Orange)</option>
+                <option value="ocean">Ocean (Blue)</option>
+                <option value="midnight">Midnight (Purple)</option>
+                <option value="sunset">Sunset (Red/Pink)</option>
+                <option value="custom">Custom color…</option>
+              </select>
+            </div>
+            <div class="settings-group" id="widgetCustomColorGroup" style="display:none">
+              <span class="settings-label">Custom primary color</span>
+              <input type="color" id="widgetThemeColor" value="#F05A00" style="width:100%;height:40px;border:1px solid var(--border);border-radius:12px;background:var(--surface2);cursor:pointer;padding:2px;">
+            </div>
+            <div class="settings-group">
+              <span class="settings-label">Widget position</span>
+              <select class="settings-input" id="widgetThemePosition">
+                <option value="bottom-right">Bottom right</option>
+                <option value="bottom-left">Bottom left</option>
+              </select>
+            </div>
+            <div class="settings-group" style="display:flex;align-items:center;gap:14px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;">
+              <span style="font-size:11px;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.07em;">Preview</span>
+              <div id="widgetThemePreviewBtn" style="width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;flex-shrink:0;transition:background 0.15s;">♿</div>
+            </div>
+          </div>
+          <button class="save-btn" id="saveWidgetThemeBtn">💾 Save widget appearance</button>
+          <div id="widgetThemeMsg" style="margin-top:8px;text-align:center;font-size:12px;color:var(--accent)"></div>
+        </div>
       </div>
 
       <!-- ACCOUNT PANE -->
@@ -1574,6 +1618,90 @@ ${sourceText}`;
       }
     }
 
+    // ==================== WIDGET THEME SETTINGS ====================
+    const WIDGET_PRESET_COLORS = {
+      default: '#F05A00',
+      ocean: '#2563eb',
+      midnight: '#7c3aed',
+      sunset: '#f43f5e',
+    };
+
+    function widgetUpdatePreview() {
+      const presetSelect = document.getElementById('widgetThemePreset');
+      const colorInput = document.getElementById('widgetThemeColor');
+      const preview = document.getElementById('widgetThemePreviewBtn');
+      if (!presetSelect || !preview) return;
+      const preset = presetSelect.value;
+      const color = preset === 'custom' ? (colorInput?.value || '#F05A00') : (WIDGET_PRESET_COLORS[preset] || '#F05A00');
+      preview.style.background = color;
+    }
+
+    async function initWidgetThemeSettings(user) {
+      const noLicenseNote = document.getElementById('widgetNoLicenseNote');
+      const form = document.getElementById('widgetThemeForm');
+      const presetSelect = document.getElementById('widgetThemePreset');
+      const positionSelect = document.getElementById('widgetThemePosition');
+      const colorInput = document.getElementById('widgetThemeColor');
+      const customGroup = document.getElementById('widgetCustomColorGroup');
+      const msg = document.getElementById('widgetThemeMsg');
+      if (!form) return;
+
+      const { data: client, error } = await window.supabase
+        .from('widget_clients')
+        .select('theme_preset, theme_primary_color, theme_position')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error || !client) {
+        if (noLicenseNote) noLicenseNote.style.display = 'block';
+        form.style.display = 'none';
+        return;
+      }
+
+      if (noLicenseNote) noLicenseNote.style.display = 'none';
+      form.style.display = 'block';
+
+      presetSelect.value = client.theme_preset || 'default';
+      positionSelect.value = client.theme_position || 'bottom-right';
+      colorInput.value = client.theme_primary_color || '#F05A00';
+      customGroup.style.display = presetSelect.value === 'custom' ? 'block' : 'none';
+      widgetUpdatePreview();
+
+      presetSelect.addEventListener('change', () => {
+        customGroup.style.display = presetSelect.value === 'custom' ? 'block' : 'none';
+        widgetUpdatePreview();
+      });
+      colorInput.addEventListener('input', widgetUpdatePreview);
+
+      document.getElementById('saveWidgetThemeBtn')?.addEventListener('click', async () => {
+        msg.textContent = 'Saving…';
+        msg.style.color = 'var(--text-sec)';
+
+        const updatePayload = {
+          theme_preset: presetSelect.value,
+          theme_position: positionSelect.value,
+        };
+        if (presetSelect.value === 'custom') {
+          updatePayload.theme_primary_color = colorInput.value;
+        }
+
+        const { error: updateError } = await window.supabase
+          .from('widget_clients')
+          .update(updatePayload)
+          .eq('user_id', user.id);
+
+        if (updateError) {
+          msg.textContent = '✗ Error saving widget settings.';
+          msg.style.color = 'var(--error, #f87171)';
+          console.error('Widget theme save error:', updateError);
+        } else {
+          msg.textContent = '✓ Saved! Changes are live on your site now.';
+          msg.style.color = 'var(--accent)';
+          setTimeout(() => { msg.textContent = ''; }, 4000);
+        }
+      });
+    }
+
     async function renderAccountPane(user) { 
       const accountCard = document.getElementById('accountCard'); 
       if(accountCard) {
@@ -2099,7 +2227,8 @@ ${sourceText}`;
         renderTabLocks(),
         renderAccountPane(user),
         renderSettingsTrialNote(),
-        window.renderTrialBanner('trialBannerContainer')
+        window.renderTrialBanner('trialBannerContainer'),
+        initWidgetThemeSettings(user)
       ]);
 
       // Event listeners

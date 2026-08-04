@@ -280,34 +280,113 @@
           </div>
         </div>
         <div id="widgetThemeForm" style="display:none">
+          <style>
+            .wt-col { font-weight:400; text-transform:none; letter-spacing:0; color:var(--text-hint); font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:10px; margin-left:6px; }
+            .wt-hint { font-size:11px; color:var(--text-hint); margin-top:5px; line-height:1.5; }
+            .wt-color-row { display:flex; gap:8px; align-items:center; }
+            .wt-swatch { width:48px; height:38px; border:1px solid var(--border); border-radius:10px; background:var(--surface2); cursor:pointer; padding:2px; flex:none; }
+            .wt-hex { max-width:140px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; text-transform:uppercase; }
+            .wt-err { font-size:11px; color:var(--red,#f87171); margin-top:5px; display:none; }
+          </style>
+
           <div class="settings-card">
             <div class="settings-section-title">🎨 Widget appearance</div>
+            <p style="font-size:11px;color:var(--text-hint);line-height:1.6;margin-bottom:16px">
+              Every field here is a column on your widget license row. The license worker serves them to the widget on page load, so saving changes what visitors see on your site — no re-embed needed.
+            </p>
+
             <div class="settings-group">
-              <span class="settings-label">Theme</span>
+              <span class="settings-label">Theme preset <span class="wt-col">theme_preset</span></span>
               <select class="settings-input" id="widgetThemePreset">
-                <option value="default">Default (Orange)</option>
-                <option value="ocean">Ocean (Blue)</option>
-                <option value="midnight">Midnight (Purple)</option>
-                <option value="sunset">Sunset (Red/Pink)</option>
-                <option value="custom">Custom color…</option>
+                <option value="default">Default — Orange (#F05A00)</option>
+                <option value="ocean">Ocean — Blue (#0EA5E9)</option>
+                <option value="midnight">Midnight — Indigo (#6366F1)</option>
+                <option value="custom">Custom colour…</option>
               </select>
+              <div class="wt-hint">Sets the accent used by the launcher button, panel header, active tabs, focus rings and sliders.</div>
             </div>
+
             <div class="settings-group" id="widgetCustomColorGroup" style="display:none">
-              <span class="settings-label">Custom primary color</span>
-              <input type="color" id="widgetThemeColor" value="#F05A00" style="width:100%;height:40px;border:1px solid var(--border);border-radius:12px;background:var(--surface2);cursor:pointer;padding:2px;">
+              <span class="settings-label">Primary colour <span class="wt-col">theme_primary_color</span></span>
+              <div class="wt-color-row">
+                <input type="color" id="widgetThemeColor" value="#F05A00" class="wt-swatch">
+                <input type="text" id="widgetThemeColorHex" class="settings-input wt-hex" value="#F05A00" spellcheck="false" maxlength="7" placeholder="#6366F1">
+              </div>
+              <div class="wt-hint">Required when the preset is Custom. Hover, glow and on-accent text colours are derived from it automatically.</div>
+              <div class="wt-err" id="widgetColorErr">Enter a 6-digit hex colour, e.g. #6366F1.</div>
             </div>
+
             <div class="settings-group">
-              <span class="settings-label">Widget position</span>
+              <span class="settings-label">Panel background <span class="wt-col">theme_bg_color</span></span>
+              <select class="settings-input" id="widgetThemeBgMode">
+                <option value="auto">Default — follow the widget's dark / light theme</option>
+                <option value="custom">Custom background colour…</option>
+              </select>
+              <div class="wt-hint">Leave on Default unless you want the panel surface to match your brand.</div>
+            </div>
+
+            <div class="settings-group" id="widgetBgColorGroup" style="display:none">
+              <span class="settings-label">Background colour</span>
+              <div class="wt-color-row">
+                <input type="color" id="widgetThemeBgColor" value="#0B0F1A" class="wt-swatch">
+                <input type="text" id="widgetThemeBgHex" class="settings-input wt-hex" value="#0B0F1A" spellcheck="false" maxlength="7" placeholder="#0B0F1A">
+              </div>
+              <div class="wt-hint">Text, borders, tabs and controls are re-derived from this colour so the panel stays readable on light or dark backgrounds.</div>
+              <div class="wt-err" id="widgetBgErr">Enter a 6-digit hex colour, e.g. #0B0F1A.</div>
+            </div>
+
+            <div class="settings-group">
+              <span class="settings-label">Header logo <span class="wt-col">theme_logo_url</span></span>
+              <input type="url" class="settings-input" id="widgetThemeLogo" placeholder="https://cdn.example.com/logo.png" spellcheck="false">
+              <div class="wt-hint">Replaces the default icon in the panel header. Square PNG or SVG over HTTPS. Leave empty for the default icon.</div>
+              <div class="wt-err" id="widgetLogoErr">Enter a full https:// URL, or leave the field empty.</div>
+            </div>
+
+            <div class="settings-group">
+              <span class="settings-label">Widget position <span class="wt-col">widget_position</span></span>
               <select class="settings-input" id="widgetThemePosition">
                 <option value="bottom-right">Bottom right</option>
                 <option value="bottom-left">Bottom left</option>
+                <option value="top-right">Top right</option>
+                <option value="top-left">Top left</option>
               </select>
-            </div>
-            <div class="settings-group" style="display:flex;align-items:center;gap:14px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;">
-              <span style="font-size:11px;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.07em;">Preview</span>
-              <div id="widgetThemePreviewBtn" style="width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;flex-shrink:0;transition:background 0.15s;">♿</div>
+              <div class="wt-hint">Which corner the launcher button sits in. The panel opens away from the nearest edge.</div>
             </div>
           </div>
+
+          <div class="settings-card">
+            <div class="settings-section-title">👁 Live preview</div>
+            <div id="widgetPreviewStage" style="position:relative;height:320px;border-radius:14px;border:1px solid var(--border);background:linear-gradient(180deg,#f7f7f8,#e9eaec);overflow:hidden">
+              <div style="padding:20px 22px;pointer-events:none">
+                <div style="height:9px;width:42%;border-radius:5px;background:rgba(15,18,26,0.20);margin-bottom:14px"></div>
+                <div style="height:6px;width:88%;border-radius:4px;background:rgba(15,18,26,0.11);margin-bottom:8px"></div>
+                <div style="height:6px;width:76%;border-radius:4px;background:rgba(15,18,26,0.11);margin-bottom:8px"></div>
+                <div style="height:6px;width:83%;border-radius:4px;background:rgba(15,18,26,0.11);margin-bottom:20px"></div>
+                <div style="height:6px;width:64%;border-radius:4px;background:rgba(15,18,26,0.11)"></div>
+              </div>
+              <div id="wtPreviewPanel" style="position:absolute;width:196px;border-radius:10px;overflow:hidden;border:1px solid;font-size:9px;line-height:1.3">
+                <div id="wtPreviewHeader" style="display:flex;align-items:center;gap:7px;padding:9px 10px;border-bottom:1px solid">
+                  <div id="wtPreviewLogo" style="width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;flex:none;overflow:hidden">♿</div>
+                  <div style="min-width:0">
+                    <div id="wtPreviewTitle" style="font-weight:700;font-size:9px;white-space:nowrap">Accessibility Assistant</div>
+                    <div id="wtPreviewSub" style="font-size:8px;white-space:nowrap">Accessibility Widget</div>
+                  </div>
+                </div>
+                <div id="wtPreviewTabs" style="display:flex;border-bottom:1px solid">
+                  <div class="wt-pv-tab" style="flex:1;text-align:center;padding:6px 0;font-weight:600">Read</div>
+                  <div class="wt-pv-tab" style="flex:1;text-align:center;padding:6px 0">Visual</div>
+                  <div class="wt-pv-tab" style="flex:1;text-align:center;padding:6px 0">Text</div>
+                </div>
+                <div style="padding:9px 10px;display:grid;gap:6px">
+                  <div id="wtPreviewBtnPrimary" style="padding:6px 0;text-align:center;border-radius:6px;font-weight:600">Read Page</div>
+                  <div id="wtPreviewBtnGhost" style="padding:6px 0;text-align:center;border-radius:6px;border:1px solid">Reading Ruler</div>
+                </div>
+              </div>
+              <div id="wtPreviewFab" style="position:absolute;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;flex:none"></div>
+            </div>
+            <div class="wt-hint" style="margin-top:10px">Rendered with the same colour maths the widget uses, so this is what your visitors get.</div>
+          </div>
+
           <button class="save-btn" id="saveWidgetThemeBtn">💾 Save widget appearance</button>
           <div id="widgetThemeMsg" style="margin-top:8px;text-align:center;font-size:12px;color:var(--accent)"></div>
         </div>
@@ -1619,36 +1698,172 @@ ${sourceText}`;
     }
 
     // ==================== WIDGET THEME SETTINGS ====================
+    // These MUST stay in sync with BP in widget-core.js — the preview is only
+    // honest if it uses the same accents the widget actually renders.
     const WIDGET_PRESET_COLORS = {
       default: '#F05A00',
-      ocean: '#2563eb',
-      midnight: '#7c3aed',
-      sunset: '#f43f5e',
+      ocean: '#0EA5E9',
+      midnight: '#6366F1',
     };
+    const WIDGET_POSITIONS = ['bottom-right', 'bottom-left', 'top-right', 'top-left'];
+    const HEX6_RE = /^#[0-9a-fA-F]{6}$/;
+
+    // --- colour maths, mirroring widget-core.js so the preview matches production ---
+    function wtRgb(hex) {
+      let h = String(hex || '').replace('#', '');
+      if (h.length === 3) h = h.split('').map(c => c + c).join('');
+      const n = parseInt(h, 16) || 0;
+      return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+    }
+    function wtRgba(hex, a) { const [r, g, b] = wtRgb(hex); return `rgba(${r},${g},${b},${a})`; }
+    function wtShade(hex, amt) {
+      const [r, g, b] = wtRgb(hex);
+      const f = v => {
+        const d = amt < 0 ? v * (1 + amt) : v + (255 - v) * amt;
+        return Math.max(0, Math.min(255, Math.round(d))).toString(16).padStart(2, '0');
+      };
+      return '#' + f(r) + f(g) + f(b);
+    }
+    function wtMix(a, b, t) {
+      const [r1, g1, b1] = wtRgb(a), [r2, g2, b2] = wtRgb(b);
+      const f = v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0');
+      return '#' + f(r1 + (r2 - r1) * t) + f(g1 + (g2 - g1) * t) + f(b1 + (b2 - b1) * t);
+    }
+    function wtLum(hex) { const [r, g, b] = wtRgb(hex); return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255; }
+    function wtOnBrand(hex) { return wtLum(hex) > 0.58 ? '#111214' : '#ffffff'; }
+
+    // Current form values, normalised the same way the worker + widget normalise them.
+    function widgetReadForm() {
+      const el = id => document.getElementById(id);
+      const preset = el('widgetThemePreset')?.value || 'default';
+      const primary = (el('widgetThemeColorHex')?.value || '').trim();
+      const bgMode = el('widgetThemeBgMode')?.value || 'auto';
+      const bg = (el('widgetThemeBgHex')?.value || '').trim();
+      const logo = (el('widgetThemeLogo')?.value || '').trim();
+      let position = el('widgetThemePosition')?.value || 'bottom-right';
+      if (!WIDGET_POSITIONS.includes(position)) position = 'bottom-right';
+      return {
+        preset,
+        primaryColor: preset === 'custom' ? primary : '',
+        bgColor: bgMode === 'custom' ? bg : '',
+        logoUrl: logo,
+        position,
+        accent: preset === 'custom'
+          ? (HEX6_RE.test(primary) ? primary : WIDGET_PRESET_COLORS.default)
+          : (WIDGET_PRESET_COLORS[preset] || WIDGET_PRESET_COLORS.default),
+      };
+    }
 
     function widgetUpdatePreview() {
-      const presetSelect = document.getElementById('widgetThemePreset');
-      const colorInput = document.getElementById('widgetThemeColor');
-      const preview = document.getElementById('widgetThemePreviewBtn');
-      if (!presetSelect || !preview) return;
-      const preset = presetSelect.value;
-      const color = preset === 'custom' ? (colorInput?.value || '#F05A00') : (WIDGET_PRESET_COLORS[preset] || '#F05A00');
-      preview.style.background = color;
+      const el = id => document.getElementById(id);
+      const stage = el('widgetPreviewStage');
+      if (!stage) return;
+      const v = widgetReadForm();
+      const accent = v.accent;
+
+      // Surface ramp — same derivation as applySurface() in widget-core.js.
+      const hasBg = HEX6_RE.test(v.bgColor);
+      const base = hasBg ? v.bgColor : '#111214';
+      const dark = wtLum(base) < 0.5;
+      const st = amt => wtShade(base, dark ? amt : -amt);
+      const text = dark ? '#f2f2f3' : '#16181a';
+      const line = dark ? '#ffffff' : '#000000';
+      const muted = wtMix(text, base, 0.42);
+      const border = wtRgba(line, dark ? 0.08 : 0.11);
+
+      const panel = el('wtPreviewPanel');
+      panel.style.background = base;
+      panel.style.borderColor = wtRgba(accent, 0.3);
+      panel.style.color = text;
+      panel.style.boxShadow = dark
+        ? '0 18px 40px rgba(0,0,0,0.45)'
+        : '0 18px 40px rgba(35,40,48,0.22)';
+
+      const header = el('wtPreviewHeader');
+      header.style.background = `linear-gradient(135deg, ${wtRgba(accent, 0.16)}, ${dark ? 'transparent 60%' : wtRgba(base, 0.82) + ' 68%'}), ${st(0.03)}`;
+      header.style.borderBottomColor = wtRgba(accent, 0.42);
+      el('wtPreviewTitle').style.color = text;
+      el('wtPreviewSub').style.color = muted;
+
+      const tabs = el('wtPreviewTabs');
+      tabs.style.background = st(0.02);
+      tabs.style.borderBottomColor = border;
+      Array.from(tabs.querySelectorAll('.wt-pv-tab')).forEach((tab, i) => {
+        tab.style.color = i === 0 ? accent : muted;
+        tab.style.background = i === 0 ? wtRgba(accent, 0.08) : 'transparent';
+        tab.style.borderBottom = i === 0 ? `2px solid ${accent}` : '2px solid transparent';
+      });
+
+      const primaryBtn = el('wtPreviewBtnPrimary');
+      primaryBtn.style.background = accent;
+      primaryBtn.style.color = wtOnBrand(accent);
+      const ghostBtn = el('wtPreviewBtnGhost');
+      ghostBtn.style.background = st(0.06);
+      ghostBtn.style.borderColor = border;
+      ghostBtn.style.color = text;
+
+      const logoBox = el('wtPreviewLogo');
+      if (v.logoUrl && /^https?:\/\//i.test(v.logoUrl)) {
+        logoBox.style.background = 'none';
+        logoBox.innerHTML = '';
+        const img = document.createElement('img');
+        img.src = v.logoUrl;
+        img.alt = '';
+        img.style.cssText = 'width:100%;height:100%;object-fit:contain;border-radius:6px';
+        img.onerror = () => {
+          logoBox.innerHTML = '♿';
+          logoBox.style.background = `linear-gradient(135deg, ${accent}, ${wtShade(accent, 0.3)})`;
+          logoBox.style.color = wtOnBrand(accent);
+        };
+        logoBox.appendChild(img);
+      } else {
+        logoBox.innerHTML = '♿';
+        logoBox.style.background = `linear-gradient(135deg, ${accent}, ${wtShade(accent, 0.3)})`;
+        logoBox.style.color = wtOnBrand(accent);
+      }
+
+      const fab = el('wtPreviewFab');
+      fab.style.background = `linear-gradient(135deg, ${accent}, ${wtShade(accent, 0.3)})`;
+      fab.style.color = wtOnBrand(accent);
+      fab.textContent = '♿';
+      fab.style.boxShadow = `0 4px 18px ${wtRgba(accent, 0.3)}`;
+
+      // Position: FAB in the chosen corner, panel opening away from that edge.
+      const top = v.position.startsWith('top-');
+      const left = v.position.endsWith('-left');
+      fab.style.top = top ? '16px' : 'auto';
+      fab.style.bottom = top ? 'auto' : '16px';
+      fab.style.left = left ? '16px' : 'auto';
+      fab.style.right = left ? 'auto' : '16px';
+      panel.style.top = top ? '64px' : 'auto';
+      panel.style.bottom = top ? 'auto' : '64px';
+      panel.style.left = left ? '16px' : 'auto';
+      panel.style.right = left ? 'auto' : '16px';
     }
 
     async function initWidgetThemeSettings(user) {
-      const noLicenseNote = document.getElementById('widgetNoLicenseNote');
-      const form = document.getElementById('widgetThemeForm');
-      const presetSelect = document.getElementById('widgetThemePreset');
-      const positionSelect = document.getElementById('widgetThemePosition');
-      const colorInput = document.getElementById('widgetThemeColor');
-      const customGroup = document.getElementById('widgetCustomColorGroup');
-      const msg = document.getElementById('widgetThemeMsg');
+      const el = id => document.getElementById(id);
+      const noLicenseNote = el('widgetNoLicenseNote');
+      const form = el('widgetThemeForm');
+      const presetSelect = el('widgetThemePreset');
+      const positionSelect = el('widgetThemePosition');
+      const colorInput = el('widgetThemeColor');
+      const colorHex = el('widgetThemeColorHex');
+      const bgModeSelect = el('widgetThemeBgMode');
+      const bgInput = el('widgetThemeBgColor');
+      const bgHex = el('widgetThemeBgHex');
+      const logoInput = el('widgetThemeLogo');
+      const customGroup = el('widgetCustomColorGroup');
+      const bgGroup = el('widgetBgColorGroup');
+      const msg = el('widgetThemeMsg');
       if (!form) return;
 
+      // select('*') so we can tell which theming columns actually exist on this
+      // deployment — writing a column that hasn't been migrated yet fails the whole
+      // update, so unmigrated fields are skipped and reported instead.
       const { data: client, error } = await window.supabase
         .from('widget_clients')
-        .select('theme_preset, theme_primary_color, theme_position')
+        .select('*')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -1658,42 +1873,114 @@ ${sourceText}`;
         return;
       }
 
+      const has = col => Object.prototype.hasOwnProperty.call(client, col);
+      const positionCols = ['widget_position', 'theme_position'].filter(has);
+
       if (noLicenseNote) noLicenseNote.style.display = 'none';
       form.style.display = 'block';
 
-      presetSelect.value = client.theme_preset || 'default';
-      positionSelect.value = client.theme_position || 'bottom-right';
-      colorInput.value = client.theme_primary_color || '#F05A00';
-      customGroup.style.display = presetSelect.value === 'custom' ? 'block' : 'none';
+      // --- hydrate from the row ---
+      const savedPreset = String(client.theme_preset || 'default').toLowerCase();
+      presetSelect.value = ['default', 'ocean', 'midnight', 'custom'].includes(savedPreset) ? savedPreset : 'default';
+
+      const savedPrimary = client.theme_primary_color || '';
+      colorInput.value = HEX6_RE.test(savedPrimary) ? savedPrimary : '#F05A00';
+      colorHex.value = colorInput.value.toUpperCase();
+
+      const savedBg = client.theme_bg_color || '';
+      bgModeSelect.value = HEX6_RE.test(savedBg) ? 'custom' : 'auto';
+      bgInput.value = HEX6_RE.test(savedBg) ? savedBg : '#0B0F1A';
+      bgHex.value = bgInput.value.toUpperCase();
+
+      logoInput.value = client.theme_logo_url || '';
+
+      const savedPosition = String(client[positionCols[0]] || 'bottom-right').toLowerCase();
+      positionSelect.value = WIDGET_POSITIONS.includes(savedPosition) ? savedPosition : 'bottom-right';
+
+      const syncGroups = () => {
+        customGroup.style.display = presetSelect.value === 'custom' ? 'block' : 'none';
+        bgGroup.style.display = bgModeSelect.value === 'custom' ? 'block' : 'none';
+      };
+      syncGroups();
       widgetUpdatePreview();
 
-      presetSelect.addEventListener('change', () => {
-        customGroup.style.display = presetSelect.value === 'custom' ? 'block' : 'none';
-        widgetUpdatePreview();
-      });
-      colorInput.addEventListener('input', widgetUpdatePreview);
+      // --- wire up: colour picker and hex field stay in sync both ways ---
+      const bindColorPair = (picker, hex) => {
+        picker.addEventListener('input', () => { hex.value = picker.value.toUpperCase(); widgetUpdatePreview(); });
+        hex.addEventListener('input', () => {
+          let v = hex.value.trim();
+          if (v && !v.startsWith('#')) { v = '#' + v; hex.value = v; }
+          if (HEX6_RE.test(v)) picker.value = v;
+          widgetUpdatePreview();
+        });
+      };
+      bindColorPair(colorInput, colorHex);
+      bindColorPair(bgInput, bgHex);
 
-      document.getElementById('saveWidgetThemeBtn')?.addEventListener('click', async () => {
+      presetSelect.addEventListener('change', () => { syncGroups(); widgetUpdatePreview(); });
+      bgModeSelect.addEventListener('change', () => { syncGroups(); widgetUpdatePreview(); });
+      positionSelect.addEventListener('change', widgetUpdatePreview);
+      logoInput.addEventListener('input', widgetUpdatePreview);
+
+      // --- save ---
+      const saveBtn = el('saveWidgetThemeBtn');
+      saveBtn?.addEventListener('click', async () => {
+        const v = widgetReadForm();
+        const showErr = (id, show) => { const e2 = el(id); if (e2) e2.style.display = show ? 'block' : 'none'; };
+
+        // Mirrors the DB check constraints so a bad value is caught before the round trip.
+        const primaryBad = v.preset === 'custom' && !HEX6_RE.test(v.primaryColor);
+        const bgBad = bgModeSelect.value === 'custom' && !HEX6_RE.test(v.bgColor);
+        const logoBad = !!v.logoUrl && !/^https?:\/\/\S+$/i.test(v.logoUrl);
+        showErr('widgetColorErr', primaryBad);
+        showErr('widgetBgErr', bgBad);
+        showErr('widgetLogoErr', logoBad);
+        if (primaryBad || bgBad || logoBad) {
+          msg.textContent = '✗ Fix the highlighted fields first.';
+          msg.style.color = 'var(--red, #f87171)';
+          return;
+        }
+
         msg.textContent = 'Saving…';
         msg.style.color = 'var(--text-sec)';
+        saveBtn.disabled = true;
 
-        const updatePayload = {
-          theme_preset: presetSelect.value,
-          theme_position: positionSelect.value,
-        };
-        if (presetSelect.value === 'custom') {
-          updatePayload.theme_primary_color = colorInput.value;
+        const payload = {};
+        const skipped = [];
+        const put = (col, value) => { if (has(col)) payload[col] = value; else skipped.push(col); };
+
+        put('theme_preset', v.preset);
+        // Null out the primary colour on non-custom presets so a stale value can't be
+        // picked up as an implicit custom theme later.
+        put('theme_primary_color', v.preset === 'custom' ? v.primaryColor : null);
+        put('theme_bg_color', HEX6_RE.test(v.bgColor) ? v.bgColor : null);
+        put('theme_logo_url', v.logoUrl || null);
+        if (positionCols.length) positionCols.forEach(col => { payload[col] = v.position; });
+        else skipped.push('widget_position');
+
+        if (!Object.keys(payload).length) {
+          msg.textContent = '✗ None of the theming columns exist yet — run the widget theming migration.';
+          msg.style.color = 'var(--red, #f87171)';
+          saveBtn.disabled = false;
+          return;
         }
 
         const { error: updateError } = await window.supabase
           .from('widget_clients')
-          .update(updatePayload)
+          .update(payload)
           .eq('user_id', user.id);
 
+        saveBtn.disabled = false;
         if (updateError) {
-          msg.textContent = '✗ Error saving widget settings.';
-          msg.style.color = 'var(--error, #f87171)';
+          msg.textContent = '✗ ' + (updateError.message || 'Error saving widget settings.');
+          msg.style.color = 'var(--red, #f87171)';
           console.error('Widget theme save error:', updateError);
+          return;
+        }
+
+        if (skipped.length) {
+          msg.textContent = `✓ Saved, but these columns are missing on widget_clients: ${skipped.join(', ')}`;
+          msg.style.color = 'var(--red, #f87171)';
         } else {
           msg.textContent = '✓ Saved! Changes are live on your site now.';
           msg.style.color = 'var(--accent)';

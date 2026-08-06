@@ -355,6 +355,107 @@
           </div>
 
           <div class="settings-card">
+            <div class="settings-section-title">🎛 Advanced appearance</div>
+            <p style="font-size:11px;color:var(--text-hint);line-height:1.6;margin-bottom:16px">
+              Every field below overrides one step of the colour maths the widget already runs on your primary/background colours. Leave anything on Auto and it keeps deriving that step automatically — these only need touching for finer control over tints, shading, gradients and button colours.
+            </p>
+
+            <div class="settings-group">
+              <span class="settings-label">Button &amp; FAB fill <span class="wt-col">theme_button_style</span></span>
+              <select class="settings-input" id="widgetButtonStyle">
+                <option value="gradient">Gradient — primary colour fading to a lighter shade</option>
+                <option value="solid">Solid — flat primary colour</option>
+              </select>
+              <div class="wt-hint">Applies to the launcher button, header logo tile and reading-progress bar.</div>
+            </div>
+
+            <div class="settings-group">
+              <span class="settings-label">Gradient light stop <span class="wt-col">theme_accent_light</span></span>
+              <select class="settings-input" id="widgetAccentLightMode">
+                <option value="auto">Auto — primary colour shaded 30% lighter</option>
+                <option value="custom">Custom colour…</option>
+              </select>
+              <div class="wt-color-row" id="widgetAccentLightGroup" style="display:none;margin-top:8px">
+                <input type="color" id="widgetAccentLight" value="#ff8c42" class="wt-swatch">
+                <input type="text" id="widgetAccentLightHex" class="settings-input wt-hex" value="#FF8C42" spellcheck="false" maxlength="7" placeholder="#FF8C42">
+              </div>
+              <div class="wt-hint">Only visible with Gradient fill above. Ignored (fill is flat) when Solid is selected and this is left on Auto.</div>
+              <div class="wt-err" id="widgetAccentLightErr">Enter a 6-digit hex colour.</div>
+            </div>
+
+            <div class="settings-group">
+              <span class="settings-label">Hover / active shade <span class="wt-col">theme_accent_hover</span></span>
+              <select class="settings-input" id="widgetAccentHoverMode">
+                <option value="auto">Auto — primary colour shaded 15% darker</option>
+                <option value="custom">Custom colour…</option>
+              </select>
+              <div class="wt-color-row" id="widgetAccentHoverGroup" style="display:none;margin-top:8px">
+                <input type="color" id="widgetAccentHover" value="#D44E00" class="wt-swatch">
+                <input type="text" id="widgetAccentHoverHex" class="settings-input wt-hex" value="#D44E00" spellcheck="false" maxlength="7" placeholder="#D44E00">
+              </div>
+              <div class="wt-hint">Used on hover/press for the primary button.</div>
+              <div class="wt-err" id="widgetAccentHoverErr">Enter a 6-digit hex colour.</div>
+            </div>
+
+            <div class="settings-group">
+              <span class="settings-label">Button text colour <span class="wt-col">theme_button_text_color</span></span>
+              <select class="settings-input" id="widgetButtonTextMode">
+                <option value="auto">Auto — black or white, whichever contrasts your primary colour</option>
+                <option value="custom">Custom colour…</option>
+              </select>
+              <div class="wt-color-row" id="widgetButtonTextGroup" style="display:none;margin-top:8px">
+                <input type="color" id="widgetButtonText" value="#ffffff" class="wt-swatch">
+                <input type="text" id="widgetButtonTextHex" class="settings-input wt-hex" value="#FFFFFF" spellcheck="false" maxlength="7" placeholder="#FFFFFF">
+              </div>
+              <div class="wt-hint">Text/icon colour on the FAB, header logo glyph and primary button label.</div>
+              <div class="wt-err" id="widgetButtonTextErr">Enter a 6-digit hex colour.</div>
+            </div>
+
+            <div class="settings-group">
+              <span class="settings-label">Tint strength <span class="wt-col">theme_tint_strength</span></span>
+              <div class="ak-slider-row" style="gap:10px">
+                <input type="range" id="widgetTintStrength" min="0" max="2" step="0.05" value="1" style="flex:1">
+                <span class="wt-col" id="widgetTintStrengthVal" style="margin-left:0;min-width:34px;text-align:right">1.00×</span>
+              </div>
+              <div class="wt-hint">Scales the accent tint washes behind tabs, active states and focus rings. 0 removes tinting, 2 doubles it.</div>
+            </div>
+
+            <div class="settings-group">
+              <span class="settings-label">Corner radius <span class="wt-col">theme_border_radius</span></span>
+              <div class="ak-slider-row" style="gap:10px">
+                <input type="range" id="widgetBorderRadius" min="0" max="28" step="1" value="10" style="flex:1">
+                <span class="wt-col" id="widgetBorderRadiusVal" style="margin-left:0;min-width:34px;text-align:right">10px</span>
+              </div>
+              <div class="wt-hint">Corner rounding for the panel, cards, buttons and inputs.</div>
+            </div>
+
+            <div class="settings-group">
+              <span class="settings-label">Font family <span class="wt-col">theme_font_family</span></span>
+              <input type="text" class="settings-input" id="widgetFontFamily" placeholder="Inter (default)" spellcheck="false">
+              <div class="wt-hint">Any font name the embedding page already loads. Leave empty to use the bundled Inter font.</div>
+            </div>
+
+            <div class="settings-group">
+              <span class="settings-label">Status colours <span class="wt-col">theme_success_color / theme_error_color / theme_info_color</span></span>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+                <div>
+                  <div class="wt-hint" style="margin:0 0 4px">Success</div>
+                  <div class="wt-color-row"><input type="color" id="widgetSuccessColor" value="#4ade80" class="wt-swatch" style="width:36px;height:32px"><input type="text" id="widgetSuccessColorHex" class="settings-input wt-hex" value="#4ADE80" spellcheck="false" maxlength="7"></div>
+                </div>
+                <div>
+                  <div class="wt-hint" style="margin:0 0 4px">Error</div>
+                  <div class="wt-color-row"><input type="color" id="widgetErrorColor" value="#f87171" class="wt-swatch" style="width:36px;height:32px"><input type="text" id="widgetErrorColorHex" class="settings-input wt-hex" value="#F87171" spellcheck="false" maxlength="7"></div>
+                </div>
+                <div>
+                  <div class="wt-hint" style="margin:0 0 4px">Info / links</div>
+                  <div class="wt-color-row"><input type="color" id="widgetInfoColor" value="#60a5fa" class="wt-swatch" style="width:36px;height:32px"><input type="text" id="widgetInfoColorHex" class="settings-input wt-hex" value="#60A5FA" spellcheck="false" maxlength="7"></div>
+                </div>
+              </div>
+              <div class="wt-hint">Used for the "saved" status dot, error text, the Stop button accent and highlighted links.</div>
+            </div>
+          </div>
+
+          <div class="settings-card">
             <div class="settings-section-title">👁 Live preview</div>
             <div id="widgetPreviewStage" style="position:relative;height:320px;border-radius:14px;border:1px solid var(--border);background:linear-gradient(180deg,#f7f7f8,#e9eaec);overflow:hidden">
               <div style="padding:20px 22px;pointer-events:none">
@@ -380,6 +481,11 @@
                 <div style="padding:9px 10px;display:grid;gap:6px">
                   <div id="wtPreviewBtnPrimary" style="padding:6px 0;text-align:center;border-radius:6px;font-weight:600">Read Page</div>
                   <div id="wtPreviewBtnGhost" style="padding:6px 0;text-align:center;border-radius:6px;border:1px solid">Reading Ruler</div>
+                  <div style="display:flex;align-items:center;gap:10px;padding-top:2px">
+                    <span style="display:flex;align-items:center;gap:3px"><span id="wtPreviewDotSuccess" style="width:6px;height:6px;border-radius:50%;flex:none"></span>Saved</span>
+                    <span style="display:flex;align-items:center;gap:3px"><span id="wtPreviewDotError" style="width:6px;height:6px;border-radius:50%;flex:none"></span>Error</span>
+                    <span style="display:flex;align-items:center;gap:3px"><span id="wtPreviewDotInfo" style="width:6px;height:6px;border-radius:50%;flex:none"></span>Link</span>
+                  </div>
                 </div>
               </div>
               <div id="wtPreviewFab" style="position:absolute;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;flex:none"></div>
@@ -1742,15 +1848,52 @@ ${sourceText}`;
       const logo = (el('widgetThemeLogo')?.value || '').trim();
       let position = el('widgetThemePosition')?.value || 'bottom-right';
       if (!WIDGET_POSITIONS.includes(position)) position = 'bottom-right';
+      const accent = preset === 'custom'
+        ? (HEX6_RE.test(primary) ? primary : WIDGET_PRESET_COLORS.default)
+        : (WIDGET_PRESET_COLORS[preset] || WIDGET_PRESET_COLORS.default);
+
+      const buttonStyle = el('widgetButtonStyle')?.value === 'solid' ? 'solid' : 'gradient';
+      const accentLightMode = el('widgetAccentLightMode')?.value || 'auto';
+      const accentLightHex = (el('widgetAccentLightHex')?.value || '').trim();
+      const accentHoverMode = el('widgetAccentHoverMode')?.value || 'auto';
+      const accentHoverHex = (el('widgetAccentHoverHex')?.value || '').trim();
+      const buttonTextMode = el('widgetButtonTextMode')?.value || 'auto';
+      const buttonTextHex = (el('widgetButtonTextHex')?.value || '').trim();
+      const tintStrength = parseFloat(el('widgetTintStrength')?.value ?? '1') || 0;
+      const borderRadius = parseInt(el('widgetBorderRadius')?.value ?? '10', 10) || 0;
+      const fontFamily = (el('widgetFontFamily')?.value || '').trim();
+      const successColorHex = (el('widgetSuccessColorHex')?.value || '').trim();
+      const errorColorHex = (el('widgetErrorColorHex')?.value || '').trim();
+      const infoColorHex = (el('widgetInfoColorHex')?.value || '').trim();
+
+      const accentLight = accentLightMode === 'custom' && HEX6_RE.test(accentLightHex)
+        ? accentLightHex
+        : wtShade(accent, buttonStyle === 'solid' ? 0 : 0.3);
+      const accentHover = accentHoverMode === 'custom' && HEX6_RE.test(accentHoverHex)
+        ? accentHoverHex
+        : wtShade(accent, -0.15);
+      const buttonTextColor = buttonTextMode === 'custom' && HEX6_RE.test(buttonTextHex)
+        ? buttonTextHex
+        : wtOnBrand(accent);
+
       return {
         preset,
         primaryColor: preset === 'custom' ? primary : '',
         bgColor: bgMode === 'custom' ? bg : '',
         logoUrl: logo,
         position,
-        accent: preset === 'custom'
-          ? (HEX6_RE.test(primary) ? primary : WIDGET_PRESET_COLORS.default)
-          : (WIDGET_PRESET_COLORS[preset] || WIDGET_PRESET_COLORS.default),
+        accent,
+        buttonStyle,
+        accentLightMode, accentLightHex: HEX6_RE.test(accentLightHex) ? accentLightHex : '',
+        accentHoverMode, accentHoverHex: HEX6_RE.test(accentHoverHex) ? accentHoverHex : '',
+        buttonTextMode, buttonTextHex: HEX6_RE.test(buttonTextHex) ? buttonTextHex : '',
+        accentLight, accentHover, buttonTextColor,
+        tintStrength: Math.max(0, Math.min(2, tintStrength)),
+        borderRadius: Math.max(0, Math.min(28, borderRadius)),
+        fontFamily,
+        successColorHex: HEX6_RE.test(successColorHex) ? successColorHex : '',
+        errorColorHex: HEX6_RE.test(errorColorHex) ? errorColorHex : '',
+        infoColorHex: HEX6_RE.test(infoColorHex) ? infoColorHex : '',
       };
     }
 
@@ -1760,6 +1903,15 @@ ${sourceText}`;
       if (!stage) return;
       const v = widgetReadForm();
       const accent = v.accent;
+      // Tint washes (soft/surface/border/glow) scale with theme_tint_strength — mirrors
+      // the cl1(alpha * ts) clamp AB() applies in widget-core.js.
+      const pv = a => Math.max(0, Math.min(1, a * v.tintStrength));
+      const gradEnd = v.accentLight;
+      const fill = v.buttonStyle === 'solid' && v.accentLightMode === 'auto'
+        ? accent
+        : `linear-gradient(135deg, ${accent}, ${gradEnd})`;
+      const onAccent = v.buttonTextColor;
+      const rs = Math.max(0, Math.round(v.borderRadius * 0.6));
 
       // Surface ramp — same derivation as applySurface() in widget-core.js.
       const hasBg = HEX6_RE.test(v.bgColor);
@@ -1773,15 +1925,17 @@ ${sourceText}`;
 
       const panel = el('wtPreviewPanel');
       panel.style.background = base;
-      panel.style.borderColor = wtRgba(accent, 0.3);
+      panel.style.borderColor = wtRgba(accent, pv(0.3));
+      panel.style.borderRadius = v.borderRadius + 'px';
       panel.style.color = text;
+      panel.style.fontFamily = v.fontFamily ? `'${v.fontFamily.replace(/['"]/g, '')}', sans-serif` : '';
       panel.style.boxShadow = dark
         ? '0 18px 40px rgba(0,0,0,0.45)'
         : '0 18px 40px rgba(35,40,48,0.22)';
 
       const header = el('wtPreviewHeader');
-      header.style.background = `linear-gradient(135deg, ${wtRgba(accent, 0.16)}, ${dark ? 'transparent 60%' : wtRgba(base, 0.82) + ' 68%'}), ${st(0.03)}`;
-      header.style.borderBottomColor = wtRgba(accent, 0.42);
+      header.style.background = `linear-gradient(135deg, ${wtRgba(accent, pv(0.16))}, ${dark ? 'transparent 60%' : wtRgba(base, 0.82) + ' 68%'}), ${st(0.03)}`;
+      header.style.borderBottomColor = wtRgba(accent, pv(0.42));
       el('wtPreviewTitle').style.color = text;
       el('wtPreviewSub').style.color = muted;
 
@@ -1790,18 +1944,23 @@ ${sourceText}`;
       tabs.style.borderBottomColor = border;
       Array.from(tabs.querySelectorAll('.wt-pv-tab')).forEach((tab, i) => {
         tab.style.color = i === 0 ? accent : muted;
-        tab.style.background = i === 0 ? wtRgba(accent, 0.08) : 'transparent';
+        tab.style.background = i === 0 ? wtRgba(accent, pv(0.08)) : 'transparent';
         tab.style.borderBottom = i === 0 ? `2px solid ${accent}` : '2px solid transparent';
       });
 
       const primaryBtn = el('wtPreviewBtnPrimary');
-      primaryBtn.style.background = accent;
-      primaryBtn.style.color = wtOnBrand(accent);
+      primaryBtn.style.background = fill;
+      primaryBtn.style.color = onAccent;
+      primaryBtn.style.borderRadius = rs + 'px';
       const ghostBtn = el('wtPreviewBtnGhost');
       ghostBtn.style.background = st(0.06);
       ghostBtn.style.borderColor = border;
       ghostBtn.style.color = text;
+      ghostBtn.style.borderRadius = rs + 'px';
 
+      const logoFill = v.buttonStyle === 'solid' && v.accentLightMode === 'auto'
+        ? accent
+        : `linear-gradient(135deg, ${accent}, ${gradEnd})`;
       const logoBox = el('wtPreviewLogo');
       if (v.logoUrl && /^https?:\/\//i.test(v.logoUrl)) {
         logoBox.style.background = 'none';
@@ -1812,21 +1971,28 @@ ${sourceText}`;
         img.style.cssText = 'width:100%;height:100%;object-fit:contain;border-radius:6px';
         img.onerror = () => {
           logoBox.innerHTML = '♿';
-          logoBox.style.background = `linear-gradient(135deg, ${accent}, ${wtShade(accent, 0.3)})`;
-          logoBox.style.color = wtOnBrand(accent);
+          logoBox.style.background = logoFill;
+          logoBox.style.color = onAccent;
         };
         logoBox.appendChild(img);
       } else {
         logoBox.innerHTML = '♿';
-        logoBox.style.background = `linear-gradient(135deg, ${accent}, ${wtShade(accent, 0.3)})`;
-        logoBox.style.color = wtOnBrand(accent);
+        logoBox.style.background = logoFill;
+        logoBox.style.color = onAccent;
       }
 
       const fab = el('wtPreviewFab');
-      fab.style.background = `linear-gradient(135deg, ${accent}, ${wtShade(accent, 0.3)})`;
-      fab.style.color = wtOnBrand(accent);
+      fab.style.background = logoFill;
+      fab.style.color = onAccent;
       fab.textContent = '♿';
-      fab.style.boxShadow = `0 4px 18px ${wtRgba(accent, 0.3)}`;
+      fab.style.boxShadow = `0 4px 18px ${wtRgba(accent, pv(0.3))}`;
+
+      const dotSuccess = el('wtPreviewDotSuccess');
+      if (dotSuccess) dotSuccess.style.background = v.successColorHex || '#4ade80';
+      const dotError = el('wtPreviewDotError');
+      if (dotError) dotError.style.background = v.errorColorHex || '#f87171';
+      const dotInfo = el('wtPreviewDotInfo');
+      if (dotInfo) dotInfo.style.background = v.infoColorHex || '#60a5fa';
 
       // Position: FAB in the chosen corner, panel opening away from that edge.
       const top = v.position.startsWith('top-');
@@ -1856,6 +2022,30 @@ ${sourceText}`;
       const customGroup = el('widgetCustomColorGroup');
       const bgGroup = el('widgetBgColorGroup');
       const msg = el('widgetThemeMsg');
+      const buttonStyleSelect = el('widgetButtonStyle');
+      const accentLightModeSelect = el('widgetAccentLightMode');
+      const accentLightGroup = el('widgetAccentLightGroup');
+      const accentLightInput = el('widgetAccentLight');
+      const accentLightHex = el('widgetAccentLightHex');
+      const accentHoverModeSelect = el('widgetAccentHoverMode');
+      const accentHoverGroup = el('widgetAccentHoverGroup');
+      const accentHoverInput = el('widgetAccentHover');
+      const accentHoverHex = el('widgetAccentHoverHex');
+      const buttonTextModeSelect = el('widgetButtonTextMode');
+      const buttonTextGroup = el('widgetButtonTextGroup');
+      const buttonTextInput = el('widgetButtonText');
+      const buttonTextHex = el('widgetButtonTextHex');
+      const tintStrengthInput = el('widgetTintStrength');
+      const tintStrengthVal = el('widgetTintStrengthVal');
+      const borderRadiusInput = el('widgetBorderRadius');
+      const borderRadiusVal = el('widgetBorderRadiusVal');
+      const fontFamilyInput = el('widgetFontFamily');
+      const successColorInput = el('widgetSuccessColor');
+      const successColorHex = el('widgetSuccessColorHex');
+      const errorColorInput = el('widgetErrorColor');
+      const errorColorHex = el('widgetErrorColorHex');
+      const infoColorInput = el('widgetInfoColor');
+      const infoColorHex = el('widgetInfoColorHex');
       if (!form) return;
 
       // select('*') so we can tell which theming columns actually exist on this
@@ -1897,9 +2087,58 @@ ${sourceText}`;
       const savedPosition = String(client[positionCols[0]] || 'bottom-right').toLowerCase();
       positionSelect.value = WIDGET_POSITIONS.includes(savedPosition) ? savedPosition : 'bottom-right';
 
+      // --- hydrate advanced appearance ---
+      const savedAccentLight = client.theme_accent_light || '';
+      accentLightModeSelect.value = HEX6_RE.test(savedAccentLight) ? 'custom' : 'auto';
+      accentLightInput.value = HEX6_RE.test(savedAccentLight) ? savedAccentLight : '#FF8C42';
+      accentLightHex.value = accentLightInput.value.toUpperCase();
+
+      const savedAccentHover = client.theme_accent_hover || '';
+      accentHoverModeSelect.value = HEX6_RE.test(savedAccentHover) ? 'custom' : 'auto';
+      accentHoverInput.value = HEX6_RE.test(savedAccentHover) ? savedAccentHover : '#D44E00';
+      accentHoverHex.value = accentHoverInput.value.toUpperCase();
+
+      const savedButtonText = client.theme_button_text_color || '';
+      buttonTextModeSelect.value = HEX6_RE.test(savedButtonText) ? 'custom' : 'auto';
+      buttonTextInput.value = HEX6_RE.test(savedButtonText) ? savedButtonText : '#FFFFFF';
+      buttonTextHex.value = buttonTextInput.value.toUpperCase();
+
+      const savedButtonStyle = String(client.theme_button_style || 'gradient').toLowerCase();
+      buttonStyleSelect.value = ['gradient', 'solid'].includes(savedButtonStyle) ? savedButtonStyle : 'gradient';
+
+      const toNum = (value, fallback) => {
+        if (value === null || value === undefined || value === '') return fallback;
+        const n = Number(value);
+        return Number.isFinite(n) ? n : fallback;
+      };
+      const savedTint = Math.max(0, Math.min(2, toNum(client.theme_tint_strength, 1)));
+      tintStrengthInput.value = savedTint;
+      tintStrengthVal.textContent = savedTint.toFixed(2) + '×';
+
+      const savedRadius = Math.max(0, Math.min(28, toNum(client.theme_border_radius, 10)));
+      borderRadiusInput.value = savedRadius;
+      borderRadiusVal.textContent = savedRadius + 'px';
+
+      fontFamilyInput.value = client.theme_font_family || '';
+
+      const savedSuccess = client.theme_success_color || '';
+      successColorInput.value = HEX6_RE.test(savedSuccess) ? savedSuccess : '#4ADE80';
+      successColorHex.value = successColorInput.value.toUpperCase();
+
+      const savedError = client.theme_error_color || '';
+      errorColorInput.value = HEX6_RE.test(savedError) ? savedError : '#F87171';
+      errorColorHex.value = errorColorInput.value.toUpperCase();
+
+      const savedInfo = client.theme_info_color || '';
+      infoColorInput.value = HEX6_RE.test(savedInfo) ? savedInfo : '#60A5FA';
+      infoColorHex.value = infoColorInput.value.toUpperCase();
+
       const syncGroups = () => {
         customGroup.style.display = presetSelect.value === 'custom' ? 'block' : 'none';
         bgGroup.style.display = bgModeSelect.value === 'custom' ? 'block' : 'none';
+        accentLightGroup.style.display = accentLightModeSelect.value === 'custom' ? 'flex' : 'none';
+        accentHoverGroup.style.display = accentHoverModeSelect.value === 'custom' ? 'flex' : 'none';
+        buttonTextGroup.style.display = buttonTextModeSelect.value === 'custom' ? 'flex' : 'none';
       };
       syncGroups();
       widgetUpdatePreview();
@@ -1916,11 +2155,30 @@ ${sourceText}`;
       };
       bindColorPair(colorInput, colorHex);
       bindColorPair(bgInput, bgHex);
+      bindColorPair(accentLightInput, accentLightHex);
+      bindColorPair(accentHoverInput, accentHoverHex);
+      bindColorPair(buttonTextInput, buttonTextHex);
+      bindColorPair(successColorInput, successColorHex);
+      bindColorPair(errorColorInput, errorColorHex);
+      bindColorPair(infoColorInput, infoColorHex);
 
       presetSelect.addEventListener('change', () => { syncGroups(); widgetUpdatePreview(); });
       bgModeSelect.addEventListener('change', () => { syncGroups(); widgetUpdatePreview(); });
       positionSelect.addEventListener('change', widgetUpdatePreview);
       logoInput.addEventListener('input', widgetUpdatePreview);
+      buttonStyleSelect.addEventListener('change', () => { syncGroups(); widgetUpdatePreview(); });
+      accentLightModeSelect.addEventListener('change', () => { syncGroups(); widgetUpdatePreview(); });
+      accentHoverModeSelect.addEventListener('change', () => { syncGroups(); widgetUpdatePreview(); });
+      buttonTextModeSelect.addEventListener('change', () => { syncGroups(); widgetUpdatePreview(); });
+      tintStrengthInput.addEventListener('input', () => {
+        tintStrengthVal.textContent = parseFloat(tintStrengthInput.value).toFixed(2) + '×';
+        widgetUpdatePreview();
+      });
+      borderRadiusInput.addEventListener('input', () => {
+        borderRadiusVal.textContent = borderRadiusInput.value + 'px';
+        widgetUpdatePreview();
+      });
+      fontFamilyInput.addEventListener('input', widgetUpdatePreview);
 
       // --- save ---
       const saveBtn = el('saveWidgetThemeBtn');
@@ -1932,10 +2190,16 @@ ${sourceText}`;
         const primaryBad = v.preset === 'custom' && !HEX6_RE.test(v.primaryColor);
         const bgBad = bgModeSelect.value === 'custom' && !HEX6_RE.test(v.bgColor);
         const logoBad = !!v.logoUrl && !/^https?:\/\/\S+$/i.test(v.logoUrl);
+        const accentLightBad = v.accentLightMode === 'custom' && !v.accentLightHex;
+        const accentHoverBad = v.accentHoverMode === 'custom' && !v.accentHoverHex;
+        const buttonTextBad = v.buttonTextMode === 'custom' && !v.buttonTextHex;
         showErr('widgetColorErr', primaryBad);
         showErr('widgetBgErr', bgBad);
         showErr('widgetLogoErr', logoBad);
-        if (primaryBad || bgBad || logoBad) {
+        showErr('widgetAccentLightErr', accentLightBad);
+        showErr('widgetAccentHoverErr', accentHoverBad);
+        showErr('widgetButtonTextErr', buttonTextBad);
+        if (primaryBad || bgBad || logoBad || accentLightBad || accentHoverBad || buttonTextBad) {
           msg.textContent = '✗ Fix the highlighted fields first.';
           msg.style.color = 'var(--red, #f87171)';
           return;
@@ -1957,6 +2221,16 @@ ${sourceText}`;
         put('theme_logo_url', v.logoUrl || null);
         if (positionCols.length) positionCols.forEach(col => { payload[col] = v.position; });
         else skipped.push('widget_position');
+        put('theme_button_style', v.buttonStyle);
+        put('theme_accent_light', v.accentLightMode === 'custom' ? v.accentLightHex : null);
+        put('theme_accent_hover', v.accentHoverMode === 'custom' ? v.accentHoverHex : null);
+        put('theme_button_text_color', v.buttonTextMode === 'custom' ? v.buttonTextHex : null);
+        put('theme_tint_strength', v.tintStrength);
+        put('theme_border_radius', v.borderRadius);
+        put('theme_font_family', v.fontFamily || null);
+        put('theme_success_color', v.successColorHex || null);
+        put('theme_error_color', v.errorColorHex || null);
+        put('theme_info_color', v.infoColorHex || null);
 
         if (!Object.keys(payload).length) {
           msg.textContent = '✗ None of the theming columns exist yet — run the widget theming migration.';

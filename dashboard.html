@@ -361,6 +361,20 @@
             </p>
 
             <div class="settings-group">
+              <span class="settings-label">Secondary button fill <span class="wt-col">theme_button_color</span></span>
+              <select class="settings-input" id="widgetButtonColorMode">
+                <option value="auto">Auto — a shade of the panel background</option>
+                <option value="custom">Custom colour…</option>
+              </select>
+              <div class="wt-color-row" id="widgetButtonColorGroup" style="display:none;margin-top:8px">
+                <input type="color" id="widgetButtonColor" value="#1d1f23" class="wt-swatch">
+                <input type="text" id="widgetButtonColorHex" class="settings-input wt-hex" value="#1D1F23" spellcheck="false" maxlength="7" placeholder="#1D1F23">
+              </div>
+              <div class="wt-hint">Fill for the feature-button grid ("Read Page", "Ruler", "Highlight Links"…), selects, inputs and font/spacing controls. On Auto this is just a shade of the panel background, so it can't be its own colour until you set one here.</div>
+              <div class="wt-err" id="widgetButtonColorErr">Enter a 6-digit hex colour.</div>
+            </div>
+
+            <div class="settings-group">
               <span class="settings-label">Button &amp; FAB fill <span class="wt-col">theme_button_style</span></span>
               <select class="settings-input" id="widgetButtonStyle">
                 <option value="gradient">Gradient — primary colour fading to a lighter shade</option>
@@ -1859,6 +1873,8 @@ ${sourceText}`;
       const accentHoverHex = (el('widgetAccentHoverHex')?.value || '').trim();
       const buttonTextMode = el('widgetButtonTextMode')?.value || 'auto';
       const buttonTextHex = (el('widgetButtonTextHex')?.value || '').trim();
+      const buttonColorMode = el('widgetButtonColorMode')?.value || 'auto';
+      const buttonColorHex = (el('widgetButtonColorHex')?.value || '').trim();
       const tintStrength = parseFloat(el('widgetTintStrength')?.value ?? '1') || 0;
       const borderRadius = parseInt(el('widgetBorderRadius')?.value ?? '10', 10) || 0;
       const fontFamily = (el('widgetFontFamily')?.value || '').trim();
@@ -1887,6 +1903,7 @@ ${sourceText}`;
         accentLightMode, accentLightHex: HEX6_RE.test(accentLightHex) ? accentLightHex : '',
         accentHoverMode, accentHoverHex: HEX6_RE.test(accentHoverHex) ? accentHoverHex : '',
         buttonTextMode, buttonTextHex: HEX6_RE.test(buttonTextHex) ? buttonTextHex : '',
+        buttonColorMode, buttonColorHex: HEX6_RE.test(buttonColorHex) ? buttonColorHex : '',
         accentLight, accentHover, buttonTextColor,
         tintStrength: Math.max(0, Math.min(2, tintStrength)),
         borderRadius: Math.max(0, Math.min(28, borderRadius)),
@@ -1953,7 +1970,7 @@ ${sourceText}`;
       primaryBtn.style.color = onAccent;
       primaryBtn.style.borderRadius = rs + 'px';
       const ghostBtn = el('wtPreviewBtnGhost');
-      ghostBtn.style.background = st(0.06);
+      ghostBtn.style.background = v.buttonColorMode === 'custom' && v.buttonColorHex ? v.buttonColorHex : st(0.06);
       ghostBtn.style.borderColor = border;
       ghostBtn.style.color = text;
       ghostBtn.style.borderRadius = rs + 'px';
@@ -2035,6 +2052,10 @@ ${sourceText}`;
       const buttonTextGroup = el('widgetButtonTextGroup');
       const buttonTextInput = el('widgetButtonText');
       const buttonTextHex = el('widgetButtonTextHex');
+      const buttonColorModeSelect = el('widgetButtonColorMode');
+      const buttonColorGroup = el('widgetButtonColorGroup');
+      const buttonColorInput = el('widgetButtonColor');
+      const buttonColorHex = el('widgetButtonColorHex');
       const tintStrengthInput = el('widgetTintStrength');
       const tintStrengthVal = el('widgetTintStrengthVal');
       const borderRadiusInput = el('widgetBorderRadius');
@@ -2103,6 +2124,11 @@ ${sourceText}`;
       buttonTextInput.value = HEX6_RE.test(savedButtonText) ? savedButtonText : '#FFFFFF';
       buttonTextHex.value = buttonTextInput.value.toUpperCase();
 
+      const savedButtonColor = client.theme_button_color || '';
+      buttonColorModeSelect.value = HEX6_RE.test(savedButtonColor) ? 'custom' : 'auto';
+      buttonColorInput.value = HEX6_RE.test(savedButtonColor) ? savedButtonColor : '#1D1F23';
+      buttonColorHex.value = buttonColorInput.value.toUpperCase();
+
       const savedButtonStyle = String(client.theme_button_style || 'gradient').toLowerCase();
       buttonStyleSelect.value = ['gradient', 'solid'].includes(savedButtonStyle) ? savedButtonStyle : 'gradient';
 
@@ -2139,6 +2165,7 @@ ${sourceText}`;
         accentLightGroup.style.display = accentLightModeSelect.value === 'custom' ? 'flex' : 'none';
         accentHoverGroup.style.display = accentHoverModeSelect.value === 'custom' ? 'flex' : 'none';
         buttonTextGroup.style.display = buttonTextModeSelect.value === 'custom' ? 'flex' : 'none';
+        buttonColorGroup.style.display = buttonColorModeSelect.value === 'custom' ? 'flex' : 'none';
       };
       syncGroups();
       widgetUpdatePreview();
@@ -2158,6 +2185,7 @@ ${sourceText}`;
       bindColorPair(accentLightInput, accentLightHex);
       bindColorPair(accentHoverInput, accentHoverHex);
       bindColorPair(buttonTextInput, buttonTextHex);
+      bindColorPair(buttonColorInput, buttonColorHex);
       bindColorPair(successColorInput, successColorHex);
       bindColorPair(errorColorInput, errorColorHex);
       bindColorPair(infoColorInput, infoColorHex);
@@ -2170,6 +2198,7 @@ ${sourceText}`;
       accentLightModeSelect.addEventListener('change', () => { syncGroups(); widgetUpdatePreview(); });
       accentHoverModeSelect.addEventListener('change', () => { syncGroups(); widgetUpdatePreview(); });
       buttonTextModeSelect.addEventListener('change', () => { syncGroups(); widgetUpdatePreview(); });
+      buttonColorModeSelect.addEventListener('change', () => { syncGroups(); widgetUpdatePreview(); });
       tintStrengthInput.addEventListener('input', () => {
         tintStrengthVal.textContent = parseFloat(tintStrengthInput.value).toFixed(2) + '×';
         widgetUpdatePreview();
@@ -2193,13 +2222,15 @@ ${sourceText}`;
         const accentLightBad = v.accentLightMode === 'custom' && !v.accentLightHex;
         const accentHoverBad = v.accentHoverMode === 'custom' && !v.accentHoverHex;
         const buttonTextBad = v.buttonTextMode === 'custom' && !v.buttonTextHex;
+        const buttonColorBad = v.buttonColorMode === 'custom' && !v.buttonColorHex;
         showErr('widgetColorErr', primaryBad);
         showErr('widgetBgErr', bgBad);
         showErr('widgetLogoErr', logoBad);
         showErr('widgetAccentLightErr', accentLightBad);
         showErr('widgetAccentHoverErr', accentHoverBad);
         showErr('widgetButtonTextErr', buttonTextBad);
-        if (primaryBad || bgBad || logoBad || accentLightBad || accentHoverBad || buttonTextBad) {
+        showErr('widgetButtonColorErr', buttonColorBad);
+        if (primaryBad || bgBad || logoBad || accentLightBad || accentHoverBad || buttonTextBad || buttonColorBad) {
           msg.textContent = '✗ Fix the highlighted fields first.';
           msg.style.color = 'var(--red, #f87171)';
           return;
@@ -2225,6 +2256,7 @@ ${sourceText}`;
         put('theme_accent_light', v.accentLightMode === 'custom' ? v.accentLightHex : null);
         put('theme_accent_hover', v.accentHoverMode === 'custom' ? v.accentHoverHex : null);
         put('theme_button_text_color', v.buttonTextMode === 'custom' ? v.buttonTextHex : null);
+        put('theme_button_color', v.buttonColorMode === 'custom' ? v.buttonColorHex : null);
         put('theme_tint_strength', v.tintStrength);
         put('theme_border_radius', v.borderRadius);
         put('theme_font_family', v.fontFamily || null);
